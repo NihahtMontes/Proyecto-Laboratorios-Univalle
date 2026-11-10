@@ -16,6 +16,9 @@
     var isPending = PlanningStatus.PendingReview.Contains(status);
     var isApproved = status is PlanningStatus.Approved or PlanningStatus.Finalized;
     var isClosed = status is PlanningStatus.Rejected or PlanningStatus.Cancelled;
+    // Práctica finalizada con incidentes de material: se marca como parcial en las etiquetas visibles.
+    var conIncidentes = status == PlanningStatus.Finalized && Model.IncidentCount > 0;
+    var statusLabel = conIncidentes ? "Realizada con incidentes (parcial)" : r.StatusText;
 }
 
 @section Styles {
@@ -29,7 +32,7 @@
                 <a asp-page="./Solicitudes" class="text-reset">MIS SOLICITUDES</a> <i class="fas fa-chevron-right mx-1 small"></i> @Model.Code
             </h4>
             <h2 class="font-weight-bold text-dark mb-1">@r.Practice</h2>
-            <span class="badge badge-pill badge-@r.StatusCss px-3 py-2"><i class="@r.StatusIcon mr-1"></i>@r.StatusText</span>
+            <span class="badge badge-pill badge-@r.StatusCss px-3 py-2"><i class="@r.StatusIcon mr-1"></i>@statusLabel</span>
             <span class="text-muted small ml-2">@r.Subject · Grupo @r.Group</span>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
@@ -80,7 +83,7 @@
                 {
                     <div class="dc-step @(isApproved ? (status == PlanningStatus.Approved ? "is-active" : "is-done") : null)"><span class="dc-step__dot"><i class="fas fa-check-circle"></i></span><span class="dc-step__text">Aprobada</span></div>
                     <div class="dc-step__bar @(status == PlanningStatus.Finalized ? "is-done" : null)"></div>
-                    <div class="dc-step @(status == PlanningStatus.Finalized ? "is-active" : null)"><span class="dc-step__dot"><i class="fas fa-flag-checkered"></i></span><span class="dc-step__text">Realizada</span></div>
+                    <div class="dc-step @(status == PlanningStatus.Finalized ? "is-active" : null)"><span class="dc-step__dot"><i class="fas fa-flag-checkered"></i></span><span class="dc-step__text">@(conIncidentes ? "Realizada con incidentes (parcial)" : "Realizada")</span></div>
                 }
             </div>
         </div>

@@ -66,14 +66,17 @@ public class L3Model : PageModel
     /// <summary>Se devuelve solo lo pendiente sin cubrir por L-5: lo cubierto no debe volver ni reponer stock.</summary>
     public bool CanReturn => IsEditable && HasDeparture && Items.Any(i => i.Uncovered > 0);
     public bool BlockFinalization => !HasDeparture || Items.Any(i => i.Uncovered > 0);
+    /// <summary>Hay material reutilizable sin devolver ni cubrir por L-5: habilita «Finalizar sin novedades».</summary>
+    public bool HasReusablePending => HasDeparture && Items.Any(i => !i.IsConsumable && i.Uncovered > 0);
 
     public sealed record DeliveryRow(int DetailId, string ArticleCode, string ArticleName, bool ArticlePending, string? Unit,
         decimal Requested, decimal? Available, string? InventoryNumber);
     public sealed record DepartureView(int Id, string Code, string OriginName, DateTime DepartureDate, LoanStatus Status);
     public sealed record ReturnRow(int DepartureItemId, int ArticleId, string ArticleCode, string ArticleName, string? Unit,
-        decimal Delivered, decimal Returned, int CoveredByIncidents)
+        decimal Delivered, decimal Returned, int CoveredByIncidents, bool IsConsumable = false, string? OriginCode = null)
     {
-        public decimal Pending => Math.Max(0, Delivered - Returned);
+        /// <summary>Los consumibles se gastan en la práctica: quedan saldados al entregarse y nunca están pendientes.</summary>
+        public decimal Pending => IsConsumable ? 0 : Math.Max(0, Delivered - Returned);
         public decimal Uncovered => Math.Max(0, Pending - CoveredByIncidents);
     }
     public sealed record ReturnView(string Code, DateTime? ReturnDate, string ResponsibleName, DepartureReturnStatus Status, string Lines);
@@ -151,7 +154,51 @@ public class L3Model : PageModel
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return RedirectToPage(new { id = Id });
         }
+        return await FinalizeCoreAsync(null);
+    }
 
+    /// <summary>
+    /// «Finalizar sin novedades» (V13: lo que no tiene incidente se da por devuelto): registra la devolución de todo el
+    /// material reutilizable pendiente y sin cubrir por L-5, con el responsable elegido, y finaliza la práctica.
+    /// La devolución reutiliza las validaciones de RegisterReturnAsync; si la finalización fallara, la devolución queda
+    /// registrada y la práctica se puede finalizar después con el botón habitual.
+    /// </summary>
+    public async Task<IActionResult> OnPostFinalizeCleanAsync(int responsiblePersonId)
+    {
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, Id))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { id = Id });
+        }
+        var departureId = await _context.Departures.AsNoTracking()
+            .Where(d => d.PlanningId == Id).Select(d => (int?)d.Id).FirstOrDefaultAsync();
+        if (departureId == null)
+        {
+            TempData.Error("No se puede finalizar sin registrar la salida de los artículos.");
+            return RedirectToPage(new { id = Id });
+        }
+
+        var pending = (await BuildReturnRowsAsync(departureId.Value))
+            .Where(r => !r.IsConsumable && r.Uncovered > 0)
+            .Select(r => new ReturnLine(r.DepartureItemId, r.Uncovered))
+            .ToList();
+        string? returnCode = null;
+        if (pending.Count > 0)
+        {
+            var result = await _circuit.RegisterReturnAsync(departureId.Value, responsiblePersonId, DateTime.Today, pending,
+                "Finalizada sin novedades: se dio por devuelto lo pendiente.");
+            if (!result.Ok)
+            {
+                TempData.Error(result.Message);
+                return RedirectToPage(new { id = Id });
+            }
+            returnCode = result.Message;
+        }
+        return await FinalizeCoreAsync(returnCode);
+    }
+
+    private async Task<IActionResult> FinalizeCoreAsync(string? previousStep)
+    {
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -207,7 +254,7 @@ public class L3Model : PageModel
             return RedirectToPage(new { id = Id });
         }
 
-        TempData.Success($"Planificación {Code} finalizada.");
+        TempData.Success(previousStep == null ? $"Planificación {Code} finalizada." : $"Planificación {Code} finalizada sin novedades. {previousStep}");
         return RedirectToHome();
     }
 
@@ -333,7 +380,10 @@ public class L3Model : PageModel
                 i.ProductName,
                 InventoryNumber = i.EquipmentUnit != null ? i.EquipmentUnit.InventoryNumber : null,
                 EquipmentId = i.EquipmentUnit != null ? (int?)i.EquipmentUnit.EquipmentId : null,
-                Delivered = i.Quantity ?? 0
+                Delivered = i.Quantity ?? 0,
+                IsConsumable = i.Article != null && i.Article.ArticleType == ArticleType.Consumable,
+                OriginCode = i.OriginLaboratory != null ? i.OriginLaboratory.Code
+                    : i.Departure!.OriginLaboratory != null ? i.Departure.OriginLaboratory.Code : null
             })
             .ToListAsync();
         var equipmentIds = raw.Where(i => i.ArticleId == null && i.EquipmentId != null).Select(i => i.EquipmentId!.Value).Distinct().ToList();
@@ -347,12 +397,12 @@ public class L3Model : PageModel
         var items = raw.Select(i =>
         {
             if (i.ArticleId is int articleId)
-                return new { i.Id, ArticleId = articleId, Code = i.ArticleCode ?? "", Name = i.ArticleName ?? i.ProductName ?? "", i.Unit, i.Delivered };
+                return new { i.Id, ArticleId = articleId, Code = i.ArticleCode ?? "", Name = i.ArticleName ?? i.ProductName ?? "", i.Unit, i.Delivered, i.IsConsumable, i.OriginCode };
             var linked = i.EquipmentId is int equipmentId ? linkedArticles.GetValueOrDefault(equipmentId) : null;
             return new
             {
                 i.Id, ArticleId = linked?.Id ?? 0, Code = linked?.Code ?? "",
-                Name = $"{i.ProductName ?? "Equipo"} · Unidad {i.InventoryNumber}", Unit = (string?)"Unidad", i.Delivered
+                Name = $"{i.ProductName ?? "Equipo"} · Unidad {i.InventoryNumber}", Unit = (string?)"Unidad", i.Delivered, IsConsumable = false, i.OriginCode
             };
         }).ToList();
         var itemIds = items.Select(i => i.Id).ToList();
@@ -374,11 +424,11 @@ public class L3Model : PageModel
         foreach (var i in items.OrderBy(i => i.Name))
         {
             var back = returned.GetValueOrDefault(i.Id);
-            var pending = Math.Max(0, i.Delivered - back);
+            var pending = i.IsConsumable ? 0 : Math.Max(0, i.Delivered - back);
             var available = remaining.GetValueOrDefault(i.ArticleId);
             var use = (int)Math.Min(available, Math.Ceiling(pending));
             remaining[i.ArticleId] = available - use;
-            rows.Add(new ReturnRow(i.Id, i.ArticleId, i.Code, i.Name, i.Unit, i.Delivered, back, use));
+            rows.Add(new ReturnRow(i.Id, i.ArticleId, i.Code, i.Name, i.Unit, i.Delivered, back, use, i.IsConsumable, i.OriginCode));
         }
         return rows;
     }

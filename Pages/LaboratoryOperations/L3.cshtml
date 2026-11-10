@@ -214,6 +214,7 @@
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th class="border-0">ARTÍCULO</th>
+                                    <th class="border-0">ORIGEN</th>
                                     <th class="border-0 text-center">ENTREGADO</th>
                                     <th class="border-0 text-center">DEVUELTO</th>
                                     <th class="border-0 text-center">PENDIENTE</th>
@@ -226,7 +227,7 @@
                                 @if (!Model.Items.Any())
                                 {
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
+                                        <td colspan="8" class="text-center text-muted py-4">
                                             <i class="mdi mdi-package-variant mdi-36px d-block mb-2"></i>
                                             Esta planificación no tiene artículos registrados.
                                         </td>
@@ -240,6 +241,13 @@
                                         <td class="align-middle">
                                             <div class="font-weight-bold">@item.ArticleName</div>
                                             <small class="text-muted">@item.ArticleCode@(string.IsNullOrWhiteSpace(item.Unit) ? "" : $" · {item.Unit}")</small>
+                                            @if (item.IsConsumable)
+                                            {
+                                                <span class="badge badge-warning badge-pill" title="Se descuenta del stock al entregar y no se devuelve">Consumible · no se devuelve</span>
+                                            }
+                                        </td>
+                                        <td class="align-middle text-center">
+                                            <span class="badge badge-light border">@(string.IsNullOrEmpty(item.OriginCode) ? "—" : item.OriginCode)</span>
                                         </td>
                                         <td class="align-middle text-center font-weight-bold">@item.Delivered.ToString("0.##")</td>
                                         <td class="align-middle text-center">@item.Returned.ToString("0.##")</td>
@@ -340,6 +348,20 @@
                                         {
                                             if (item.Uncovered <= 0) { continue; }
                                             var uncoveredStr = item.Uncovered.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                            if (item.IsConsumable)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="font-weight-bold small">@item.ArticleName</div>
+                                                        <small class="text-muted">@item.ArticleCode</small>
+                                                    </td>
+                                                    <td class="text-center font-weight-bold">@uncoveredStr</td>
+                                                    <td class="text-center">
+                                                        <span class="badge badge-warning badge-pill" title="Se descuenta del stock al entregar y no se devuelve">Consumible · no se devuelve</span>
+                                                    </td>
+                                                </tr>
+                                                continue;
+                                            }
                                             <tr>
                                                 <td>
                                                     <div class="font-weight-bold small">@item.ArticleName</div>
@@ -412,13 +434,25 @@
                         }
                         else if (canWrite && Model.CanFinalize)
                         {
-                            <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
-                                <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
-                                        disabled="@(Model.BlockFinalization ? "disabled" : null)"
-                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente registrado" : "Cerrar la planificación")">
-                                    <i class="mdi mdi-check-all mr-1"></i> Finalizar práctica
-                                </button>
-                            </form>
+                            <div class="d-flex align-items-center">
+                                @if (Model.HasReusablePending)
+                                {
+                                    <form method="post" asp-page-handler="FinalizeClean" asp-route-id="@Model.Id" id="formFinalizeCleanL3" class="m-0 mr-2">
+                                        <input type="hidden" name="responsiblePersonId" id="finalizeCleanResponsible" />
+                                        <button type="button" class="btn btn-outline-success font-weight-bold px-4 py-2" id="btnFinalizeClean"
+                                                title="Devuelve todo el material reutilizable pendiente y finaliza la práctica">
+                                            <i class="mdi mdi-package-check mr-1"></i> Finalizar sin novedades
+                                        </button>
+                                    </form>
+                                }
+                                <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
+                                    <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
+                                            disabled="@(Model.BlockFinalization ? "disabled" : null)"
+                                            title="@(Model.BlockFinalization ? "Hay faltantes sin incidente registrado" : "Cerrar la planificación")">
+                                        <i class="mdi mdi-check-all mr-1"></i> Finalizar práctica
+                                    </button>
+                                </form>
+                            </div>
                         }
                     </div>
                 </div>
@@ -547,6 +581,49 @@
                         if (result && (result.isConfirmed === true || result.value === true)) {
                             retForm.dataset.confirmed = '1';
                             HTMLFormElement.prototype.submit.call(retForm);
+                        }
+                    });
+                });
+            }
+
+            // Finalizar sin novedades: devuelve todo el material reutilizable pendiente y cierra la práctica.
+            var cleanForm = document.getElementById('formFinalizeCleanL3');
+            var cleanBtn = document.getElementById('btnFinalizeClean');
+            if (cleanForm && cleanBtn) {
+                var responsablesClean = {};
+                @foreach (var opt in Model.ResponsibleList)
+                {
+                    <text>responsablesClean[@Json.Serialize(opt.Value)] = @Json.Serialize(opt.Text);</text>
+                }
+                cleanBtn.addEventListener('click', function () {
+                    if (typeof Swal === 'undefined') {
+                        cleanForm.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(cleanForm);
+                        return;
+                    }
+                    Swal.fire({
+                        title: 'Finalizar sin novedades',
+                        text: 'Se dará por devuelto todo el material pendiente y se finalizará la práctica.',
+                        input: 'select',
+                        inputOptions: responsablesClean,
+                        inputPlaceholder: 'Selecciona el responsable que recibe el material',
+                        showCancelButton: true,
+                        confirmButtonColor: '#28a745',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, finalizar',
+                        cancelButtonText: 'Cancelar',
+                        inputValidator: function (value) {
+                            return new Promise(function (resolve) {
+                                resolve(value && value !== '' && value !== '0' ? undefined : 'Selecciona el responsable que recibe el material.');
+                            });
+                        }
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true ||
+                            (result.dismiss === undefined && typeof result.value === 'string' && result.value !== '' && result.value !== '0'))) {
+                            document.getElementById('finalizeCleanResponsible').value = result.value;
+                            cleanBtn.disabled = true;
+                            cleanForm.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(cleanForm);
                         }
                     });
                 });

@@ -138,6 +138,11 @@
 .dc-diff-old { text-decoration: line-through; color: #adb5bd; margin-right: 6px; }
 .dc-diff-new { color: var(--dc-accent); font-weight: 700; }
 
+/* Origen del material (reparto por laboratorio en la revisión) */
+.dc-origin-row.dc-origin-over td { background: #fff8e8 !important; }
+.dc-origin-row.dc-origin-mismatch td { background: #fdecef !important; }
+.dc-origin-status { font-size: .74rem; margin-top: 2px; }
+
 /* Panel lateral (calendario) */
 .dc-drawer { position: fixed; top: 0; right: -440px; width: 420px; max-width: 100%; height: 100vh; background: #fff; box-shadow: -8px 0 30px rgba(15, 23, 42, .12); z-index: 1050; transition: right .25s ease; display: flex; flex-direction: column; }
 .dc-drawer.is-open { right: 0; }

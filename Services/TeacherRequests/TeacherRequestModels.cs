@@ -32,6 +32,25 @@ public sealed record RequestWindow(
 
 public sealed record RequestLineInput(int ArticleId, decimal Quantity);
 
+/// <summary>Origen y cantidad que el revisor asigna a una línea al aprobar (V13: SolicitudL3Asignaciones).</summary>
+public sealed record AssignmentInput(int ArticleId, int LaboratoryId, decimal Quantity);
+
+/// <summary>Origen candidato de una línea: laboratorio activo con existencias del artículo y su cantidad libre.</summary>
+public sealed record OriginOption(int LaboratoryId, string Code, string Name, decimal Free);
+
+/// <summary>
+/// Sugerencia de asignación de una línea: orígenes con su libre y el reparto sugerido (Economato primero;
+/// lo que falte cuando no alcanza queda en el Economato).
+/// </summary>
+public sealed record AssignmentSuggestion(
+    int ArticleId,
+    string ArticleCode,
+    string ArticleName,
+    decimal Quantity,
+    bool IsConsumable,
+    IReadOnlyList<OriginOption> Origins,
+    IReadOnlyList<AssignmentInput> Suggested);
+
 /// <summary>Solicitud pendiente cuyo material se evalúa en lote junto con otras del mismo día.</summary>
 public sealed record MaterialDayRequest(int PlanningId, int StartPeriodId, int PeriodCount, IReadOnlyList<RequestLineInput> Lines);
 

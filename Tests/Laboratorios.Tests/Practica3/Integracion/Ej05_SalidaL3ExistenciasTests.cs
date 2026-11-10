@@ -11,9 +11,9 @@ namespace Laboratorios.Tests.Practica3.Integracion;
 /// Ejercicio 5 — Integración entre dos módulos funcionales.
 /// Módulo 1: Circuito L-3 de la práctica (salida de material y devolución, Pages/LaboratoryOperations/L3 + L3CircuitService).
 /// Módulo 2: Existencias del Economato (ArticleStock, Catálogos › Existencias), que usa la Disponibilidad y la planificación.
-/// Relación (stock por horario): la salida L-3 registra lo entregado sin cambiar la existencia, que es lo que el
-/// laboratorio tiene; lo entregado y no devuelto queda "fuera ahora" y reduce lo libre para otra entrega; la devolución
-/// cierra lo pendiente; una salida sin existencia libre suficiente se rechaza completa. Los casos se ejecutan en orden
+/// Relación (stock por horario): los insumos consumibles (harina, huevo, mantequilla) descuentan la existencia al
+/// entregarse y no se devuelven; los utensilios (cuchillo) no cambian la existencia: lo entregado y no devuelto queda
+/// "fuera ahora" y la devolución lo cierra. Una salida sin existencia libre suficiente se rechaza completa. Los casos se ejecutan en orden
 /// sobre la práctica de hoy (PRA-P3-001).
 /// </summary>
 [Collection(AppCollection.Name)]
@@ -30,8 +30,10 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
         var stock = await db.ArticleStocks.AsNoTracking().Where(s => s.LaboratoryId == econo).Include(s => s.Article).ToListAsync();
         decimal Q(string code) => stock.First(s => s.Article!.Code == code).AvailableQuantity;
         var planId = await db.Plannings.Where(p => p.Code == planCode).Select(p => p.Id).FirstAsync();
-        var departures = await db.Departures.AsNoTracking().Include(d => d.Items).Where(d => d.PlanningId == planId).ToListAsync();
-        var pendiente = departures.SelectMany(d => d.Items).Sum(i => (i.Quantity ?? 0) - (i.ReturnedQuantity ?? 0));
+        var departures = await db.Departures.AsNoTracking().Include(d => d.Items).ThenInclude(i => i.Article).Where(d => d.PlanningId == planId).ToListAsync();
+        // Pendiente de devolver: solo utensilios (los consumibles se gastan en la práctica).
+        var pendiente = departures.SelectMany(d => d.Items).Where(i => i.Article?.ArticleType != ArticleType.Consumable)
+            .Sum(i => (i.Quantity ?? 0) - (i.ReturnedQuantity ?? 0));
         return new Estado(Q(EscenarioGastronomia.HarinaCode), Q(EscenarioGastronomia.HuevoCode), Q(EscenarioGastronomia.CuchilloCode),
             Q(EscenarioGastronomia.MantequillaCode), departures.Count, departures.FirstOrDefault()?.Status.ToString(), pendiente);
     });
@@ -84,7 +86,7 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_01_salida_L3_registra_lo_entregado_sin_cambiar_la_existencia()
+    public async Task I5_01_salida_L3_descuenta_consumibles_y_deja_los_utensilios_pendientes()
     {
         using var s = await app.LoginAsAsync(EscenarioGastronomia.GestorUser);
         var antes = await EstadoAsync(EscenarioGastronomia.PlanHoy);
@@ -93,18 +95,18 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
         var despues = await EstadoAsync(EscenarioGastronomia.PlanHoy);
         var existencias = await s.GetAsync("/Catalogs/Stock?laboratoryFilter=" + await EconomatoAsync());
 
-        var cumple = pagina.Contains("registrada") && despues.Harina == antes.Harina && despues.Huevo == antes.Huevo
+        var cumple = pagina.Contains("registrada") && despues.Harina == antes.Harina - 5 && despues.Huevo == antes.Huevo - 24
             && despues.Cuchillo == antes.Cuchillo && despues.Salidas == 1 && despues.EstadoSalida == nameof(LoanStatus.Active)
-            && despues.EntregadoPendiente == 35;
+            && despues.EntregadoPendiente == 6;
         Evidencia.Registrar(Ejercicio, "I5-01", "Salida L-3 de la práctica de hoy (módulo 1) → existencias (módulo 2)",
-            "PRA-P3-001: harina 5; huevo 24; cuchillo 6; origen ECONO", "Mensaje «Salida SAL-##### registrada.»; existencias sin cambios (stock por horario); 1 salida activa con 35 pendientes de devolver",
+            "PRA-P3-001: harina 5; huevo 24; cuchillo 6; origen ECONO", "Mensaje «Salida SAL-##### registrada.»; harina −5 y huevo −24 (consumibles); cuchillo sin cambio con 6 pendientes de devolver; 1 salida activa",
             $"Antes: {Txt(antes)} → Después: {Txt(despues)}", cumple);
 
         Assert.True(pagina.Contains("registrada"), pagina.Text[..Math.Min(600, pagina.Text.Length)]);
-        Assert.Equal(antes.Harina, despues.Harina);
-        Assert.Equal(antes.Huevo, despues.Huevo);
+        Assert.Equal(antes.Harina - 5, despues.Harina);
+        Assert.Equal(antes.Huevo - 24, despues.Huevo);
         Assert.Equal(antes.Cuchillo, despues.Cuchillo);
-        Assert.Equal(35m, despues.EntregadoPendiente);
+        Assert.Equal(6m, despues.EntregadoPendiente);
         Assert.Equal(HttpStatusCode.OK, existencias.Status);
     }
 
@@ -158,18 +160,17 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_05_devolucion_total_cierra_la_salida_sin_cambiar_la_existencia()
+    public async Task I5_05_devolver_los_utensilios_restantes_cierra_la_salida()
     {
         using var s = await app.LoginAsAsync(EscenarioGastronomia.GestorUser);
         var antes = await EstadoAsync(EscenarioGastronomia.PlanHoy);
-        var pagina = await RegistrarDevolucionAsync(s, EscenarioGastronomia.PlanHoy,
-            (EscenarioGastronomia.HarinaCode, 5m), (EscenarioGastronomia.HuevoCode, 24m), (EscenarioGastronomia.CuchilloCode, 2m));
+        var pagina = await RegistrarDevolucionAsync(s, EscenarioGastronomia.PlanHoy, (EscenarioGastronomia.CuchilloCode, 2m));
         var despues = await EstadoAsync(EscenarioGastronomia.PlanHoy);
 
         var cumple = despues.Harina == antes.Harina && despues.Huevo == antes.Huevo && despues.Cuchillo == antes.Cuchillo
             && despues.EstadoSalida == nameof(LoanStatus.Returned) && despues.EntregadoPendiente == 0;
-        Evidencia.Registrar(Ejercicio, "I5-05", "Devolución del resto (harina 5; huevo 24; cuchillo 2)", "Devolver todo lo pendiente",
-            "Existencias sin cambios; salida Returned; pendiente 0 (todo volvió)",
+        Evidencia.Registrar(Ejercicio, "I5-05", "Devolución del resto (cuchillo 2; los consumibles no se devuelven)", "Devolver todo lo pendiente",
+            "Existencias sin cambios; salida Returned; pendiente 0 (volvieron todos los utensilios)",
             $"Antes: {Txt(antes)} → Después: {Txt(despues)}", cumple);
         Assert.True(cumple, Txt(despues) + " · " + pagina.Text[..Math.Min(600, pagina.Text.Length)]);
     }
@@ -191,25 +192,27 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_07_consistencia_entre_modulos_existencia_igual_a_inicial_y_pendiente_no_negativo()
+    public async Task I5_07_consistencia_entre_modulos_existencia_mas_consumido_igual_a_inicial()
     {
-        // Invariante (stock por horario, sin incidentes L-5): la existencia sigue igual a la inicial y lo entregado sin devolver nunca es negativo.
+        // Invariante (sin incidentes L-5): utensilios → existencia = inicial; consumibles → existencia + entregado = inicial.
         var resumen = await app.QueryAsync(async db =>
         {
             var econo = await db.Laboratories.Where(l => l.Code == EscenarioGastronomia.EconomatoCode).Select(l => l.Id).FirstAsync();
             var stock = await db.ArticleStocks.AsNoTracking().Include(a => a.Article).Where(a => a.LaboratoryId == econo).ToListAsync();
-            var pendiente = await db.DepartureItems.AsNoTracking().Where(i => i.Departure!.OriginLaboratoryId == econo && i.ArticleId != null)
-                .GroupBy(i => i.ArticleId!.Value).Select(g => new { g.Key, P = g.Sum(i => (i.Quantity ?? 0) - (i.ReturnedQuantity ?? 0)) }).ToListAsync();
-            return stock.Select(sk => (sk.Article!.Code, sk.AvailableQuantity, Pendiente: pendiente.FirstOrDefault(p => p.Key == sk.ArticleId)?.P ?? 0)).ToList();
+            var entregado = await db.DepartureItems.AsNoTracking()
+                .Where(i => (i.OriginLaboratoryId ?? i.Departure!.OriginLaboratoryId) == econo && i.ArticleId != null)
+                .GroupBy(i => i.ArticleId!.Value).Select(g => new { g.Key, Q = g.Sum(i => i.Quantity ?? 0) }).ToListAsync();
+            return stock.Select(sk => (sk.Article!.Code, sk.AvailableQuantity,
+                Consumido: sk.Article.ArticleType == ArticleType.Consumable ? entregado.FirstOrDefault(p => p.Key == sk.ArticleId)?.Q ?? 0 : 0)).ToList();
         });
         var iniciales = new Dictionary<string, decimal>
         {
             [EscenarioGastronomia.HarinaCode] = 50, [EscenarioGastronomia.HuevoCode] = 120, [EscenarioGastronomia.CuchilloCode] = 10, [EscenarioGastronomia.MantequillaCode] = 2
         };
-        var faltan = resumen.Where(r => iniciales.TryGetValue(r.Code, out var ini) && (r.AvailableQuantity != ini || r.Pendiente < 0)).ToList();
+        var faltan = resumen.Where(r => iniciales.TryGetValue(r.Code, out var ini) && r.AvailableQuantity + r.Consumido != ini).ToList();
         var cumple = faltan.Count == 0;
-        Evidencia.Registrar(Ejercicio, "I5-07", "Consistencia: existencia = existencia inicial y pendiente ≥ 0", "Todos los artículos del Economato",
-            "Igualdad para todos los artículos", string.Join("; ", resumen.Select(r => $"{r.Code}: {r.AvailableQuantity:0.##} (fuera {r.Pendiente:0.##})")), cumple);
+        Evidencia.Registrar(Ejercicio, "I5-07", "Consistencia: existencia + consumido = existencia inicial", "Todos los artículos del Economato",
+            "Igualdad para todos los artículos", string.Join("; ", resumen.Select(r => $"{r.Code}: {r.AvailableQuantity:0.##} (consumido {r.Consumido:0.##})")), cumple);
         Assert.Empty(faltan);
     }
 }

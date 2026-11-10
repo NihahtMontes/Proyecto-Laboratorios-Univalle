@@ -144,10 +144,10 @@ public class Ej06_ServiciosExternosTests(AppFixture app)
 
         const string msg = "No se pudo registrar la salida. Intente nuevamente.";
         var cumple = enFalla.Contains(msg) && salidasTrasFalla == 0 && harinaTrasFalla == harinaAntes
-            && reintento.Contains("registrada") && salidasTrasReintento == 1 && harinaFinal == harinaAntes;
+            && reintento.Contains("registrada") && salidasTrasReintento == 1 && harinaFinal == harinaAntes - 3;
         Evidencia.Registrar(Ejercicio, "I6-01", "Error controlado: la base agota el tiempo de espera al guardar una salida L-3",
             "PRA-P3-005 (harina 3 kg) con SaveChanges en falla; luego reintento normal",
-            $"«{msg}»; 0 salidas y existencia sin cambios; el reintento registra 1 salida (la existencia no cambia: stock por horario)",
+            $"«{msg}»; 0 salidas y existencia sin cambios; el reintento registra 1 salida y descuenta 3 kg (la harina es consumible)",
             $"Falla: mensaje={enFalla.Contains(msg)}; salidas {salidasTrasFalla}; harina {harinaAntes:0.##}→{harinaTrasFalla:0.##} · Reintento: salidas {salidasTrasReintento}; harina {harinaFinal:0.##}",
             cumple);
         Assert.True(cumple, enFalla.Text[..Math.Min(800, enFalla.Text.Length)]);

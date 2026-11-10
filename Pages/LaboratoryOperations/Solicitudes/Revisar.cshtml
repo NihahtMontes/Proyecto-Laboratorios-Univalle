@@ -186,6 +186,73 @@
                         }
                     </div>
                 </div>
+
+                @if (Model.Assignments.Count > 0)
+                {
+                    <div class="card border-0 shadow-sm mt-4" style="border-radius:16px;" id="originCard">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap align-items-center mb-3">
+                                <h5 class="font-weight-bold text-dark mb-0 mr-3"><i class="fas fa-warehouse mr-2" style="color:#7460ee;"></i>Origen del material</h5>
+                                <small class="text-muted">Indica desde qué laboratorio se tomará cada artículo. La suma por artículo debe coincidir con la cantidad aprobada.</small>
+                                <button type="button" class="btn btn-sm btn-light border rounded-pill ml-auto mb-1" id="btnAutoSplit" title="Restaura el reparto sugerido según el stock libre de cada origen">
+                                    <i class="fas fa-magic mr-1"></i>Repartir automáticamente
+                                </button>
+                            </div>
+                            <div class="alert border-0 small mb-3 dc-soft-warning p-3 rounded" id="originAlert" style="display:none;"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0" id="tabla-origenes">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Artículo</th>
+                                            <th>Origen</th>
+                                            <th class="text-center">Libre en el horario</th>
+                                            <th style="width:170px;">Cantidad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var a in Model.Assignments)
+                                        {
+                                            var origins = a.Origins;
+                                            for (var j = 0; j < origins.Count; j++)
+                                            {
+                                                var o = origins[j];
+                                                var suggestedQty = a.Suggested.FirstOrDefault(s => s.LaboratoryId == o.LaboratoryId)?.Quantity ?? 0m;
+                                                <tr class="dc-origin-row" data-article-id="@a.ArticleId">
+                                                    @if (j == 0)
+                                                    {
+                                                        <td rowspan="@origins.Count" class="align-middle">
+                                                            <strong class="text-dark">@a.ArticleName</strong> <small class="text-muted">@a.ArticleCode</small>
+                                                            @if (a.IsConsumable)
+                                                            {
+                                                                <span class="badge badge-pill badge-warning ml-1" title="Se descuenta del stock al entregar y no se devuelve">Consumible</span>
+                                                            }
+                                                            <div class="dc-explain" data-origin-sum="@a.ArticleId">Asignado <span class="font-weight-bold">0</span> de <span class="font-weight-bold">@a.Quantity.ToString("0.##")</span></div>
+                                                            <div class="small font-weight-bold text-danger dc-origin-status" data-origin-status="@a.ArticleId" style="display:none;"></div>
+                                                        </td>
+                                                    }
+                                                    <td class="align-middle">
+                                                        <strong>@o.Code</strong>
+                                                        <div class="dc-explain">@o.Name</div>
+                                                    </td>
+                                                    <td class="align-middle text-center"><span class="badge badge-pill badge-light border">libre @o.Free.ToString("0.##")</span></td>
+                                                    <td class="align-middle">
+                                                        <input type="number" class="form-control form-control-sm text-center dc-origin-qty" step="0.01" min="0"
+                                                               data-article-id="@a.ArticleId" data-lab-id="@o.LaboratoryId" data-lab-code="@o.Code"
+                                                               data-free="@o.Free.ToString("0.##", CultureInfo.InvariantCulture)"
+                                                               data-requested="@a.Quantity.ToString("0.##", CultureInfo.InvariantCulture)"
+                                                               data-suggested="@suggestedQty.ToString("0.##", CultureInfo.InvariantCulture)"
+                                                               value="@suggestedQty.ToString("0.##", CultureInfo.InvariantCulture)" />
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="assignFields"></div>
+                        </div>
+                    </div>
+                }
             </form>
         </div>
 
@@ -318,8 +385,123 @@
                     HTMLFormElement.prototype.submit.call(form);
                 });
             }
+            // ── Origen del material: reparto por laboratorio ──
+            var originCard = document.getElementById('originCard');
+            var originAlert = document.getElementById('originAlert');
+            var approveBtn = document.getElementById('btnApprove');
+            var approveBaseDisabled = approveBtn ? approveBtn.disabled === true : false;
+            var originInvalid = false;
+
+            function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+            function fmt(n) { return (Math.round(n * 100) / 100).toString(); }
+
+            function recalcOrigins() {
+                if (!originCard) return;
+                var inputs = originCard.querySelectorAll('.dc-origin-qty');
+                var sums = {}, arts = [];
+                var k, inp;
+                for (k = 0; k < inputs.length; k++) {
+                    inp = inputs[k];
+                    var artKey = inp.getAttribute('data-article-id');
+                    if (sums[artKey] === undefined) { sums[artKey] = 0; arts.push(artKey); }
+                    sums[artKey] += Math.max(0, num(inp.value));
+                }
+                var overFree = [];
+                for (k = 0; k < inputs.length; k++) {
+                    var rowInput = inputs[k];
+                    var free = num(rowInput.getAttribute('data-free'));
+                    var taken = Math.max(0, num(rowInput.value));
+                    var tr = rowInput.closest('tr');
+                    if (taken > free + 0.005) {
+                        overFree.push(rowInput.getAttribute('data-lab-code'));
+                        if (tr) tr.classList.add('dc-origin-over');
+                    } else if (tr) {
+                        tr.classList.remove('dc-origin-over');
+                    }
+                }
+                originInvalid = false;
+                for (k = 0; k < arts.length; k++) {
+                    var artId = arts[k];
+                    var qtyInput = document.querySelector('#approveForm input[name="qty[' + artId + ']"]');
+                    var firstInput = originCard.querySelector('.dc-origin-qty[data-article-id="' + artId + '"]');
+                    var target = qtyInput != null ? num(qtyInput.value) : (firstInput != null ? num(firstInput.getAttribute('data-requested')) : 0);
+                    var sum = sums[artId];
+                    var rows = originCard.querySelectorAll('tr.dc-origin-row[data-article-id="' + artId + '"]');
+                    var status = originCard.querySelector('[data-origin-status="' + artId + '"]');
+                    var sumLine = originCard.querySelector('[data-origin-sum="' + artId + '"]');
+                    if (sumLine) sumLine.innerHTML = 'Asignado <span class="font-weight-bold">' + fmt(sum) + '</span> de <span class="font-weight-bold">' + fmt(target) + '</span>';
+                    var mismatch = Math.abs(sum - target) > 0.005;
+                    for (var r = 0; r < rows.length; r++) {
+                        if (mismatch) rows[r].classList.add('dc-origin-mismatch');
+                        else rows[r].classList.remove('dc-origin-mismatch');
+                    }
+                    if (status) {
+                        status.style.display = mismatch ? 'block' : 'none';
+                        if (mismatch) status.textContent = 'La suma desde los orígenes (' + fmt(sum) + ') no coincide con la cantidad del artículo (' + fmt(target) + '). Ajusta el reparto o la cantidad.';
+                    }
+                    if (mismatch) originInvalid = true;
+                }
+                if (approveBtn) approveBtn.disabled = approveBaseDisabled || originInvalid;
+                if (originAlert) {
+                    if (overFree.length > 0) {
+                        var unique = overFree.filter(function (v, i) { return overFree.indexOf(v) === i; });
+                        originAlert.style.display = 'block';
+                        originAlert.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i><strong>Aviso:</strong> ' + unique.join(', ') + ' recibe más material del que está libre en ese horario. El servidor validará el stock al aprobar (puedes marcar «Aprobar igual con faltantes»).';
+                    } else {
+                        originAlert.style.display = 'none';
+                        originAlert.innerHTML = '';
+                    }
+                }
+            }
+
+            function buildAssignFields() {
+                if (!originCard) return;
+                var holder = document.getElementById('assignFields');
+                if (!holder) return;
+                holder.innerHTML = '';
+                var inputs = originCard.querySelectorAll('.dc-origin-qty');
+                var idx = 0;
+                for (var k = 0; k < inputs.length; k++) {
+                    var inp = inputs[k];
+                    var qty = Math.max(0, num(inp.value));
+                    if (qty <= 0) continue;
+                    var pairs = [['ArticleId', inp.getAttribute('data-article-id')], ['LaboratoryId', inp.getAttribute('data-lab-id')], ['Quantity', fmt(qty)]];
+                    for (var p = 0; p < pairs.length; p++) {
+                        var hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = 'assign[' + idx + '].' + pairs[p][0];
+                        hidden.value = pairs[p][1];
+                        holder.appendChild(hidden);
+                    }
+                    idx++;
+                }
+            }
+
+            if (originCard) {
+                originCard.addEventListener('input', function (e) {
+                    if (e.target && e.target.classList && e.target.classList.contains('dc-origin-qty')) recalcOrigins();
+                });
+                var qtyInputs = document.querySelectorAll('#approveForm input[name^="qty["]');
+                for (var q = 0; q < qtyInputs.length; q++) qtyInputs[q].addEventListener('input', recalcOrigins);
+                var autoBtn = document.getElementById('btnAutoSplit');
+                if (autoBtn) autoBtn.addEventListener('click', function () {
+                    var list = originCard.querySelectorAll('.dc-origin-qty');
+                    for (var k = 0; k < list.length; k++) list[k].value = list[k].getAttribute('data-suggested');
+                    recalcOrigins();
+                });
+                recalcOrigins();
+            }
+
             var approve = document.getElementById('btnApprove');
             if (approve) approve.addEventListener('click', function () {
+                if (originInvalid) {
+                    Swal.fire({
+                        title: 'Revisa el origen del material',
+                        text: 'La cantidad asignada desde los orígenes no coincide con la cantidad de uno o más artículos.',
+                        type: 'error', confirmButtonText: 'Entendido', confirmButtonColor: '#f62d51'
+                    });
+                    return;
+                }
                 var changed = Array.prototype.filter.call(document.querySelectorAll('input[data-original]'), function (i) {
                     return Number(i.value) !== Number(i.getAttribute('data-original'));
                 }).length;
@@ -331,7 +513,11 @@
                     text: 'Se reserva el laboratorio y el material en ese horario. El docente recibirá el aviso.' + shortageText + (@Model.Competitors.Count > 0 ? ' Las solicitudes que compiten quedarán sin horario.' : ''),
                     type: 'question', showCancelButton: true, confirmButtonText: 'Sí, aprobar', cancelButtonText: 'Cancelar', confirmButtonColor: '#36bea6'
                 }).then(function (r) {
-                    if (confirmed(r)) { approve.disabled = true; HTMLFormElement.prototype.submit.call(document.getElementById('approveForm')); }
+                    if (confirmed(r)) {
+                        approve.disabled = true;
+                        buildAssignFields();
+                        HTMLFormElement.prototype.submit.call(document.getElementById('approveForm'));
+                    }
                 });
             });
             var observe = document.getElementById('btnObserve');

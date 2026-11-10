@@ -83,63 +83,29 @@ public static class L3ReturnRules
 /// </summary>
 public static class StockRules
 {
+    /// <summary>Fila pendiente de devolver: ítem de artículo reutilizable en una salida abierta, con su origen real.</summary>
+    private sealed record PendingRow(int OriginLaboratoryId, int ArticleId, int? PlanningId, DateTime? PracticeEnd, decimal Pending);
+
     /// <summary>
-    /// Cantidad por artículo entregada desde el laboratorio de origen en salidas abiertas, menos lo devuelto y lo
-    /// cubierto por incidentes L-5 (esa parte ya se descontó de la existencia al registrar el incidente).
+    /// Ítems de artículos REUTILIZABLES en salidas abiertas con lo que falta devolver. El origen de cada ítem es el suyo
+    /// (salidas desde varios laboratorios) o, si no tiene, el de la salida. Los consumibles se excluyen: se gastan al
+    /// entregarse (su existencia ya bajó) y nunca quedan "fuera".
     /// </summary>
-    public static async Task<Dictionary<int, decimal>> OutstandingAsync(ApplicationDbContext context, int originLaboratoryId,
-        IReadOnlyCollection<int> articleIds)
+    private static async Task<List<PendingRow>> PendingRowsAsync(ApplicationDbContext context, IReadOnlyCollection<int> articleIds,
+        int? originLaboratoryId)
     {
         if (articleIds.Count == 0) return [];
         var open = new[] { LoanStatus.Active, LoanStatus.Overdue };
-        var rows = await context.DepartureItems.AsNoTracking()
+        var query = context.DepartureItems.AsNoTracking()
             .Where(i => i.ArticleId != null && articleIds.Contains(i.ArticleId.Value) && i.EquipmentUnitId == null
-                && i.Departure != null && i.Departure.OriginLaboratoryId == originLaboratoryId && open.Contains(i.Departure.Status))
+                && i.Departure != null && open.Contains(i.Departure.Status)
+                && (i.Article!.ArticleType == null || i.Article.ArticleType != ArticleType.Consumable));
+        if (originLaboratoryId is int origin)
+            query = query.Where(i => (i.OriginLaboratoryId ?? i.Departure!.OriginLaboratoryId) == origin);
+        var rows = await query
             .Select(i => new
             {
-                ArticleId = i.ArticleId!.Value,
-                i.Departure!.PlanningId,
-                Delivered = i.Quantity ?? 0,
-                Returned = i.ReturnedQuantity ?? 0
-            })
-            .ToListAsync();
-        if (rows.Count == 0) return [];
-
-        var planningIds = rows.Where(r => r.PlanningId != null).Select(r => r.PlanningId!.Value).Distinct().ToList();
-        var covered = await context.L5Incidents.AsNoTracking()
-            .Where(i => i.PlanningId != null && planningIds.Contains(i.PlanningId.Value) && i.ArticleId != null)
-            .GroupBy(i => new { PlanningId = i.PlanningId!.Value, ArticleId = i.ArticleId!.Value })
-            .Select(g => new { g.Key.PlanningId, g.Key.ArticleId, Total = g.Sum(i => i.AffectedQuantity) })
-            .ToListAsync();
-
-        return rows
-            .GroupBy(r => new { r.PlanningId, r.ArticleId })
-            .Select(g =>
-            {
-                var pending = g.Sum(r => Math.Max(0, r.Delivered - r.Returned));
-                var cover = covered.FirstOrDefault(c => c.PlanningId == g.Key.PlanningId && c.ArticleId == g.Key.ArticleId)?.Total ?? 0;
-                return (g.Key.ArticleId, Out: Math.Max(0, pending - cover));
-            })
-            .GroupBy(x => x.ArticleId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Out));
-    }
-
-    /// <summary>
-    /// Por artículo: lo entregado y no devuelto (descontado lo cubierto por incidentes L-5 de esa planificación)
-    /// en salidas abiertas de CUALQUIER origen cuya práctica ya terminó antes de <paramref name="asOfLocal"/>
-    /// (fin de la práctica = ScheduledDate + EndTime; sin EndTime, fin del día). Las salidas sin planificación
-    /// cuentan siempre. Es el material que, en la ventana pedida, todavía no volvió al almacén y reduce lo libre.
-    /// </summary>
-    public static async Task<Dictionary<int, decimal>> OverdueOutstandingAsync(ApplicationDbContext context,
-        IReadOnlyCollection<int> articleIds, DateTime asOfLocal)
-    {
-        if (articleIds.Count == 0) return [];
-        var open = new[] { LoanStatus.Active, LoanStatus.Overdue };
-        var rows = await context.DepartureItems.AsNoTracking()
-            .Where(i => i.ArticleId != null && articleIds.Contains(i.ArticleId.Value) && i.EquipmentUnitId == null
-                && i.Departure != null && open.Contains(i.Departure.Status))
-            .Select(i => new
-            {
+                Origin = i.OriginLaboratoryId ?? i.Departure!.OriginLaboratoryId,
                 ArticleId = i.ArticleId!.Value,
                 i.Departure!.PlanningId,
                 PlannedDate = (DateTime?)i.Departure.Planning!.ScheduledDate,
@@ -150,43 +116,64 @@ public static class StockRules
             .ToListAsync();
         if (rows.Count == 0) return [];
 
-        // Sin planificación (salidas manuales) la práctica no existe: cuenta siempre. Con planificación, solo si ya terminó.
-        var endOfDay = new TimeSpan(23, 59, 59);
-        var ended = rows
-            .Select(r => new
-            {
-                r.ArticleId,
-                r.PlanningId,
-                PracticeEnd = r.PlannedDate.HasValue ? r.PlannedDate.Value.Date + (r.PlannedEnd ?? endOfDay) : (DateTime?)null,
-                Pending = Math.Max(0, r.Delivered - r.Returned)
-            })
-            .Where(r => r.PracticeEnd == null || r.PracticeEnd.Value < asOfLocal)
-            .ToList();
-        if (ended.Count == 0) return [];
-
-        // Mismo descuento de L-5 que OutstandingAsync: esa parte ya salió de la existencia.
-        var planningIds = ended.Where(r => r.PlanningId != null).Select(r => r.PlanningId!.Value).Distinct().ToList();
+        // Lo cubierto por incidentes L-5 ya salió de la existencia: no cuenta como pendiente de devolver.
+        var planningIds = rows.Where(r => r.PlanningId != null).Select(r => r.PlanningId!.Value).Distinct().ToList();
         var covered = planningIds.Count == 0
-            ? []
-            : await context.L5Incidents.AsNoTracking()
-                .Where(i => i.PlanningId != null && planningIds.Contains(i.PlanningId.Value) && i.ArticleId != null)
-                .GroupBy(i => new { PlanningId = i.PlanningId!.Value, ArticleId = i.ArticleId!.Value })
-                .Select(g => new { g.Key.PlanningId, g.Key.ArticleId, Total = g.Sum(i => i.AffectedQuantity) })
-                .ToListAsync();
+            ? new Dictionary<(int, int), decimal>()
+            : (await context.L5Incidents.AsNoTracking()
+                    .Where(i => i.PlanningId != null && planningIds.Contains(i.PlanningId.Value) && i.ArticleId != null)
+                    .GroupBy(i => new { PlanningId = i.PlanningId!.Value, ArticleId = i.ArticleId!.Value })
+                    .Select(g => new { g.Key.PlanningId, g.Key.ArticleId, Total = g.Sum(i => i.AffectedQuantity) })
+                    .ToListAsync())
+                .ToDictionary(c => (c.PlanningId, c.ArticleId), c => (decimal)c.Total);
 
-        return ended
-            .GroupBy(r => new { r.PlanningId, r.ArticleId })
-            .Select(g =>
+        var endOfDay = new TimeSpan(23, 59, 59);
+        var result = new List<PendingRow>();
+        // La cobertura L-5 de una planificación se reparte entre sus orígenes en orden.
+        foreach (var g in rows.GroupBy(r => new { r.PlanningId, r.ArticleId }))
+        {
+            var cover = g.Key.PlanningId is int pid ? covered.GetValueOrDefault((pid, g.Key.ArticleId)) : 0;
+            foreach (var r in g.OrderBy(r => r.Origin))
             {
-                var pending = g.Sum(r => r.Pending);
-                var cover = g.Key.PlanningId is int pid
-                    ? covered.FirstOrDefault(c => c.PlanningId == pid && c.ArticleId == g.Key.ArticleId)?.Total ?? 0
-                    : 0;
-                return (g.Key.ArticleId, Out: Math.Max(0, pending - cover));
-            })
-            .GroupBy(x => x.ArticleId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Out));
+                var pending = Math.Max(0, r.Delivered - r.Returned);
+                var use = Math.Min(cover, pending);
+                cover -= use;
+                if (pending - use <= 0 || r.Origin is not int originId) continue;
+                var end = r.PlannedDate.HasValue ? r.PlannedDate.Value.Date + (r.PlannedEnd ?? endOfDay) : (DateTime?)null;
+                result.Add(new PendingRow(originId, r.ArticleId, r.PlanningId, end, pending - use));
+            }
+        }
+        return result;
     }
+
+    /// <summary>
+    /// Por artículo: lo entregado desde <paramref name="originLaboratoryId"/> en salidas abiertas que aún no volvió
+    /// (descontado lo cubierto por L-5). Es lo que está "fuera ahora" de ese origen.
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> OutstandingAsync(ApplicationDbContext context, int originLaboratoryId,
+        IReadOnlyCollection<int> articleIds) =>
+        (await PendingRowsAsync(context, articleIds, originLaboratoryId))
+            .GroupBy(r => r.ArticleId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.Pending));
+
+    /// <summary>
+    /// Por artículo (todos los orígenes): lo no devuelto de prácticas que ya terminaron antes de <paramref name="asOfLocal"/>
+    /// (fin = ScheduledDate + EndTime; sin EndTime, fin del día). Las salidas sin planificación cuentan siempre.
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> OverdueOutstandingAsync(ApplicationDbContext context,
+        IReadOnlyCollection<int> articleIds, DateTime asOfLocal) =>
+        (await PendingRowsAsync(context, articleIds, null))
+            .Where(r => r.PracticeEnd == null || r.PracticeEnd.Value < asOfLocal)
+            .GroupBy(r => r.ArticleId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.Pending));
+
+    /// <summary>Igual que <see cref="OverdueOutstandingAsync"/> pero por (origen, artículo), para el libre por laboratorio.</summary>
+    public static async Task<Dictionary<(int LaboratoryId, int ArticleId), decimal>> OverdueByOriginAsync(ApplicationDbContext context,
+        IReadOnlyCollection<int> articleIds, DateTime asOfLocal) =>
+        (await PendingRowsAsync(context, articleIds, null))
+            .Where(r => r.PracticeEnd == null || r.PracticeEnd.Value < asOfLocal)
+            .GroupBy(r => (r.OriginLaboratoryId, r.ArticleId))
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.Pending));
 }
 
 /// <summary>
@@ -269,48 +256,90 @@ public class L3CircuitService : IL3CircuitService
         }
 
         var warnings = new List<string>();
+
+        // Asignaciones del revisor (V13): cada línea sale de sus orígenes en orden (Economato primero). Lo entregado de más
+        // o las líneas sin asignación salen del origen elegido en el formulario.
+        var economatoId = await GetDefaultOriginLaboratoryIdAsync();
+        var detailIds = details.Keys.ToList();
+        var assignmentRows = await _context.PlanningAssignments.AsNoTracking()
+            .Where(a => detailIds.Contains(a.PlanningRequirementId))
+            .Select(a => new { a.Id, a.PlanningRequirementId, a.LaboratoryId, a.Quantity })
+            .ToListAsync();
+        var assignmentsByDetail = assignmentRows
+            .GroupBy(a => a.PlanningRequirementId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(a => a.LaboratoryId == economatoId ? 0 : 1).ThenBy(a => a.Id).ToList());
+
+        var allocations = new List<(DepartureLine Line, int OriginId, decimal Quantity, bool FromAssignment)>();
+        foreach (var line in wanted)
+        {
+            var detail = details[line.DetailId];
+            if (IsEquipmentLine(detail) || !assignmentsByDetail.TryGetValue(line.DetailId, out var assigned))
+            {
+                allocations.Add((line, originLaboratoryId, line.Quantity, false));
+                continue;
+            }
+            var remaining = line.Quantity;
+            foreach (var a in assigned)
+            {
+                if (remaining <= 0) break;
+                var take = Math.Min(remaining, a.Quantity);
+                allocations.Add((line, a.LaboratoryId, take, true));
+                remaining -= take;
+            }
+            if (remaining > 0) allocations.Add((line, originLaboratoryId, remaining, true));
+        }
+
+        var originIds = allocations.Select(a => a.OriginId).Distinct().ToList();
+        var origins = await _context.Laboratories.AsNoTracking()
+            .Where(l => originIds.Contains(l.Id) && l.Status == GeneralStatus.Activo)
+            .ToDictionaryAsync(l => l.Id, l => l.Code);
+        if (origins.Count != originIds.Count)
+            return L3CircuitResult.Fail("Hay orígenes asignados que ya no son laboratorios activos: revisa la asignación de la solicitud.");
+
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
             // El stock de almacén solo aplica a las líneas de inventario: los equipos se gobiernan por sus unidades físicas.
-            var inventoryArticleIds = wanted
-                .Where(l => !IsEquipmentLine(details[l.DetailId]))
-                .Select(l => details[l.DetailId].ArticleId)
-                .Distinct().ToList();
-            var stocks = await _context.ArticleStocks.AsNoTracking()
-                .Where(s => s.LaboratoryId == originLaboratoryId && inventoryArticleIds.Contains(s.ArticleId))
-                .ToDictionaryAsync(s => s.ArticleId);
+            var inventory = allocations.Where(a => !IsEquipmentLine(details[a.Line.DetailId])).ToList();
+            var inventoryArticleIds = inventory.Select(a => details[a.Line.DetailId].ArticleId).Distinct().ToList();
+            var stocks = await _context.ArticleStocks.AsTracking()
+                .Where(s => originIds.Contains(s.LaboratoryId) && inventoryArticleIds.Contains(s.ArticleId))
+                .ToDictionaryAsync(s => (s.LaboratoryId, s.ArticleId));
 
-            // Modelo de stock por horario: la existencia (AvailableQuantity) es lo que el laboratorio TIENE y no
-            // cambia al entregar ni al devolver; solo la reduce un incidente L-5 (rotura/pérdida) o un ajuste.
-            // Lo que está fuera ahora (otras salidas abiertas del mismo origen) se descuenta solo para esta entrega física.
-            var outNow = await StockRules.OutstandingAsync(_context, originLaboratoryId, inventoryArticleIds);
+            // Modelo de stock por horario: la existencia de un reutilizable no cambia al entregar; lo que está fuera ahora
+            // (otras salidas abiertas del mismo origen) se descuenta solo para esta entrega física. Los consumibles sí
+            // descuentan su existencia al entregarse (se gastan en la práctica).
+            var outNowByOrigin = new Dictionary<int, Dictionary<int, decimal>>();
+            foreach (var id in inventory.Select(a => a.OriginId).Distinct())
+                outNowByOrigin[id] = await StockRules.OutstandingAsync(_context, id, inventoryArticleIds);
 
-            // Validar todo antes de entregar: una línea sin existencia libre suficiente bloquea la salida completa.
-            foreach (var group in wanted.Where(l => !IsEquipmentLine(details[l.DetailId])).GroupBy(l => details[l.DetailId].ArticleId))
+            // Validar todo antes de entregar: un origen sin existencia libre suficiente bloquea la salida completa.
+            foreach (var group in inventory.GroupBy(a => (a.OriginId, details[a.Line.DetailId].ArticleId)))
             {
-                var total = group.Sum(l => l.Quantity);
-                if (stocks.TryGetValue(group.Key, out var stock))
+                var total = group.Sum(a => a.Quantity);
+                if (!stocks.TryGetValue(group.Key, out var stock)) continue;
+                var article = details[group.First().Line.DetailId].Article;
+                var outNow = IsConsumable(article) ? 0 : outNowByOrigin[group.Key.OriginId].GetValueOrDefault(group.Key.ArticleId);
+                var free = stock.AvailableQuantity - outNow;
+                if (free < total)
                 {
-                    var free = stock.AvailableQuantity - outNow.GetValueOrDefault(group.Key);
-                    if (free < total)
-                    {
-                        await transaction.RollbackAsync();
-                        var article = details[group.First().DetailId].Article;
-                        var outText = outNow.GetValueOrDefault(group.Key) > 0
-                            ? $" ({outNow[group.Key]:0.##} de {stock.AvailableQuantity:0.##} siguen entregados en otras prácticas sin devolver)"
-                            : string.Empty;
-                        return L3CircuitResult.Fail(
-                            $"Stock insuficiente de {article?.Code} · {article?.Name} en {origin.Code}: libre ahora {Math.Max(0, free):0.##}, solicitado {total:0.##}{outText}.");
-                    }
+                    await transaction.RollbackAsync();
+                    var outText = outNow > 0
+                        ? $" ({outNow:0.##} de {stock.AvailableQuantity:0.##} siguen entregados en otras prácticas sin devolver)"
+                        : string.Empty;
+                    return L3CircuitResult.Fail(
+                        $"Stock insuficiente de {article?.Code} · {article?.Name} en {origins[group.Key.OriginId]}: libre ahora {Math.Max(0, free):0.##}, solicitado {total:0.##}{outText}.");
                 }
             }
 
+            var mainOrigin = allocations.GroupBy(a => a.OriginId)
+                .OrderByDescending(g => g.Sum(a => a.Quantity)).ThenBy(g => g.Key == originLaboratoryId ? 0 : 1)
+                .Select(g => g.Key).First();
             var departure = new Departure
             {
                 ManagementId = request.ManagementId,
                 PlanningId = request.Id,
-                OriginLaboratoryId = originLaboratoryId,
+                OriginLaboratoryId = mainOrigin,
                 BorrowerId = request.TeacherPersonId,
                 Destination = request.Laboratory?.Name ?? "Todos los laboratorios",
                 Type = DepartureType.InternalLoan,
@@ -322,10 +351,10 @@ public class L3CircuitService : IL3CircuitService
             };
             _context.Departures.Add(departure);
 
-            var unregistered = new List<Article>();
-            foreach (var line in wanted)
+            var unregistered = new List<(Article Article, int OriginId)>();
+            foreach (var allocation in allocations)
             {
-                var detail = details[line.DetailId];
+                var detail = details[allocation.Line.DetailId];
                 var unitNote = detail.EquipmentUnit != null ? $"Unidad {detail.EquipmentUnit.InventoryNumber}" : null;
                 departure.Items.Add(new DepartureItem
                 {
@@ -333,8 +362,9 @@ public class L3CircuitService : IL3CircuitService
                     // La unidad entregada queda como prestada mientras esta salida esté abierta (disponibilidad deducida, sin cambiar su estado).
                     ArticleId = detail.EquipmentUnitId != null ? null : detail.ArticleId,
                     EquipmentUnitId = detail.EquipmentUnitId,
+                    OriginLaboratoryId = allocation.FromAssignment ? allocation.OriginId : null,
                     ProductName = detail.Article?.Name,
-                    Quantity = line.Quantity,
+                    Quantity = allocation.Quantity,
                     ReturnedQuantity = 0,
                     MeasurementUnitId = detail.Article?.MeasurementUnitId,
                     UnitOfMeasure = detail.Article?.UnitOfMeasure,
@@ -345,10 +375,18 @@ public class L3CircuitService : IL3CircuitService
                 // Las líneas de equipo físico no descuentan existencias ni generan aviso de stock sin registro.
                 if (IsEquipmentLine(detail)) continue;
 
-                // La entrega no descuenta la existencia (el material vuelve al terminar la práctica).
-                if (!stocks.ContainsKey(detail.ArticleId) && detail.Article != null && unregistered.All(a => a.Id != detail.ArticleId))
+                if (stocks.TryGetValue((allocation.OriginId, detail.ArticleId), out var stock))
                 {
-                    unregistered.Add(detail.Article);
+                    // Solo el consumible baja la existencia al entregarse; el reutilizable vuelve al terminar la práctica.
+                    if (IsConsumable(detail.Article))
+                    {
+                        stock.AvailableQuantity = Math.Max(0, stock.AvailableQuantity - allocation.Quantity);
+                        stock.UpdatedOn = DateTime.UtcNow;
+                    }
+                }
+                else if (detail.Article != null && !unregistered.Any(u => u.Article.Id == detail.ArticleId && u.OriginId == allocation.OriginId))
+                {
+                    unregistered.Add((detail.Article, allocation.OriginId));
                 }
             }
 
@@ -362,7 +400,7 @@ public class L3CircuitService : IL3CircuitService
             if (unregistered.Count > 0)
             {
                 var batchId = await GetOperationBatchIdAsync();
-                foreach (var article in unregistered)
+                foreach (var (article, unregisteredOrigin) in unregistered)
                 {
                     _context.DataQualityIssues.Add(new DataQualityIssue
                     {
@@ -372,12 +410,12 @@ public class L3CircuitService : IL3CircuitService
                         EntityKey = $"{departure.Code}|{article.Code}",
                         FieldName = "AvailableQuantity",
                         SourceCode = departure.Code,
-                        OriginalValue = origin.Code,
-                        Description = $"Salida de {article.Code} · {article.Name} sin registro de stock en {origin.Code}: se entregó sin descontar.",
+                        OriginalValue = origins[unregisteredOrigin],
+                        Description = $"Salida de {article.Code} · {article.Name} sin registro de stock en {origins[unregisteredOrigin]}: se entregó sin descontar.",
                         Severity = DataQualityIssueSeverity.Warning,
                         Status = DataQualityIssueStatus.Open
                     });
-                    warnings.Add($"{article.Code} · {article.Name} no tiene stock registrado en {origin.Code}: se entregó sin descontar.");
+                    warnings.Add($"{article.Code} · {article.Name} no tiene stock registrado en {origins[unregisteredOrigin]}: se entregó sin descontar.");
                 }
             }
 
@@ -430,6 +468,13 @@ public class L3CircuitService : IL3CircuitService
             var items = departure.Items.ToDictionary(i => i.Id);
             if (wanted.Any(l => !items.ContainsKey(l.DepartureItemId)))
                 return L3CircuitResult.Fail("Hay líneas que no pertenecen a esta salida.");
+            // Los consumibles se gastan en la práctica: quedan saldados al entregarse y no admiten devolución.
+            var consumableItemIds = (await _context.DepartureItems.AsNoTracking()
+                    .Where(i => i.DepartureId == departure.Id && i.Article != null && i.Article.ArticleType == ArticleType.Consumable)
+                    .Select(i => i.Id).ToListAsync())
+                .ToHashSet();
+            if (wanted.Any(l => consumableItemIds.Contains(l.DepartureItemId)))
+                return L3CircuitResult.Fail("Los consumibles no se devuelven: se gastan en la práctica.");
 
             // Saldo real desde las devoluciones registradas (el acumulado de DepartureItem es solo un reflejo).
             var itemIds = items.Keys.ToList();
@@ -477,7 +522,8 @@ public class L3CircuitService : IL3CircuitService
             // Validación por ítem y por artículo (descuenta lo cubierto por L-5) y cierre de la salida.
             var outcome = L3ReturnRules.Evaluate(
                 items.Values.Select(i => new L3ReturnItemLine(
-                    i.Id, ArticleOf(i), i.ProductName ?? "", i.Quantity ?? 0, returnedSoFar.GetValueOrDefault(i.Id))).ToList(),
+                    i.Id, ArticleOf(i), i.ProductName ?? "", i.Quantity ?? 0,
+                    consumableItemIds.Contains(i.Id) ? i.Quantity ?? 0 : returnedSoFar.GetValueOrDefault(i.Id))).ToList(),
                 covered, wanted);
             if (outcome.Error != null) return L3CircuitResult.Fail(outcome.Error);
 
@@ -553,6 +599,9 @@ public class L3CircuitService : IL3CircuitService
         await _context.SaveChangesAsync();
         return batch.Id;
     }
+
+    /// <summary>Insumo que se gasta en la práctica: descuenta existencia al entregarse y no se devuelve.</summary>
+    private static bool IsConsumable(Article? article) => article?.ArticleType == ArticleType.Consumable;
 
     /// <summary>Línea cuyo artículo representa un equipo del catálogo: se entrega como unidad física, no como existencias de almacén.</summary>
     private static bool IsEquipmentLine(PlanningRequirement detail) =>

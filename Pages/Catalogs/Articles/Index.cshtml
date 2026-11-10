@@ -103,6 +103,7 @@
                             <tr class="small uppercase font-weight-bold text-muted">
                                 <th>Artículo</th>
                                 <th>Categoría / Unidad</th>
+                                <th class="text-center">Tipo</th>
                                 <th class="text-center">Revisión</th>
                                 <th class="text-center">Estado</th>
                                 <th class="text-center">Acciones</th>
@@ -112,7 +113,7 @@
                             @if (Model.Articles == null || !Model.Articles.Any())
                             {
                                 <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted italic">
+                                    <td colspan="6" class="text-center py-5 text-muted italic">
                                         <i class="fas fa-box-open fa-3x mb-3 d-block opacity-2"></i>
                                         No se encontraron artículos registrados con los filtros actuales.
                                     </td>
@@ -139,6 +140,22 @@
                                             <div class="font-weight-bold text-dark"><i class="fas fa-tag mr-1 text-muted"></i>@(item.ArticleCategory?.Name ?? item.Category ?? "Sin categoría")</div>
                                             <div class="text-muted"><i class="fas fa-ruler mr-1"></i>@(item.MeasurementUnit?.Name ?? item.UnitOfMeasure)</div>
                                         </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (item.ArticleType.HasValue)
+                                        {
+                                            var tipoCss = item.ArticleType == ArticleType.Consumable ? "badge-soft-warning text-warning"
+                                                : item.ArticleType == ArticleType.Equipment ? "badge-soft-info text-info"
+                                                : "badge-soft-secondary text-secondary";
+                                            <span class="badge badge-pill @tipoCss px-3 py-1 font-weight-bold"
+                                                  title="@(item.ArticleType == ArticleType.Consumable ? "Insumo que se consume en la práctica: se descuenta al entregar y no se devuelve" : "Tipo de artículo")">
+                                                @(item.ArticleType == ArticleType.Consumable ? "Consumible" : Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetDisplayName(item.ArticleType.Value))
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
                                     </td>
                                     <td class="text-center">
                                         @if (item.ReviewStatus == DataReviewStatus.PorConfirmar)
@@ -229,6 +246,8 @@
         .opacity-2 { opacity: 0.2; }
         .badge-soft-warning { background-color: #fff3cd; }
         .badge-soft-success { background-color: #d4edda; }
+        .badge-soft-info { background-color: #e6f3fb; }
+        .badge-soft-secondary { background-color: #f1f3f5; }
     </style>
 }
 @section Scripts {

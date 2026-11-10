@@ -27,7 +27,7 @@ public interface ITeacherRequestService
     Task<TeacherOpResult> SubmitAsync(TeacherProfile teacher, RequestInput input, int? planningId, string? note);
     Task<TeacherOpResult> WithdrawAsync(TeacherProfile teacher, int planningId, string? reason);
     Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment, IReadOnlyList<RequestLineInput>? adjustedLines,
-        bool allowShortage = false);
+        bool allowShortage = false, IReadOnlyList<AssignmentInput>? assignments = null);
     Task<TeacherOpResult> ObserveAsync(int reviewerUserId, int planningId, string comment);
     Task<TeacherOpResult> RejectAsync(int reviewerUserId, int planningId, string reason);
     Task<IReadOnlyList<RequestLineView>> GetLinesAsync(int planningId);
@@ -39,6 +39,13 @@ public interface ITeacherRequestService
     /// no devueltos (la bandeja de revisión lo usa en vez de llamar a <see cref="CheckMaterialAsync"/> por fila).
     /// </summary>
     Task<IReadOnlyList<DayMaterialCheck>> CheckMaterialForDayAsync(DateTime date, IReadOnlyList<MaterialDayRequest> requests);
+
+    /// <summary>
+    /// Sugerencia de asignación de origen por línea (V13): laboratorios activos con existencias del artículo y su
+    /// libre (existencia − asignado a otras planificaciones que se cruzan − no devuelto), y el reparto sugerido
+    /// (Economato primero; el faltante queda en el Economato).
+    /// </summary>
+    Task<IReadOnlyList<AssignmentSuggestion>> SuggestAssignmentsAsync(int planningId);
 }
 
 public sealed class TeacherRequestService : ITeacherRequestService
@@ -227,11 +234,15 @@ public sealed class TeacherRequestService : ITeacherRequestService
     // ───────────────────────────── Material por horario ─────────────────────────────
 
     /// <summary>Artículo tal como se muestra en el semáforo de material.</summary>
-    private sealed record ArticleBasic(int Id, string Code, string Name, string? Category);
+    private sealed record ArticleBasic(int Id, string Code, string Name, string? Category, ArticleType? Type);
+
+    /// <summary>Demanda de un artículo en una fecha (para consumibles: todo lo pedido entre hoy y la fecha se gasta).</summary>
+    private sealed record ConsumableDemand(DateTime Date, int ArticleId, IReadOnlyList<PracticeDemand> Practices);
 
     /// <summary>
     /// Datos de material cargados una sola vez y reutilizados por todas las evaluaciones de una misma operación
-    /// (buscador de horarios, bandeja de revisión): catálogo, stock y lo no devuelto de prácticas que ya terminaron.
+    /// (buscador de horarios, bandeja de revisión): catálogo, stock, lo no devuelto de prácticas que ya terminaron
+    /// y la demanda de consumibles desde hoy hasta la última fecha evaluada (una sola consulta de rango extra).
     /// </summary>
     private sealed class MaterialContext
     {
@@ -240,6 +251,9 @@ public sealed class TeacherRequestService : ITeacherRequestService
 
         /// <summary>Por artículo: entregado y no devuelto de salidas abiertas cuya práctica terminó antes de la ventana pedida.</summary>
         public required IReadOnlyDictionary<int, decimal> Overdue { get; init; }
+
+        /// <summary>Demanda diaria de artículos consumibles entre hoy y el fin de la operación (se descuenta al consumirse).</summary>
+        public required IReadOnlyList<ConsumableDemand> ConsumableDemands { get; init; }
     }
 
     public async Task<IReadOnlyList<MaterialLineCheck>> CheckMaterialAsync(DateTime date, int startPeriodId, int periodCount,
@@ -261,7 +275,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
         var range = ids.Count == 0 ? null : await _availability.GetRangeAsync(date.Date, date.Date);
         // Las solicitudes de la bandeja son siempre futuras: lo no devuelto que afecta al día es el de prácticas
         // terminadas antes de que empiece el día (las del propio día se ven como demanda del horario).
-        var context = ids.Count == 0 ? null : await LoadMaterialContextAsync(ids, date.Date);
+        var context = ids.Count == 0 ? null : await LoadMaterialContextAsync(ids, date.Date, date.Date);
 
         var result = new List<DayMaterialCheck>();
         foreach (var request in requests)
@@ -279,15 +293,29 @@ public sealed class TeacherRequestService : ITeacherRequestService
         return result;
     }
 
-    private async Task<MaterialContext> LoadMaterialContextAsync(IReadOnlyCollection<int> articleIds, DateTime windowStart)
+    private async Task<MaterialContext> LoadMaterialContextAsync(IReadOnlyCollection<int> articleIds, DateTime windowStart,
+        DateTime? consumableUntil = null)
     {
         var articles = await _context.Articles.AsNoTracking()
             .Where(a => articleIds.Contains(a.Id))
-            .Select(a => new ArticleBasic(a.Id, a.Code, a.Name, a.ArticleCategory != null ? a.ArticleCategory.Name : a.Category))
+            .Select(a => new ArticleBasic(a.Id, a.Code, a.Name, a.ArticleCategory != null ? a.ArticleCategory.Name : a.Category, a.ArticleType))
             .ToDictionaryAsync(a => a.Id);
         var stock = await _availability.GetStockAsync(articleIds, null);
         var overdue = await StockRules.OverdueOutstandingAsync(_context, articleIds, windowStart);
-        return new MaterialContext { Articles = articles, Stock = stock, Overdue = overdue };
+
+        // Consumibles: lo pedido por prácticas que ocupan desde hoy hasta la última fecha de la operación ya no estará
+        // (se gasta al usarse). Una sola consulta de rango por operación, reutilizada por todas las fechas evaluadas.
+        var consumableDemands = new List<ConsumableDemand>();
+        var until = consumableUntil ?? windowStart.Date;
+        if (articles.Values.Any(a => a.Type == ArticleType.Consumable) && until.Date >= DateTime.Today)
+        {
+            var from = DateTime.Today;
+            var range = await _availability.GetRangeAsync(from, until.Date);
+            consumableDemands = range.Demands
+                .Select(d => new ConsumableDemand(d.Date, d.ArticleId, d.Practices))
+                .ToList();
+        }
+        return new MaterialContext { Articles = articles, Stock = stock, Overdue = overdue, ConsumableDemands = consumableDemands };
     }
 
     private async Task<IReadOnlyList<MaterialLineCheck>> EvaluateMaterialAsync(WeekAvailability range, DateTime date, TimeSpan from, TimeSpan to,
@@ -296,7 +324,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
         var merged = lines.Where(l => l.Quantity > 0).GroupBy(l => l.ArticleId)
             .Select(g => new RequestLineInput(g.Key, g.Sum(l => l.Quantity))).ToList();
         if (merged.Count == 0) return [];
-        var context = await LoadMaterialContextAsync(merged.Select(l => l.ArticleId).ToList(), date + from);
+        var context = await LoadMaterialContextAsync(merged.Select(l => l.ArticleId).ToList(), date + from, date.Date);
         return EvaluateMaterial(range, date, from, to, merged, excludePlanningId, context);
     }
 
@@ -312,10 +340,27 @@ public sealed class TeacherRequestService : ITeacherRequestService
         foreach (var line in merged)
         {
             if (!context.Articles.TryGetValue(line.ArticleId, out var article)) continue;
+            var isConsumable = article.Type == ArticleType.Consumable;
             var demand = range.Demands.FirstOrDefault(d => d.Date == date && d.ArticleId == line.ArticleId);
             var uses = new List<MaterialUse>();
             decimal usedByOthers = 0;
-            if (demand != null)
+            if (isConsumable)
+            {
+                // Los consumibles no vuelven: todo lo pedido por prácticas que ocupan desde hoy hasta la fecha pedida
+                // se resta (no solo lo que se cruza en horario), porque se gasta al usarse.
+                foreach (var d in context.ConsumableDemands.Where(d => d.ArticleId == line.ArticleId && d.Date <= date))
+                {
+                    foreach (var p in d.Practices.Where(p => p.PracticeId != excludePlanningId))
+                    {
+                        usedByOthers += p.Quantity;
+                        var wp = practices.GetValueOrDefault(p.PracticeId);
+                        if (wp == null) continue;
+                        uses.Add(new MaterialUse(wp.Id, wp.Code, $"{wp.SubjectName ?? wp.PracticeName} ({wp.GroupName ?? "—"}) · {wp.LaboratoryCode ?? "—"}",
+                            wp.StartTime, wp.EndTime, p.Quantity));
+                    }
+                }
+            }
+            else if (demand != null)
             {
                 foreach (var p in demand.Practices.Where(p => p.PracticeId != excludePlanningId))
                 {
@@ -346,11 +391,40 @@ public sealed class TeacherRequestService : ITeacherRequestService
             else
             {
                 // Acta de stock: disponible = existencia − reservas coincidentes − préstamos no devueltos − mantenimiento.
-                var overdue = context.Overdue.GetValueOrDefault(line.ArticleId);
+                // Los consumibles ya entregados no aparecen como "sin devolver": su existencia bajó al entregarse.
+                var overdue = isConsumable ? 0 : context.Overdue.GetValueOrDefault(line.ArticleId);
                 var effectiveTotal = Math.Max(0, total - overdue);
                 free = Math.Max(0, effectiveTotal - usedByOthers);
                 var overdueNote = overdue > 0 ? $" ({overdue:0.##} sin devolver de prácticas anteriores)" : string.Empty;
-                if (line.Quantity > total)
+                if (isConsumable)
+                {
+                    // Texto propio del consumible: explica que lo pedido antes de la fecha ya no estará.
+                    if (line.Quantity > total)
+                    {
+                        state = MaterialState.Short;
+                        explanation = $"Pides {line.Quantity:0.##} y en toda la institución hay {total:0.##}.";
+                    }
+                    else if (line.Quantity > free)
+                    {
+                        state = MaterialState.Short;
+                        explanation = $"Stock {total:0.##}: se consumen {usedByOthers:0.##} en prácticas anteriores a tu fecha"
+                            + (uses.Count > 0 ? $" ({string.Join(", ", uses.Take(2).Select(u => $"{u.Code}"))})" : string.Empty)
+                            + $". Puedes pedir hasta {free:0.##}.";
+                    }
+                    else if (line.Quantity == free && usedByOthers > 0)
+                    {
+                        state = MaterialState.Tight;
+                        explanation = $"Alcanza justo: quedan {free:0.##} después de lo que se consumen las prácticas anteriores a tu fecha.";
+                    }
+                    else
+                    {
+                        state = MaterialState.Ok;
+                        explanation = usedByOthers > 0
+                            ? $"Libres {free:0.##} de {total:0.##} (se consumen {usedByOthers:0.##} en prácticas anteriores a tu fecha)."
+                            : $"Libres {total:0.##} para tu fecha.";
+                    }
+                }
+                else if (line.Quantity > total)
                 {
                     state = MaterialState.Short;
                     explanation = $"Pides {line.Quantity:0.##} y en toda la institución hay {total:0.##}{overdueNote}.";
@@ -440,7 +514,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
         var range = lines.Count > 0 ? await _availability.GetRangeAsync(days.First(), days.Last()) : null;
         // Material cargado UNA vez por búsqueda (catálogo, stock y no devueltos): antes se consultaba por cada candidato.
         var materialContext = range != null
-            ? await LoadMaterialContextAsync(lines.Where(l => l.Quantity > 0).Select(l => l.ArticleId).Distinct().ToList(), days.First().Date)
+            ? await LoadMaterialContextAsync(lines.Where(l => l.Quantity > 0).Select(l => l.ArticleId).Distinct().ToList(), days.First().Date,
+                days.Last().Date)
             : null;
 
         var found = new List<(SlotSuggestion Slot, int Score)>();
@@ -736,7 +811,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
     // ───────────────────────────── Revisión (Supervisor / Administrador / SuperAdmin) ─────────────────────────────
 
     public async Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment,
-        IReadOnlyList<RequestLineInput>? adjustedLines, bool allowShortage = false)
+        IReadOnlyList<RequestLineInput>? adjustedLines, bool allowShortage = false, IReadOnlyList<AssignmentInput>? assignments = null)
     {
         var snapshot = await _context.Plannings.AsNoTracking().Include(p => p.StartPeriod).FirstOrDefaultAsync(p => p.Id == planningId);
         if (snapshot == null) return TeacherOpResult.Fail("La solicitud no existe.");
@@ -844,6 +919,36 @@ public sealed class TeacherRequestService : ITeacherRequestService
                     }
                     // Aprobación consciente de los faltantes: queda asentada en el historial y avisada al revisor.
                     review.Comment = Trim($"{comment} [Aprobada con faltantes: {shortageDetail}]", 1000);
+                }
+            }
+
+            // ─── Asignaciones de origen (V13: SolicitudL3Asignaciones) ───
+            // Con la líneas finales ya aplicadas: si el revisor no eligió orígenes se usan los sugeridos; si eligió,
+            // se valida que cubran exactamente cada línea y que ningún origen entregue más que su libre.
+            var finalByArticle = finalLines.ToDictionary(l => l.ArticleId, l => l.Quantity);
+            var unitLineArticles = plan.Requirements.Where(r => r.EquipmentUnitId != null).Select(r => r.ArticleId).ToHashSet();
+            var catalogUnitArticles = (await _context.Articles.AsNoTracking()
+                .Where(a => finalByArticle.Keys.Contains(a.Id) && a.EquipmentId != null)
+                .Select(a => a.Id).ToListAsync()).ToHashSet();
+            var assignable = finalByArticle
+                .Where(kv => kv.Value > 0 && !unitLineArticles.Contains(kv.Key) && !catalogUnitArticles.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            IReadOnlyList<AssignmentInput>? effectiveAssignments = assignments;
+            if (effectiveAssignments == null && assignable.Count > 0)
+            {
+                var suggested = await SuggestAssignmentsCoreAsync(plan.Id, plan.ScheduledDate.Date, plan.StartTime, plan.EndTime, assignable);
+                effectiveAssignments = suggested.SelectMany(s => s.Suggested).ToList();
+            }
+
+            if (effectiveAssignments is { Count: > 0 })
+            {
+                var assignmentError = await ValidateAndApplyAssignmentsAsync(plan, assignable, effectiveAssignments, allowShortage,
+                    snapshot.StartTime, snapshot.EndTime);
+                if (assignmentError != null)
+                {
+                    await transaction.RollbackAsync();
+                    return TeacherOpResult.Fail(assignmentError);
                 }
             }
 
@@ -970,6 +1075,198 @@ public sealed class TeacherRequestService : ITeacherRequestService
             .AnyAsync(p => p.PracticeScheduleId == sid && p.Id != plan.Id && !p.IsDeleted
                 && p.Status != PlanningStatus.Rejected && p.Status != PlanningStatus.Cancelled);
         if (!inUse) schedule.Status = PracticeScheduleStatus.Cancelled;
+    }
+
+    // ───────────────────────────── Asignación de origen (V13: SolicitudL3Asignaciones) ─────────────────────────────
+
+    public async Task<IReadOnlyList<AssignmentSuggestion>> SuggestAssignmentsAsync(int planningId)
+    {
+        var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(p => p.Id == planningId);
+        if (plan == null) return [];
+        var lines = await _context.PlanningRequirements.AsNoTracking()
+            .Where(r => r.PlanningId == planningId && r.EquipmentUnitId == null && r.Article!.EquipmentId == null)
+            .Select(r => new { r.ArticleId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity })
+            .ToListAsync();
+        var quantities = lines.GroupBy(l => l.ArticleId).Select(g => new { g.Key, Quantity = g.Sum(l => l.Quantity) })
+            .Where(l => l.Quantity > 0).ToDictionary(l => l.Key, l => l.Quantity);
+        return quantities.Count == 0 ? [] : await SuggestAssignmentsCoreAsync(planningId, plan.ScheduledDate.Date, plan.StartTime, plan.EndTime, quantities);
+    }
+
+    /// <summary>
+    /// Libre por origen en el horario de la práctica y reparto sugerido. Libre = existencia del origen − lo asignado a ese
+    /// origen por otras planificaciones que ocupan y se cruzan (sin asignaciones cuentan en el Economato; los consumibles
+    /// restan todo lo pedido desde hoy hasta la fecha) − lo no devuelto de prácticas anteriores en ese origen.
+    /// Sugerido: Economato primero, luego el resto por libre descendente; lo que no alcanza queda en el Economato.
+    /// </summary>
+    private async Task<List<AssignmentSuggestion>> SuggestAssignmentsCoreAsync(int planningId, DateTime date, TimeSpan? start, TimeSpan? end,
+        IReadOnlyDictionary<int, decimal> quantities)
+    {
+        var free = await FreeByOriginAsync(planningId, date, start, end, quantities.Keys.ToList());
+        var articles = await _context.Articles.AsNoTracking()
+            .Where(a => quantities.Keys.Contains(a.Id))
+            .Select(a => new { a.Id, a.Code, a.Name, a.ArticleType })
+            .ToDictionaryAsync(a => a.Id);
+
+        var result = new List<AssignmentSuggestion>();
+        foreach (var (articleId, quantity) in quantities)
+        {
+            if (!articles.TryGetValue(articleId, out var article)) continue;
+            var origins = free.Origins
+                .Where(o => o.ArticleId == articleId || (o.ArticleId == null && o.LaboratoryId == free.EconomatoId))
+                .GroupBy(o => o.LaboratoryId).Select(g => g.First())
+                .Select(o => new OriginOption(o.LaboratoryId, o.Code, o.Name, free.Free.GetValueOrDefault((o.LaboratoryId, articleId))))
+                .OrderBy(o => o.LaboratoryId == free.EconomatoId ? 0 : 1).ThenByDescending(o => o.Free).ThenBy(o => o.Code)
+                .ToList();
+
+            var suggested = new List<AssignmentInput>();
+            var remaining = quantity;
+            foreach (var origin in origins)
+            {
+                if (remaining <= 0) break;
+                var take = Math.Min(remaining, origin.Free);
+                if (take <= 0) continue;
+                suggested.Add(new AssignmentInput(articleId, origin.LaboratoryId, take));
+                remaining -= take;
+            }
+            if (remaining > 0)
+            {
+                // No alcanza: lo que falta queda en el Economato (o en el primer origen) para que el revisor decida.
+                var fallback = free.EconomatoId ?? origins.Select(o => (int?)o.LaboratoryId).FirstOrDefault();
+                if (fallback is int labId)
+                {
+                    var existing = suggested.FindIndex(a => a.LaboratoryId == labId);
+                    if (existing >= 0) suggested[existing] = suggested[existing] with { Quantity = suggested[existing].Quantity + remaining };
+                    else suggested.Add(new AssignmentInput(articleId, labId, remaining));
+                }
+            }
+            result.Add(new AssignmentSuggestion(articleId, article.Code, article.Name, quantity, article.ArticleType == ArticleType.Consumable,
+                origins, suggested));
+        }
+        return result;
+    }
+
+    /// <summary>Orígenes posibles (con stock del artículo, más el Economato) y su libre por (laboratorio, artículo).</summary>
+    private sealed record OriginRow(int LaboratoryId, string Code, string Name, int? ArticleId);
+    private sealed record OriginFree(int? EconomatoId, List<OriginRow> Origins, Dictionary<(int, int), decimal> Free);
+
+    private async Task<OriginFree> FreeByOriginAsync(int planningId, DateTime date, TimeSpan? start, TimeSpan? end, IReadOnlyCollection<int> articleIds)
+    {
+        var economato = await _context.Laboratories.AsNoTracking()
+            .Where(l => l.Code == L3CircuitService.DefaultOriginLaboratoryCode && l.Status == GeneralStatus.Activo)
+            .Select(l => new OriginRow(l.Id, l.Code, l.Name, null)).FirstOrDefaultAsync();
+        var stocks = await _context.ArticleStocks.AsNoTracking()
+            .Where(s => articleIds.Contains(s.ArticleId) && s.Laboratory!.Status == GeneralStatus.Activo)
+            .Select(s => new { s.LaboratoryId, s.ArticleId, s.AvailableQuantity, s.Laboratory!.Code, s.Laboratory.Name })
+            .ToListAsync();
+        var consumables = (await _context.Articles.AsNoTracking()
+            .Where(a => articleIds.Contains(a.Id) && a.ArticleType == ArticleType.Consumable)
+            .Select(a => a.Id).ToListAsync()).ToHashSet();
+
+        // Otras planificaciones que ocupan: el mismo día y cruzándose (reutilizables) o desde hoy hasta la fecha (consumibles).
+        var windowStart = start ?? TimeSpan.Zero;
+        var windowEnd = end ?? new TimeSpan(23, 59, 59);
+        var from = consumables.Count > 0 && DateTime.Today < date ? DateTime.Today : date;
+        var next = date.AddDays(1);
+        var others = await _context.Plannings.AsNoTracking()
+            .Where(p => p.Id != planningId && !p.IsDeleted && !PlanningStatus.NonOccupying.Contains(p.Status)
+                && p.Status != PlanningStatus.Finalized && p.ScheduledDate >= from && p.ScheduledDate < next)
+            .Select(p => new { p.Id, p.ScheduledDate, p.StartTime, p.EndTime })
+            .ToListAsync();
+        var overlapping = others
+            .Where(o => o.ScheduledDate.Date == date && Overlaps(o.StartTime, o.EndTime, windowStart, windowEnd))
+            .Select(o => o.Id).ToHashSet();
+        var ids = others.Select(o => o.Id).ToList();
+        var demands = ids.Count == 0
+            ? []
+            : await _context.PlanningRequirements.AsNoTracking()
+                .Where(r => ids.Contains(r.PlanningId) && articleIds.Contains(r.ArticleId))
+                .Select(r => new
+                {
+                    r.PlanningId, r.ArticleId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity,
+                    Assignments = r.Assignments.Select(a => new { a.LaboratoryId, a.Quantity }).ToList()
+                })
+                .ToListAsync();
+
+        var taken = new Dictionary<(int, int), decimal>();
+        void Take(int labId, int articleId, decimal qty) => taken[(labId, articleId)] = taken.GetValueOrDefault((labId, articleId)) + qty;
+        foreach (var d in demands)
+        {
+            // Reutilizables: solo cuentan las que se cruzan en horario; consumibles: todas las anteriores o del día.
+            if (!consumables.Contains(d.ArticleId) && !overlapping.Contains(d.PlanningId)) continue;
+            if (d.Assignments.Count > 0)
+                foreach (var a in d.Assignments) Take(a.LaboratoryId, d.ArticleId, a.Quantity);
+            else if (economato != null)
+                Take(economato.LaboratoryId, d.ArticleId, d.Quantity);
+        }
+        var overdue = await StockRules.OverdueByOriginAsync(_context, articleIds, date + windowStart);
+
+        var freeMap = new Dictionary<(int, int), decimal>();
+        foreach (var s in stocks)
+            freeMap[(s.LaboratoryId, s.ArticleId)] = Math.Max(0, s.AvailableQuantity
+                - taken.GetValueOrDefault((s.LaboratoryId, s.ArticleId)) - overdue.GetValueOrDefault((s.LaboratoryId, s.ArticleId)));
+
+        var origins = stocks.Select(s => new OriginRow(s.LaboratoryId, s.Code, s.Name, s.ArticleId)).ToList();
+        if (economato != null) origins.Add(economato);
+        return new OriginFree(economato?.LaboratoryId, origins, freeMap);
+    }
+
+    /// <summary>
+    /// Valida y guarda las asignaciones: cada línea asignable queda cubierta exactamente, solo orígenes activos y, salvo
+    /// <paramref name="allowShortage"/>, ningún origen entrega más que su libre. Reemplaza las asignaciones previas.
+    /// </summary>
+    private async Task<string?> ValidateAndApplyAssignmentsAsync(Planning plan, IReadOnlyDictionary<int, decimal> assignable,
+        IReadOnlyList<AssignmentInput> assignments, bool allowShortage, TimeSpan? start, TimeSpan? end)
+    {
+        var wanted = assignments.Where(a => a.Quantity > 0).ToList();
+        if (wanted.Any(a => decimal.Round(a.Quantity, 2) != a.Quantity || a.Quantity > 999999))
+            return "Las cantidades por origen admiten hasta 2 decimales.";
+        if (wanted.Any(a => !assignable.ContainsKey(a.ArticleId)))
+            return "Hay asignaciones de artículos que no están en la solicitud.";
+        var labIds = wanted.Select(a => a.LaboratoryId).Distinct().ToList();
+        var labs = await _context.Laboratories.AsNoTracking()
+            .Where(l => labIds.Contains(l.Id) && l.Status == GeneralStatus.Activo)
+            .ToDictionaryAsync(l => l.Id, l => l.Code);
+        if (labs.Count != labIds.Count) return "Hay orígenes que no son laboratorios activos.";
+
+        var articleIds = assignable.Keys.ToList();
+        var names = await _context.Articles.AsNoTracking().Where(a => articleIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, a => a.Name);
+        foreach (var (articleId, quantity) in assignable)
+        {
+            var sum = wanted.Where(a => a.ArticleId == articleId).Sum(a => a.Quantity);
+            if (sum != quantity)
+                return $"El origen de {names.GetValueOrDefault(articleId, "un artículo")} suma {sum:0.##} y la línea pide {quantity:0.##}: ajusta el reparto.";
+        }
+
+        if (!allowShortage)
+        {
+            var free = await FreeByOriginAsync(plan.Id, plan.ScheduledDate.Date, start, end, articleIds);
+            var over = wanted
+                .GroupBy(a => (a.LaboratoryId, a.ArticleId))
+                .Select(g => new { g.Key.LaboratoryId, g.Key.ArticleId, Qty = g.Sum(a => a.Quantity), Free = free.Free.GetValueOrDefault(g.Key) })
+                .Where(x => x.Qty > x.Free)
+                .ToList();
+            if (over.Count > 0)
+                return "No se puede aprobar: " + string.Join("; ", over.Select(x =>
+                        $"origen {labs[x.LaboratoryId]}: asigna {x.Qty:0.##} de {names.GetValueOrDefault(x.ArticleId, "artículo")}, libre {x.Free:0.##}"))
+                    + ". Ajusta el reparto o marca «Aprobar igual con faltantes».";
+        }
+
+        // Reemplazo: las asignaciones previas de la planificación se sustituyen por las nuevas.
+        var requirementIds = plan.Requirements.Where(r => r.Id > 0).Select(r => r.Id).ToList();
+        var previous = await _context.PlanningAssignments.AsTracking()
+            .Where(a => requirementIds.Contains(a.PlanningRequirementId)).ToListAsync();
+        _context.PlanningAssignments.RemoveRange(previous);
+        foreach (var group in wanted.GroupBy(a => a.ArticleId))
+        {
+            var requirement = plan.Requirements
+                .Where(r => r.ArticleId == group.Key && _context.Entry(r).State != EntityState.Deleted)
+                .OrderBy(r => r.Id)
+                .First();
+            foreach (var byLab in group.GroupBy(a => a.LaboratoryId))
+                requirement.Assignments.Add(new PlanningAssignment { LaboratoryId = byLab.Key, Quantity = byLab.Sum(a => a.Quantity) });
+        }
+        return null;
     }
 
     /// <summary>Líneas finales de la solicitud tal como quedarán tras aprobar (con o sin ajustes del revisor).</summary>

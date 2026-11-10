@@ -125,10 +125,10 @@ public static class EscenarioGastronomia
         await calendar.GenerateWeeksAsync(management.Id);
 
         // ---------- Catálogo de artículos y existencias del Economato ----------
-        var harina = new Article { Code = HarinaCode, Name = "Harina de trigo", UnitOfMeasure = "KG", Status = GeneralStatus.Activo };
-        var huevo = new Article { Code = HuevoCode, Name = "Huevo", UnitOfMeasure = "UNIDAD", Status = GeneralStatus.Activo };
+        var harina = new Article { Code = HarinaCode, Name = "Harina de trigo", UnitOfMeasure = "KG", Status = GeneralStatus.Activo, ArticleType = ArticleType.Consumable };
+        var huevo = new Article { Code = HuevoCode, Name = "Huevo", UnitOfMeasure = "UNIDAD", Status = GeneralStatus.Activo, ArticleType = ArticleType.Consumable };
         var cuchillo = new Article { Code = CuchilloCode, Name = "Cuchillo de chef 8\"", UnitOfMeasure = "UNIDAD", Status = GeneralStatus.Activo };
-        var mantequilla = new Article { Code = MantequillaCode, Name = "Mantequilla sin sal", UnitOfMeasure = "KG", Status = GeneralStatus.Activo };
+        var mantequilla = new Article { Code = MantequillaCode, Name = "Mantequilla sin sal", UnitOfMeasure = "KG", Status = GeneralStatus.Activo, ArticleType = ArticleType.Consumable };
         var bowl = new Article { Code = BowlCode, Name = "Bowl de acero inoxidable", UnitOfMeasure = "UNIDAD", Status = GeneralStatus.Activo };
         var tabla = new Article { Code = TablaCode, Name = "Tabla de picar", UnitOfMeasure = "UNIDAD", Status = GeneralStatus.Activo };
         db.Articles.AddRange(harina, huevo, cuchillo, mantequilla, bowl, tabla);

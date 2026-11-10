@@ -42,6 +42,8 @@ public class RevisarModel : PageModel
     public List<ClassPeriod> Periods { get; private set; } = [];
     public List<OccupancyBlock> DayBlocks { get; private set; } = [];
     public List<CompetitorView> Competitors { get; private set; } = [];
+    /// <summary>Origen sugerido por línea (V13): el revisor reparte cada artículo entre laboratorios o el Economato.</summary>
+    public IReadOnlyList<AssignmentSuggestion> Assignments { get; private set; } = [];
     public bool CanReview => Plan.Status == PlanningStatus.Requested;
 
     public sealed record CompetitorView(int Id, string Code, string Teacher, string Practice, int StartOrder, int PeriodCount, DateTime RequestDate);
@@ -56,7 +58,8 @@ public class RevisarModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostApproveAsync(int id, string? comment, Dictionary<int, decimal>? qty, bool allowShortage)
+    public async Task<IActionResult> OnPostApproveAsync(int id, string? comment, Dictionary<int, decimal>? qty, bool allowShortage,
+        List<AssignmentInput>? assign)
     {
         var current = await _context.PlanningRequirements.AsNoTracking().Where(r => r.PlanningId == id)
             .Select(r => new { r.ArticleId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity }).ToListAsync();
@@ -65,7 +68,10 @@ public class RevisarModel : PageModel
             adjusted = current.Select(c => new RequestLineInput(c.ArticleId, qty.TryGetValue(c.ArticleId, out var q) ? q : c.Quantity)).ToList();
 
         // allowShortage viene del formulario («Aprobar igual con faltantes»): aprueba aunque el material no alcance.
-        var result = await _requests.ApproveAsync(UserId, id, comment, adjusted, allowShortage);
+        // assign: reparto por origen elegido en pantalla; vacío = el servidor usa el reparto sugerido.
+        var assignments = assign?.Where(a => a.Quantity > 0).ToList();
+        var result = await _requests.ApproveAsync(UserId, id, comment, adjusted, allowShortage,
+            assignments is { Count: > 0 } ? assignments : null);
         if (!result.Ok)
         {
             TempData.Error(result.Message);
@@ -117,6 +123,8 @@ public class RevisarModel : PageModel
             Material = await _requests.CheckMaterialAsync(plan.ScheduledDate, startId, count,
                 Lines.Select(l => new RequestLineInput(l.ArticleId, l.Quantity)).ToList(), plan.Id);
             DayBlocks = (await _occupancy.GetAsync(new OccupancyQuery(plan.ScheduledDate.Date, plan.ScheduledDate.Date, [labId], null, [plan.Id]))).ToList();
+
+            if (CanReview) Assignments = await _requests.SuggestAssignmentsAsync(plan.Id);
 
             var competitors = CanReview ? await _requests.FindCompetingRequestsAsync(plan.Id) : [];
             foreach (var c in competitors)
