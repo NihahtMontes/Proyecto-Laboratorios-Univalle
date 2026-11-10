@@ -365,7 +365,7 @@
                                             <tr>
                                                 <td>
                                                     <div class="font-weight-bold small">@item.ArticleName</div>
-                                                    <small class="text-muted">@item.ArticleCode</small>
+                                                    <small class="text-muted">@item.ArticleCode@(string.IsNullOrEmpty(item.OriginCode) ? "" : $" · desde {item.OriginCode}")</small>
                                                 </td>
                                                 <td class="text-center font-weight-bold">@uncoveredStr</td>
                                                 <td class="text-center" style="width:180px;">
