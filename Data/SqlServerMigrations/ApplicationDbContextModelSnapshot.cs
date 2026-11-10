@@ -1257,6 +1257,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int?>("OriginLaboratoryId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ProductName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1288,6 +1291,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.HasIndex("MeasurementUnitId");
 
                     b.HasIndex("ModifiedById");
+
+                    b.HasIndex("OriginLaboratoryId");
 
                     b.ToTable("DepartureItems", t =>
                         {
@@ -3306,6 +3311,36 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("LaboratoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PlanningRequirementId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LaboratoryId");
+
+                    b.HasIndex("PlanningRequirementId", "LaboratoryId")
+                        .IsUnique();
+
+                    b.ToTable("PlanningAssignments", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlanningAssignments_Quantity", "[Quantity] > 0");
+                        });
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningRequirement", b =>
                 {
                     b.Property<int>("Id")
@@ -5249,6 +5284,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .WithMany()
                         .HasForeignKey("ModifiedById");
 
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "OriginLaboratory")
+                        .WithMany()
+                        .HasForeignKey("OriginLaboratoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Article");
 
                     b.Navigation("CreatedBy");
@@ -5260,6 +5300,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("MeasurementUnit");
 
                     b.Navigation("ModifiedBy");
+
+                    b.Navigation("OriginLaboratory");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.DepartureReturn", b =>
@@ -5951,6 +5993,25 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Teacher");
 
                     b.Navigation("TeacherPerson");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningAssignment", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
+                        .WithMany()
+                        .HasForeignKey("LaboratoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.PlanningRequirement", "PlanningRequirement")
+                        .WithMany("Assignments")
+                        .HasForeignKey("PlanningRequirementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Laboratory");
+
+                    b.Navigation("PlanningRequirement");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningRequirement", b =>
@@ -6655,6 +6716,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Requirements");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningRequirement", b =>
+                {
+                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReview", b =>

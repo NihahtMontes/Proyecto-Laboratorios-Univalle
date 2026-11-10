@@ -421,6 +421,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
         public DbSet<PlanningReview> PlanningReviews { get; set; } = null!;
         public DbSet<PlanningReviewLine> PlanningReviewLines { get; set; } = null!;
+        public DbSet<PlanningAssignment> PlanningAssignments { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
         public DbSet<AcademicDay> AcademicDays { get; set; } = null!;
         public DbSet<ClassPeriod> ClassPeriods { get; set; } = null!;
@@ -1031,6 +1032,13 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<PlanningReviewLine>().HasIndex(l => new { l.PlanningReviewId, l.ArticleId }).IsUnique();
             modelBuilder.Entity<PlanningReviewLine>().ToTable(t => t.HasCheckConstraint("CK_PlanningReviewLines_Quantities",
                 "([PreviousQuantity] IS NULL OR [PreviousQuantity] >= 0) AND ([NewQuantity] IS NULL OR [NewQuantity] >= 0) AND ([PreviousQuantity] IS NOT NULL OR [NewQuantity] IS NOT NULL)"));
+            // Asignación de origen por línea al aprobar (V13: SolicitudL3Asignaciones) y origen por ítem de la salida.
+            modelBuilder.Entity<PlanningAssignment>().HasOne(a => a.PlanningRequirement).WithMany(r => r.Assignments).HasForeignKey(a => a.PlanningRequirementId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanningAssignment>().HasOne(a => a.Laboratory).WithMany().HasForeignKey(a => a.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningAssignment>().HasIndex(a => new { a.PlanningRequirementId, a.LaboratoryId }).IsUnique();
+            modelBuilder.Entity<PlanningAssignment>().HasQueryFilter(a => !a.PlanningRequirement!.Planning.IsDeleted);
+            modelBuilder.Entity<PlanningAssignment>().ToTable(t => t.HasCheckConstraint("CK_PlanningAssignments_Quantity", "[Quantity] > 0"));
+            modelBuilder.Entity<DepartureItem>().HasOne(i => i.OriginLaboratory).WithMany().HasForeignKey(i => i.OriginLaboratoryId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Person>().ToTable("People", table =>
             {
