@@ -24,9 +24,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Shared.Components
                 return View(new UserProfileViewModel());
             }
 
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId.Value);
+            Models.User? user;
+            try
+            {
+                user = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId.Value);
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException || ex.InnerException is System.Data.Common.DbException
+                || ex is InvalidOperationException || ex is TimeoutException)
+            {
+                // Defecto D-02 (Práctica 3): sin base de datos, este componente del layout hacía fallar también la página
+                // de error y el usuario recibía una respuesta vacía. Se muestra el nombre de la sesión y la página sigue.
+                var name = UserClaimsPrincipal.Identity?.Name ?? string.Empty;
+                return View(new UserProfileViewModel
+                {
+                    UserId = userId.Value,
+                    FullName = name,
+                    Initials = name.Length > 0 ? name[..1].ToUpperInvariant() : "?"
+                });
+            }
 
             if (user == null)
             {

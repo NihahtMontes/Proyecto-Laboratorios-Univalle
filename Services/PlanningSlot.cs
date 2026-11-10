@@ -11,8 +11,14 @@ public static class PlanningSlot
     public static int LastOrder(int startOrder, int count) => startOrder + count - 1;
 
     /// <summary>True si el bloque cabe en el catálogo (1..12) y count >= 1.</summary>
+    /// <remarks>
+    /// Se acotan inicio y cantidad antes de sumar: con valores extremos (p. ej. count = int.MaxValue) la suma
+    /// desbordaba y el bloque «cabía» (defecto D-01 detectado en la Práctica 3, prueba C3-12/C3-13).
+    /// </remarks>
     public static bool Fits(int startOrder, int count, int maxOrder = MaxPeriods)
-        => count >= 1 && startOrder >= 1 && LastOrder(startOrder, count) <= maxOrder;
+        => count >= 1 && count <= maxOrder
+            && startOrder >= 1 && startOrder <= maxOrder
+            && LastOrder(startOrder, count) <= maxOrder;
 
     /// <summary>True si dos bloques [aStart, aStart+aCount-1] y [bStart, bStart+bCount-1] comparten algún periodo.</summary>
     public static bool Overlaps(int aStart, int aCount, int bStart, int bCount)
