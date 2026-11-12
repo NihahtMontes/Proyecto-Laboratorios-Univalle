@@ -36,7 +36,10 @@ async function step(page, { title, role, text, evidence = "", full = false, focu
   const file = `${String(n).padStart(2, "0")}.png`;
   if (focus) await page.locator(focus).first().scrollIntoViewIfNeeded().catch(() => {});
   await page.waitForTimeout(400);
+  // En capturas de página completa, el menú y la barra fijos se repiten a mitad de la imagen: se fijan arriba solo al capturar.
+  const css = full ? await page.addStyleTag({ content: ".left-sidebar,.topbar,header.topbar{position:absolute!important}" }).catch(() => null) : null;
   await page.screenshot({ path: resolve(IMG, file), fullPage: full });
+  if (css) await css.evaluate(el => el.remove()).catch(() => {});
   steps.push({ n, title, role, text, evidence, img: `img/${file}`, url: page.url().replace(BASE, "") });
   console.log(`${n}. ${title}${evidence ? " · " + evidence : ""}`);
 }
