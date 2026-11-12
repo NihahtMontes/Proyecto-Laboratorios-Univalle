@@ -54,7 +54,7 @@ const confirmSwal = async (page) => { await page.locator(".swal2-confirm").waitF
 
 try {
   // 0) Corridas anteriores en la copia: se libera la persona docente (la cuenta vieja queda eliminada lógicamente).
-  sql(`UPDATE Users SET PersonId=NULL, Role=99, Status=2 WHERE PersonId=${S.personId} AND UserName LIKE 'docente.e2e%'`);
+  sql(`UPDATE Users SET PersonId=NULL, Role=99, Status=2 WHERE PersonId=${S.personId} AND UserName LIKE 'docente.%'`);
 
   // 1) El administrador crea la cuenta del docente vinculada a su persona del catálogo.
   const admin = await newPage();
