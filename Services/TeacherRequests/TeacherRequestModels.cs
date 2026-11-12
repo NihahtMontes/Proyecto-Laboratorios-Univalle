@@ -36,7 +36,9 @@ public sealed record RequestLineInput(int ArticleId, decimal Quantity);
 public sealed record AssignmentInput(int ArticleId, int LaboratoryId, decimal Quantity);
 
 /// <summary>Origen candidato de una línea: laboratorio activo con existencias del artículo y su cantidad libre.</summary>
-public sealed record OriginOption(int LaboratoryId, string Code, string Name, decimal Free);
+/// <remarks><paramref name="Registered"/> = el origen tiene existencias registradas del artículo; si no, no se valida su libre
+/// (igual que el semáforo y la salida: sin registro de stock se avisa, no se bloquea).</remarks>
+public sealed record OriginOption(int LaboratoryId, string Code, string Name, decimal Free, bool Registered = true);
 
 /// <summary>
 /// Sugerencia de asignación de una línea: orígenes con su libre y el reparto sugerido (Economato primero;

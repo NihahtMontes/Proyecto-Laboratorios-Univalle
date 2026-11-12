@@ -234,11 +234,11 @@
                                                         <strong>@o.Code</strong>
                                                         <div class="dc-explain">@o.Name</div>
                                                     </td>
-                                                    <td class="align-middle text-center"><span class="badge badge-pill badge-light border">libre @o.Free.ToString("0.##")</span></td>
+                                                    <td class="align-middle text-center">@if (o.Registered) { <span class="badge badge-pill badge-light border">libre @o.Free.ToString("0.##")</span> } else { <span class="badge badge-pill badge-light border text-muted" title="Este origen no tiene existencias registradas del artículo: confirma si hay antes de entregar">sin registro</span> }</td>
                                                     <td class="align-middle">
                                                         <input type="number" class="form-control form-control-sm text-center dc-origin-qty" step="0.01" min="0"
                                                                data-article-id="@a.ArticleId" data-lab-id="@o.LaboratoryId" data-lab-code="@o.Code"
-                                                               data-free="@o.Free.ToString("0.##", CultureInfo.InvariantCulture)"
+                                                               data-free="@(o.Registered ? o.Free.ToString("0.##", CultureInfo.InvariantCulture) : "999999")"
                                                                data-requested="@a.Quantity.ToString("0.##", CultureInfo.InvariantCulture)"
                                                                data-suggested="@suggestedQty.ToString("0.##", CultureInfo.InvariantCulture)"
                                                                value="@suggestedQty.ToString("0.##", CultureInfo.InvariantCulture)" />
@@ -481,12 +481,36 @@
                 originCard.addEventListener('input', function (e) {
                     if (e.target && e.target.classList && e.target.classList.contains('dc-origin-qty')) recalcOrigins();
                 });
+                // Reparte la cantidad vigente del artículo entre sus orígenes en el orden sugerido (Economato primero),
+                // hasta lo libre de cada uno; si no alcanza, el resto queda en el primer origen (el servidor lo valida).
+                function splitArticle(artId) {
+                    var inputs = originCard.querySelectorAll('.dc-origin-qty[data-article-id="' + artId + '"]');
+                    if (!inputs.length) return;
+                    var qtyInput = document.querySelector('#approveForm input[name="qty[' + artId + ']"]');
+                    var remaining = qtyInput != null ? Math.max(0, num(qtyInput.value)) : num(inputs[0].getAttribute('data-requested'));
+                    var takes = [];
+                    for (var k = 0; k < inputs.length; k++) {
+                        var take = Math.min(remaining, Math.max(0, num(inputs[k].getAttribute('data-free'))));
+                        takes.push(take);
+                        remaining -= take;
+                    }
+                    if (remaining > 0.005) takes[0] += remaining;
+                    for (var k2 = 0; k2 < inputs.length; k2++) inputs[k2].value = fmt(takes[k2]);
+                }
                 var qtyInputs = document.querySelectorAll('#approveForm input[name^="qty["]');
-                for (var q = 0; q < qtyInputs.length; q++) qtyInputs[q].addEventListener('input', recalcOrigins);
+                for (var q = 0; q < qtyInputs.length; q++) qtyInputs[q].addEventListener('input', function (e) {
+                    var m = /qty\[(\d+)\]/.exec(e.target.name);
+                    if (m) splitArticle(m[1]);
+                    recalcOrigins();
+                });
                 var autoBtn = document.getElementById('btnAutoSplit');
                 if (autoBtn) autoBtn.addEventListener('click', function () {
+                    var seen = {};
                     var list = originCard.querySelectorAll('.dc-origin-qty');
-                    for (var k = 0; k < list.length; k++) list[k].value = list[k].getAttribute('data-suggested');
+                    for (var k = 0; k < list.length; k++) {
+                        var id = list[k].getAttribute('data-article-id');
+                        if (!seen[id]) { seen[id] = true; splitArticle(id); }
+                    }
                     recalcOrigins();
                 });
                 recalcOrigins();

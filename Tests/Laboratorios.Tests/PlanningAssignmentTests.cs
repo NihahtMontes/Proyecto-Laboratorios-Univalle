@@ -132,6 +132,66 @@ public class PlanningAssignmentTests
         Assert.Equal(2m, Assert.Single(line.Suggested, s => s.LaboratoryId == TestDb.LabA).Quantity);
     }
 
+    [Fact]
+    public async Task El_libre_por_origen_usa_el_pico_simultaneo_y_no_la_suma()
+    {
+        using var db = new TestDb();
+        Seed(db);
+        // Economato: 3 bowls. Dos prácticas que NO se cruzan entre sí (periodos 1-2 y 5-6) usan 3 cada una.
+        db.AddPlanning(1, TestDb.Week1Monday, 1, 2, laboratoryId: TestDb.LabA, status: PlanningStatus.Approved);
+        db.AddRequirement(1, Bowl, 3);
+        db.AddPlanning(2, TestDb.Week1Monday, 5, 2, laboratoryId: TestDb.LabA, status: PlanningStatus.Approved);
+        db.AddRequirement(2, Bowl, 3);
+        foreach (var id in new[] { 1, 2 })
+            db.Context.PlanningAssignments.Add(new PlanningAssignment { PlanningRequirementId = RequirementId(db, id, Bowl), LaboratoryId = Econo, Quantity = 3 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        // La solicitud abarca los periodos 2-5: se cruza con ambas, pero nunca con las dos a la vez.
+        db.AddPlanning(3, TestDb.Week1Monday, 2, 4, laboratoryId: TestDb.LabB, status: PlanningStatus.Requested, courseGroupId: 80);
+        db.AddRequirement(3, Bowl, 1);
+
+        var line = Assert.Single(await Service(db).SuggestAssignmentsAsync(3));
+
+        Assert.Equal(0m, line.Origins.Single(o => o.LaboratoryId == Econo).Free);   // pico 3 de 3
+        Assert.Equal(5m, line.Origins.Single(o => o.LaboratoryId == TestDb.LabA).Free);
+    }
+
+    [Fact]
+    public async Task Una_practica_anterior_sin_asignaciones_se_reparte_como_la_sugerencia()
+    {
+        using var db = new TestDb();
+        Seed(db);
+        // Práctica aprobada antes de la V13 (sin asignaciones) que usa 6 bowls: Economato 3 + Laboratorio A 3.
+        db.AddPlanning(1, TestDb.Week1Monday, 2, 2, laboratoryId: TestDb.LabA, status: PlanningStatus.Approved);
+        db.AddRequirement(1, Bowl, 6);
+        db.AddPlanning(2, TestDb.Week1Monday, 2, 2, laboratoryId: TestDb.LabB, status: PlanningStatus.Requested, courseGroupId: 80);
+        db.AddRequirement(2, Bowl, 2);
+
+        var line = Assert.Single(await Service(db).SuggestAssignmentsAsync(2));
+
+        Assert.Equal(0m, line.Origins.Single(o => o.LaboratoryId == Econo).Free);
+        Assert.Equal(2m, line.Origins.Single(o => o.LaboratoryId == TestDb.LabA).Free);
+        Assert.Equal(2m, Assert.Single(line.Suggested, s => s.LaboratoryId == TestDb.LabA).Quantity);
+    }
+
+    [Fact]
+    public async Task Un_articulo_sin_existencias_registradas_no_bloquea_la_aprobacion_por_origen()
+    {
+        using var db = new TestDb();
+        Seed(db);
+        db.Context.Articles.Add(new Article { Id = 602, Code = "SIN", Name = "Molde sin registro" });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        db.AddPlanning(1, TestDb.Week1Monday, 2, 2, laboratoryId: TestDb.LabB, status: PlanningStatus.Requested, courseGroupId: 80);
+        db.AddRequirement(1, 602, 4);
+
+        var line = Assert.Single(await Service(db).SuggestAssignmentsAsync(1));
+        var result = await Service(db).ApproveAsync(ReviewerUserId, 1, null, null);
+
+        Assert.False(Assert.Single(line.Origins).Registered);
+        Assert.True(result.Ok, result.Message);
+    }
+
     // ───────── Salida desde varios orígenes ─────────
 
     [Fact]

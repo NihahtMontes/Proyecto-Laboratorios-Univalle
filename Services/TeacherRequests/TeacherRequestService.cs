@@ -1180,7 +1180,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
             var origins = free.Origins
                 .Where(o => o.ArticleId == articleId || (o.ArticleId == null && o.LaboratoryId == free.EconomatoId))
                 .GroupBy(o => o.LaboratoryId).Select(g => g.First())
-                .Select(o => new OriginOption(o.LaboratoryId, o.Code, o.Name, free.Free.GetValueOrDefault((o.LaboratoryId, articleId))))
+                .Select(o => new OriginOption(o.LaboratoryId, o.Code, o.Name, free.Free.GetValueOrDefault((o.LaboratoryId, articleId)),
+                    free.Free.ContainsKey((o.LaboratoryId, articleId))))
                 .OrderBy(o => o.LaboratoryId == free.EconomatoId ? 0 : 1).ThenByDescending(o => o.Free).ThenBy(o => o.Code)
                 .ToList();
 
@@ -1253,17 +1254,50 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 })
                 .ToListAsync();
 
+        // Origen de la demanda de cada otra práctica: sus asignaciones; si no tiene (planificaciones anteriores a la V13),
+        // se reparte como lo haría la sugerencia: Economato primero y luego los demás orígenes, hasta su existencia.
+        var stockByArticle = stocks.GroupBy(s => s.ArticleId).ToDictionary(g => g.Key, g => g
+            .OrderBy(s => s.LaboratoryId == economato?.LaboratoryId ? 0 : 1).ThenByDescending(s => s.AvailableQuantity)
+            .Select(s => (s.LaboratoryId, s.AvailableQuantity)).ToList());
+        IEnumerable<(int LabId, decimal Qty)> OriginsOf(int articleId, decimal quantity, IEnumerable<(int LaboratoryId, decimal Quantity)> assigned)
+        {
+            var list = assigned.ToList();
+            if (list.Count > 0) return list;
+            var result = new List<(int, decimal)>();
+            var remaining = quantity;
+            foreach (var (labId, existence) in stockByArticle.GetValueOrDefault(articleId) ?? [])
+            {
+                if (remaining <= 0) break;
+                var take = Math.Min(remaining, existence);
+                if (take > 0) result.Add((labId, take));
+                remaining -= take;
+            }
+            if (remaining > 0 && economato != null) result.Add((economato.LaboratoryId, remaining));
+            return result;
+        }
+
+        // Reutilizables: pico SIMULTÁNEO por origen dentro de la ventana (misma regla de tramos que el semáforo:
+        // dos prácticas que no se cruzan entre sí no suman). Consumibles: todo lo pedido desde hoy hasta la fecha.
+        var times = others.ToDictionary(o => o.Id, o => (o.StartTime, o.EndTime));
+        var timed = new Dictionary<(int, int), List<(int Id, TimedDemand Demand)>>();
         var taken = new Dictionary<(int, int), decimal>();
-        void Take(int labId, int articleId, decimal qty) => taken[(labId, articleId)] = taken.GetValueOrDefault((labId, articleId)) + qty;
         foreach (var d in demands)
         {
-            // Reutilizables: solo cuentan las que se cruzan en horario; consumibles: todas las anteriores o del día.
-            if (!consumables.Contains(d.ArticleId) && !overlapping.Contains(d.PlanningId)) continue;
-            if (d.Assignments.Count > 0)
-                foreach (var a in d.Assignments) Take(a.LaboratoryId, d.ArticleId, a.Quantity);
-            else if (economato != null)
-                Take(economato.LaboratoryId, d.ArticleId, d.Quantity);
+            var consumable = consumables.Contains(d.ArticleId);
+            if (!consumable && !overlapping.Contains(d.PlanningId)) continue;
+            foreach (var (labId, qty) in OriginsOf(d.ArticleId, d.Quantity, d.Assignments.Select(a => (a.LaboratoryId, a.Quantity))))
+            {
+                var key = (labId, d.ArticleId);
+                if (consumable) { taken[key] = taken.GetValueOrDefault(key) + qty; continue; }
+                if (!timed.TryGetValue(key, out var list)) timed[key] = list = [];
+                var (s, e) = times[d.PlanningId];
+                list.Add((d.PlanningId, new TimedDemand(qty, s, e)));
+            }
         }
+        foreach (var (key, list) in timed)
+            taken[key] = taken.GetValueOrDefault(key) + DemandPeak.Segments(list)
+                .Where(seg => seg.Start < windowEnd && windowStart < seg.End)
+                .Select(seg => seg.Load).DefaultIfEmpty(0).Max();
         var overdue = await StockRules.OverdueByOriginAsync(_context, articleIds, date + windowStart);
 
         var freeMap = new Dictionary<(int, int), decimal>();
@@ -1309,6 +1343,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
             var free = await FreeByOriginAsync(plan.Id, plan.ScheduledDate.Date, start, end, articleIds);
             var over = wanted
                 .GroupBy(a => (a.LaboratoryId, a.ArticleId))
+                // Sin existencias registradas en ese origen no hay libre que validar (se avisa en la salida, como hoy).
+                .Where(g => free.Free.ContainsKey(g.Key))
                 .Select(g => new { g.Key.LaboratoryId, g.Key.ArticleId, Qty = g.Sum(a => a.Quantity), Free = free.Free.GetValueOrDefault(g.Key) })
                 .Where(x => x.Qty > x.Free)
                 .ToList();
