@@ -49,9 +49,23 @@ public class NuevaSolicitudModel : TeacherPageBase
     [BindProperty] public string? Note { get; set; }
     [BindProperty] public int? PlanningId { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? copyFrom, int? scheduleId)
+    public async Task<IActionResult> OnGetAsync(int? id, int? copyFrom, int? scheduleId, DateTime? date, int? startPeriodId, int? labId)
     {
         await LoadListsAsync();
+        if (id == null && copyFrom == null && scheduleId == null && date is DateTime slotDate && Window.Contains(slotDate))
+        {
+            // Desde "Disponibilidad por semana": el docente tocó una celda libre; llegan precargados día, periodo y laboratorio.
+            InitialStateJson = JsonSerializer.Serialize(new
+            {
+                date = slotDate.ToString("yyyy-MM-dd"),
+                weekDate = slotDate.ToString("yyyy-MM-dd"),
+                startPeriodId,
+                periodCount = 2,
+                labId,
+                lines = Array.Empty<object>()
+            }, Json);
+            return Page();
+        }
         if (id == null && copyFrom == null && scheduleId is int programmed)
         {
             // Desde el cronograma: grupo, práctica y semana precargados; el docente elige día, horario y material.

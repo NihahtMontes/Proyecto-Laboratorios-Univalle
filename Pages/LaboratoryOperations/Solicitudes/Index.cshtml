@@ -23,7 +23,7 @@
             <div class="text-muted small">Ordenadas por la fecha de la práctica: lo más urgente primero. Una solicitud no reserva el laboratorio hasta aprobarla.</div>
         </div>
         <div class="col-md-5 text-md-right mt-3 mt-md-0">
-            @if (Model.Tab == "revisar" && clean.Count > 0)
+            @if (Model.Tab == "revisar" && clean.Count > 0 && !Model.HasFilters)
             {
                 <form method="post" asp-page-handler="ApproveClean" id="approveCleanForm" class="d-inline">
                     @foreach (var row in clean)
@@ -40,26 +40,78 @@
 </div>
 
 <div class="container-fluid mt-3">
-    <div class="row mb-3">
-        <div class="col-md-4 mb-2">
-            <a asp-route-tab="revisar" class="dc-kpi @(Model.Tab == "revisar" ? "border-primary" : null)">
-                <span class="dc-kpi__icon dc-soft-primary"><i class="fas fa-inbox"></i></span>
-                <div><div class="dc-kpi__value">@Model.ToReview</div><div class="dc-kpi__label">Por revisar</div></div>
-            </a>
+    <!-- Pestañas por estado (los contadores respetan los filtros) -->
+    <ul class="nav nav-pills dc-tabs mb-3" id="sol-tabs" role="tablist">
+        @foreach (var t in IndexModel.Tabs)
+        {
+            var count = Model.TabCounts.GetValueOrDefault(t.Key);
+            <li class="nav-item">
+                <a class="nav-link @(Model.Tab == t.Key ? "active" : null)" asp-page="./Index" asp-all-route-data="@Model.FilterRoute(t.Key)" data-tab="@t.Key">
+                    <i class="@t.Icon mr-1"></i>@t.Label
+                    <span class="badge badge-pill @(Model.Tab == t.Key ? "badge-light" : t.Key == "revisar" && count > 0 ? "badge-danger" : "badge-secondary") ml-1">@count</span>
+                </a>
+            </li>
+        }
+    </ul>
+
+    <!-- Filtros -->
+    <form method="get" class="card border-0 shadow-sm mb-3" style="border-radius:16px;" id="sol-filters">
+        <div class="card-body py-3">
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <div class="form-row align-items-end">
+                <div class="form-group col-lg-3 col-md-6 mb-2">
+                    <label for="f-q" class="small font-weight-bold text-muted mb-1">BUSCAR</label>
+                    <input type="search" id="f-q" name="q" value="@Model.Q" class="form-control form-control-sm" placeholder="Código (PRA-00123) o nombre de la práctica" maxlength="80" />
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-teacher" class="small font-weight-bold text-muted mb-1">DOCENTE</label>
+                    <select id="f-teacher" name="teacherId" class="custom-select custom-select-sm">
+                        <option value="">Todos</option>
+                        @foreach (var o in Model.TeacherOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.TeacherId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-subject" class="small font-weight-bold text-muted mb-1">MATERIA</label>
+                    <select id="f-subject" name="subjectId" class="custom-select custom-select-sm">
+                        <option value="">Todas</option>
+                        @foreach (var o in Model.SubjectOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.SubjectId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-lab" class="small font-weight-bold text-muted mb-1">LABORATORIO</label>
+                    <select id="f-lab" name="laboratoryId" class="custom-select custom-select-sm">
+                        <option value="">Todos</option>
+                        @foreach (var o in Model.LaboratoryOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.LaboratoryId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-3 col-md-12 mb-2">
+                    <label class="small font-weight-bold text-muted mb-1" for="f-from">FECHA DE LA PRÁCTICA</label>
+                    <div class="d-flex align-items-center">
+                        <input type="date" id="f-from" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" aria-label="Desde" />
+                        <span class="mx-1 text-muted">a</span>
+                        <input type="date" id="f-to" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" aria-label="Hasta" />
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 mr-2"><i class="fas fa-filter mr-1"></i>Filtrar</button>
+                @if (Model.HasFilters)
+                {
+                    <a asp-page="./Index" asp-route-tab="@Model.Tab" class="btn btn-light border btn-sm rounded-pill px-3" id="sol-clear"><i class="fas fa-times mr-1"></i>Quitar filtros</a>
+                    <span class="small text-muted ml-3">Mostrando solo lo que coincide con los filtros.</span>
+                }
+            </div>
         </div>
-        <div class="col-md-4 mb-2">
-            <a asp-route-tab="observadas" class="dc-kpi">
-                <span class="dc-kpi__icon dc-soft-orange"><i class="fas fa-comment-dots"></i></span>
-                <div><div class="dc-kpi__value">@Model.Observed</div><div class="dc-kpi__label">Esperando corrección del docente</div></div>
-            </a>
-        </div>
-        <div class="col-md-4 mb-2">
-            <a asp-route-tab="resueltas" class="dc-kpi">
-                <span class="dc-kpi__icon dc-soft-success"><i class="fas fa-history"></i></span>
-                <div><div class="dc-kpi__value"><i class="fas fa-arrow-right" style="font-size:1rem;"></i></div><div class="dc-kpi__label">Resueltas (30 días)</div></div>
-            </a>
-        </div>
-    </div>
+    </form>
 
     @if (Model.Coverage.Any(c => c.Expected > 0))
     {
@@ -104,7 +156,7 @@
             {
                 <div class="dc-empty">
                     <i class="fas fa-inbox text-success"></i>
-                    <div class="font-weight-bold text-dark">@(Model.Tab == "revisar" ? "¡Bandeja al día! No hay solicitudes por revisar." : "No hay solicitudes en esta vista.")</div>
+                    <div class="font-weight-bold text-dark">@(Model.HasFilters ? "Ninguna solicitud coincide con los filtros." : Model.Tab == "revisar" ? "¡Bandeja al día! No hay solicitudes por revisar." : "No hay solicitudes en esta vista.")</div>
                 </div>
             }
             else
@@ -116,7 +168,7 @@
                                 <th>Práctica y docente</th>
                                 <th>Cuándo</th>
                                 <th>Laboratorio</th>
-                                <th>Análisis</th>
+                                <th>@(Model.Tab == "revisar" ? "Análisis" : "Estado")</th>
                                 <th class="text-right"></th>
                             </tr>
                         </thead>
@@ -148,7 +200,11 @@
                                     <td>
                                         @if (row.Status != PlanningStatus.Requested)
                                         {
-                                            <span class="badge badge-pill badge-@PlanningStatusView.Css(row.Status)">@PlanningStatus.Label(row.Status)</span>
+                                            <span class="badge badge-pill badge-@row.StatusCss">@row.StatusLabel</span>
+                                            @if (row.LastActionDate is DateTime last)
+                                            {
+                                                <div class="small text-muted mt-1">Última acción: @last.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                            }
                                         }
                                         else if (row.Clean)
                                         {
@@ -184,6 +240,10 @@
                         </tbody>
                     </table>
                 </div>
+                @if (Model.Truncated)
+                {
+                    <div class="small text-muted px-3 py-2 border-top">Se muestran las primeras @IndexModel.MaxRows. Use los filtros para acotar.</div>
+                }
             }
         </div>
     </div>

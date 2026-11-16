@@ -255,6 +255,16 @@
                         </a>
                     </li>
 
+                    @if (User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+                    {
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Importar" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-file-excel"></i>
+                                <span class="hide-menu">Cargar planificación (Excel)</span>
+                            </a>
+                        </li>
+                    }
+
                     <li class="sidebar-item">
                         <a asp-page="/LaboratoryOperations/CalendarioAcademico" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-calendar-text"></i>

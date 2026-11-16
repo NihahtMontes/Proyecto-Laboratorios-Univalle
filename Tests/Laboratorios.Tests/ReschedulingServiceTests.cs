@@ -217,19 +217,34 @@ public class ReschedulingServiceTests
         AssertNothingChanged(db, plannings: 1);
     }
 
-    [Fact]
-    public async Task Departures_StayInOrigin()
+    [Theory]
+    [InlineData(LoanStatus.Active)]
+    [InlineData(LoanStatus.Returned)]
+    public async Task DeliveredMaterial_BlocksManualRescheduling(LoanStatus departureStatus)
     {
+        // Regla del 2026-11-15: con material entregado la práctica está en ejecución y no se reprograma a mano.
         using var db = new TestDb();
         db.AddPlanning(OriginId, OriginDate, 1, 2, status: PlanningStatus.Approved);
-        db.AddDeparture(OriginId, LoanStatus.Active);
+        db.AddDeparture(OriginId, departureStatus);
 
         var result = await Service(db).ExecuteAsync(Command(TargetDate, 3, accepted: [Codes.OpenDeparture]));
 
+        Assert.False(result.Ok);
+        Assert.Equal(ReschedulingService.MaterialDeliveredMessage, result.Message);
+        Assert.Equal(PlanningStatus.Approved, Load(db, OriginId).Status);
+        Assert.Empty(db.Context.Reschedulings.AsNoTracking());
+    }
+
+    [Fact]
+    public async Task CancelledDeparture_DoesNotBlockRescheduling()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(OriginId, OriginDate, 1, 2, status: PlanningStatus.Approved);
+        db.AddDeparture(OriginId, LoanStatus.Cancelled);
+
+        var result = await Service(db).ExecuteAsync(Command(TargetDate, 3));
+
         Assert.True(result.Ok, result.Message);
-        var departure = Assert.Single(db.Context.Departures.AsNoTracking());
-        Assert.Equal(OriginId, departure.PlanningId);
-        Assert.False(db.Context.Departures.AsNoTracking().Any(d => d.PlanningId == result.DestinationPlanningId));
     }
 
     [Fact]

@@ -28,6 +28,11 @@ public class ReposicionesModel : PageModel
 
     [BindProperty(SupportsGet = true)] public int? ManagementId { get; set; }
     [BindProperty(SupportsGet = true)] public int? RecoveryId { get; set; }
+    /// <summary>Filtro por categoría del motivo (una de DayRecoveryReasonCategories.All; vacío = todas).</summary>
+    [BindProperty(SupportsGet = true)] public string? Category { get; set; }
+    /// <summary>Categorías con al menos una reposición en la gestión, con su cantidad.</summary>
+    public IReadOnlyList<(string Name, int Count)> CategoryCounts { get; private set; } = [];
+    public int TotalRecoveries { get; private set; }
     public AcademicManagementSummary? Management { get; private set; }
     public IReadOnlyList<AcademicManagementSummary> Managements { get; private set; } = [];
     public bool CanRecover => ManagerRoles.Any(User.IsInRole) && Management?.IsEditable == true;
@@ -37,7 +42,7 @@ public class ReposicionesModel : PageModel
     /// <summary>Bloques ya repuestos de la reposición seleccionada (desde Reschedulings).</summary>
     public IReadOnlyList<RescheduledRow> RescheduledRows { get; private set; } = [];
 
-    public sealed record RecoveryRow(int Id, DateTime Date, string Reason, DayRecoveryStatus Status, int Pending, int Recovered)
+    public sealed record RecoveryRow(int Id, DateTime Date, string Reason, DayRecoveryStatus Status, int Pending, int Recovered, string? Category = null)
     {
         public int Total => Pending + Recovered;
     }
@@ -45,7 +50,7 @@ public class ReposicionesModel : PageModel
         string Teacher, int PeriodCount, string Periods, string PreviousStatus);
     public sealed record PendingGroup(string Laboratory, IReadOnlyList<PendingPlanning> Plannings);
     public sealed record RescheduledRow(int PlanningId, string Code, string Subject, string Group,
-        DateTime Date, string Periods, string Laboratory);
+        DateTime Date, string Periods, string Laboratory, string Reason);
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -57,7 +62,7 @@ public class ReposicionesModel : PageModel
         var recoveries = await _context.DayRecoveries.AsNoTracking()
             .Where(r => r.ManagementId == Management.Id)
             .OrderByDescending(r => r.Date)
-            .Select(r => new { r.Id, r.Date, r.Reason, r.Status })
+            .Select(r => new { r.Id, r.Date, r.Reason, r.Status, r.ReasonCategory })
             .ToListAsync();
         var pendingDates = await _context.Plannings.AsNoTracking()
             .Where(p => p.ManagementId == Management.Id && p.Status == PlanningStatus.PendingRecovery)
@@ -68,8 +73,17 @@ public class ReposicionesModel : PageModel
             .GroupBy(r => r.DayRecoveryId!.Value)
             .Select(g => new { Id = g.Key, Count = g.Count() }).ToDictionaryAsync(g => g.Id, g => g.Count);
 
-        Recoveries = recoveries.Select(r => new RecoveryRow(r.Id, r.Date, r.Reason, r.Status,
-            pending.GetValueOrDefault(r.Date.Date), moved.GetValueOrDefault(r.Id))).ToList();
+        const string noCategory = "Sin categoría";
+        TotalRecoveries = recoveries.Count;
+        CategoryCounts = recoveries.GroupBy(r => r.ReasonCategory ?? noCategory)
+            .Select(g => (Name: g.Key, Count: g.Count()))
+            .OrderBy(c => c.Name == noCategory ? 1 : 0).ThenBy(c => c.Name).ToList();
+        if (!string.IsNullOrWhiteSpace(Category) && CategoryCounts.All(c => c.Name != Category))
+            Category = null;
+        Recoveries = recoveries
+            .Where(r => string.IsNullOrWhiteSpace(Category) || (r.ReasonCategory ?? noCategory) == Category)
+            .Select(r => new RecoveryRow(r.Id, r.Date, r.Reason, r.Status,
+                pending.GetValueOrDefault(r.Date.Date), moved.GetValueOrDefault(r.Id), r.ReasonCategory)).ToList();
         Selected = Recoveries.FirstOrDefault(r => r.Id == RecoveryId)
             ?? Recoveries.FirstOrDefault(r => r.Status == DayRecoveryStatus.InProgress)
             ?? Recoveries.FirstOrDefault();
@@ -93,14 +107,15 @@ public class ReposicionesModel : PageModel
                     ? x.DestinationLaboratory.Code + " · " + x.DestinationLaboratory.Name : "Sin laboratorio",
                 Subject = x.DestinationPlanning.Subject != null
                     ? x.DestinationPlanning.Subject.Name : x.DestinationPlanning.PracticeName,
-                Group = x.DestinationPlanning.GroupName
+                Group = x.DestinationPlanning.GroupName,
+                x.Reason
             })
             .ToListAsync();
         RescheduledRows = rescheduled.Select(x => new RescheduledRow(x.OriginPlanningId, L3Codes.Format(x.OriginPlanningId, x.OriginCode),
             x.Subject ?? "Sin materia", x.Group ?? "—", x.DestinationDate.Date,
             x.StartOrder is int order && x.DestinationPeriodCount > 0
                 ? PlanningSlot.PeriodsText(order, x.DestinationPeriodCount) : "Sin periodos",
-            x.Laboratory)).ToList();
+            x.Laboratory, x.Reason)).ToList();
 
         if (Selected.Pending == 0) return Page();
 

@@ -908,10 +908,20 @@
                                     <input type="date" id="recovery-date" name="date" class="form-control" required />
                                 </div>
                                 <div class="form-group">
+                                    <label for="recovery-category" class="small font-weight-bold">CATEGORÍA DEL MOTIVO <span class="text-danger">*</span></label>
+                                    <select id="recovery-category" name="category" class="custom-select" required>
+                                        <option value="">— Elegir —</option>
+                                        @foreach (var c in Proyecto_Laboratorios_Univalle.Models.DayRecoveryReasonCategories.All)
+                                        {
+                                            <option value="@c">@c</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label for="recovery-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
                                     <textarea id="recovery-reason" name="reason" class="form-control" rows="3" maxlength="200" required
-                                              placeholder="Ej. Feriado institucional, evento académico..."></textarea>
-                                    <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                                              placeholder="Describa qué pasó, por ejemplo: feriado departamental declarado por la gobernación"></textarea>
+                                    <small class="text-muted">Obligatorio, máximo 200 caracteres. Se recomiendan al menos 5 palabras.</small>
                                 </div>
                                 <div id="recovery-preview" class="pn-recovery-preview" aria-live="polite">
                                     <div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>
@@ -1026,6 +1036,8 @@
                 $(recoveryForm).closest('.modal').on('show.bs.modal', function () {
                     dateInput.value = '';
                     reasonInput.value = '';
+                    var categoryInput = document.getElementById('recovery-category');
+                    if (categoryInput) categoryInput.value = '';
                     lastPreview = null;
                     confirmButton.disabled = true;
                     previewBox.innerHTML = '<div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>';
@@ -1051,6 +1063,7 @@
                         HTMLFormElement.prototype.submit.call(recoveryForm);
                     };
                     if (typeof Swal === 'undefined') { send(); return; }
+                    var ask = function () {
                     Swal.fire({
                         title: '¿Suspender el día?',
                         text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
@@ -1063,6 +1076,8 @@
                     }).then(function (result) {
                         if (result && (result.isConfirmed === true || result.value === true)) send();
                     });
+                    };
+                    Motivo.check(reasonInput.value, ask, reasonInput);
                 });
             }
 

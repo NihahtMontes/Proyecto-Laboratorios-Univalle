@@ -344,7 +344,7 @@ public class IndexModel : PageModel
     }
 
     /// <summary>Suspende el día elegido desde el panel, crea la reposición y abre la grilla con los afectados.</summary>
-    public async Task<IActionResult> OnPostRecoverDayAsync(int managementId, string date, string? reason)
+    public async Task<IActionResult> OnPostRecoverDayAsync(int managementId, string date, string? reason, string? category)
     {
         if (!UserCanRecover)
         {
@@ -356,7 +356,7 @@ public class IndexModel : PageModel
             TempData.Error("Elija una fecha válida para reponer.");
             return RedirectToPage(new { managementId });
         }
-        var result = await _recoveries.SuspendByDateAsync(managementId, parsed, reason);
+        var result = await _recoveries.SuspendByDateAsync(managementId, parsed, reason, category);
         if (result.Ok)
         {
             TempData.Success(result.Message);

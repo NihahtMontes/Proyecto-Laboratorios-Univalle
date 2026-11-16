@@ -126,6 +126,7 @@ builder.Services.AddScoped<IStudentGroupService, StudentGroupService>();
 builder.Services.AddScoped<ISlotValidationService, SlotValidationService>();
 builder.Services.AddScoped<IPlanningLock, SqlServerPlanningLock>();
 builder.Services.AddScoped<IReschedulingService, ReschedulingService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.PlanningImport.IPlanningImportService, Proyecto_Laboratorios_Univalle.Services.PlanningImport.PlanningImportService>();
 builder.Services.AddScoped<IDayRecoveryService, DayRecoveryService>();
 builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();

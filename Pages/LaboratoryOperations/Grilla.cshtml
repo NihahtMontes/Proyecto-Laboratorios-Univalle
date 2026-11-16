@@ -75,15 +75,38 @@
 
         @if (mode)
         {
-            <!-- Banda del modo reprogramación -->
-            <div class="gr-rs-band shadow-sm rounded-lg mb-3 gr-noprint" role="status">
-                <i class="mdi mdi-calendar-clock gr-rs-band__icon" aria-hidden="true"></i>
+            <!-- Banda del modo: azul = reprogramar una clase; naranja = reponer un día suspendido -->
+            var rec = Model.ActiveRecovery;
+            <div class="gr-rs-band gr-rs-band--@(Model.IsRecoveryMode ? "recovery" : "move") shadow-sm rounded-lg mb-3 gr-noprint" role="status" id="gr-rs-band">
+                <i class="mdi @(Model.IsRecoveryMode ? "mdi-backup-restore" : "mdi-calendar-clock") gr-rs-band__icon" aria-hidden="true"></i>
                 <div class="gr-rs-band__text">
-                        <span class="gr-rs-band__eyebrow">@(Model.IsRecoveryMode ? "Reponiendo día" : "Reprogramando")</span>
-                    <span>
-                        <strong>@origin!.Code</strong> · @origin.SubjectName (@origin.GroupName)
-                        · origen @origin.Date.ToString("dd/MM") @origin.PeriodsText · @origin.LaboratoryLabel
-                    </span>
+                    @if (Model.IsRecoveryMode)
+                    {
+                        <span class="gr-rs-band__eyebrow">Estás reponiendo un día suspendido</span>
+                        <span class="gr-rs-band__title">
+                            Día @origin!.Date.ToString("dd/MM/yyyy")
+                            @if (rec != null)
+                            {
+                                @if (!string.IsNullOrEmpty(rec.Category)) { <span class="badge badge-warning ml-1">@rec.Category</span> }
+                                <span class="ml-1">· quedan <strong>@rec.Pending</strong> de @rec.Total por reubicar</span>
+                            }
+                        </span>
+                        @if (rec != null && !string.IsNullOrWhiteSpace(rec.Reason))
+                        {
+                            <span class="small text-muted">Motivo: @rec.Reason</span>
+                        }
+                        <span class="small">
+                            Ahora: <strong>@origin.Code</strong> · @origin.SubjectName (@origin.GroupName) · @origin.PeriodsText · @origin.LaboratoryLabel
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="gr-rs-band__eyebrow">Estás reprogramando una clase</span>
+                        <span class="gr-rs-band__title"><strong>@origin!.Code</strong> · @origin.SubjectName (@origin.GroupName)</span>
+                        <span class="small">
+                            Hoy está el @origin.Date.ToString("dd/MM/yyyy") · @origin.PeriodsText · @origin.LaboratoryLabel. Solo se mueve esta clase.
+                        </span>
+                    }
                 </div>
                 @if (Model.SafeReturnUrl is string exitUrl)
                 {
@@ -91,7 +114,7 @@
                     <a href="@exitUrl"
                        id="gr-rs-exit"
                        class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
-                        <i class="fas fa-times mr-1"></i> Salir del modo de traslado
+                        <i class="fas fa-times mr-1"></i> @(Model.IsRecoveryMode ? "Salir de la reposición" : "Salir sin reprogramar")
                     </a>
                 }
                 else
@@ -100,7 +123,7 @@
                        asp-route-date="@origin.Date.ToString("yyyy-MM-dd", inv)"
                        id="gr-rs-exit"
                        class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
-                        <i class="fas fa-times mr-1"></i> Salir del modo de traslado
+                        <i class="fas fa-times mr-1"></i> @(Model.IsRecoveryMode ? "Salir de la reposición" : "Salir sin reprogramar")
                     </a>
                 }
                 @* Chips de ambientes: visibles solo durante un arrastre (los llena grilla-reprogramar.js) *@
@@ -122,10 +145,10 @@
         @if (overview != null && !mode)
         {
             <!-- Banda de reposición de día en curso (sin planificación elegida) -->
-            <div class="gr-rs-band shadow-sm rounded-lg mb-3 gr-noprint" role="status">
+            <div class="gr-rs-band gr-rs-band--recovery shadow-sm rounded-lg mb-3 gr-noprint" role="status">
                 <i class="mdi mdi-backup-restore gr-rs-band__icon" aria-hidden="true"></i>
                 <div class="gr-rs-band__text">
-                    <span class="gr-rs-band__eyebrow">Reposición de día en curso</span>
+                    <span class="gr-rs-band__eyebrow">Reposición de día en curso@(string.IsNullOrEmpty(overview.Category) ? "" : " · " + overview.Category)</span>
                     <span>
                         <strong>Afectados del @overview.Date.ToString("dd/MM/yyyy")</strong>
                         · @overview.Recovered de @overview.Total repuestas
@@ -539,7 +562,7 @@
                     <aside class="gr-layout__side gr-noprint" aria-label="Panel de reprogramación">
                         <div class="card border-0 shadow-sm rounded-lg gr-rs-panel" id="gr-rs-panel">
                             <div class="card-body p-3">
-                                 <h5 class="font-weight-bold text-dark mb-3"><i class="mdi mdi-calendar-clock gr-rs-violet mr-1"></i> @(Model.IsRecoveryMode ? "Reposición de día" : "Reprogramación")</h5>
+                                 <h5 class="font-weight-bold text-dark mb-3"><i class="mdi @(Model.IsRecoveryMode ? "mdi-backup-restore" : "mdi-calendar-clock") gr-rs-accent mr-1"></i> @(Model.IsRecoveryMode ? "Reponer día suspendido" : "Reprogramar una clase")</h5>
 
                                 <!-- Ficha del origen (arrastrable si el bloque no está en la vista) -->
                                 <div class="gr-rs-card @(Model.OriginInView ? string.Empty : "gr-rs-card--draggable")" id="gr-rs-origin-card"
@@ -664,11 +687,13 @@
 
                                     <!-- Confirmación: visible cuando el destino quedó fijado sin bloqueos -->
                                     <div id="gr-rs-confirm" class="gr-rs-confirm" hidden>
+                                        <div id="gr-rs-summary" class="gr-rs-summary" hidden aria-live="polite"></div>
                                         <div class="form-group mb-2">
-                                            <label for="gr-rs-reason" class="gr-controls__label">Motivo <span class="text-danger">*</span></label>
+                                            <label for="gr-rs-reason" class="gr-controls__label">@(Model.IsRecoveryMode ? "Motivo de esta reubicación" : "Motivo de la reprogramación") <span class="text-danger">*</span></label>
                                             <textarea id="gr-rs-reason" name="Move.Reason" class="form-control form-control-sm" rows="3"
                                                       maxlength="@ReschedulingService.MaxReasonLength" required
                                                       placeholder="Ej.: el docente tiene un congreso ese día">@Model.PreviousReason</textarea>
+                                            <small class="form-text text-muted">Obligatorio. Se recomiendan al menos 5 palabras.</small>
                                         </div>
                                         <div class="custom-control custom-checkbox mb-2" id="gr-rs-accept-wrap" hidden>
                                             <input type="checkbox" class="custom-control-input" id="gr-rs-accept" />
@@ -718,7 +743,7 @@
                                                 <a asp-page="./Grilla" asp-route-reponer="@pending.Id" asp-route-recoveryId="@overview.Id"
                                                    asp-route-laboratoryId="@pending.LaboratoryId" asp-route-managementId="@management.Id"
                                                    class="btn btn-sm btn-outline-warning btn-rounded mt-1">
-                                                    <i class="mdi mdi-arrow-right-bold mr-1"></i>Reprogramar
+                                                    <i class="mdi mdi-backup-restore mr-1"></i>Reponer
                                                 </a>
                                             </div>
                                         }
@@ -748,6 +773,8 @@
         originStartOrder = origin.StartOrder,
         originLabId = origin.LaboratoryId,
         originTeacherId = origin.TeacherPersonId,
+        originLabLabel = origin.LaboratoryLabel,
+        originTeacherName = origin.TeacherName,
         maxOrder = grid.Periods.Count > 0 ? grid.Periods.Max(p => p.Order) : PlanningSlot.MaxPeriods,
         validateUrl = Url.Page("/Api/SlotValidation"),
         periods = grid.Periods.Select(p => new { id = p.Id, order = p.Order, label = p.Label }),
