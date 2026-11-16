@@ -73,7 +73,7 @@
                     </li>
 
                     <li class="sidebar-item">
-                        <a asp-page="/Index" class="sidebar-link waves-effect waves-dark">
+                        <a asp-page="/AssetView/Index" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-home-outline"></i>
                             <span class="hide-menu">Inicio</span>
                         </a>
@@ -93,7 +93,7 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a asp-page="/Index" asp-route-ShowWizard="true" class="sidebar-link waves-effect waves-dark">
+                            <a asp-page="/Managements/Index" asp-page-handler="CurrentPreventive" class="sidebar-link waves-effect waves-dark">
                                 <i class="mdi mdi-shield-outline"></i>
                                 <span class="hide-menu">Mantenimiento preventivo</span>
                             </a>
@@ -134,14 +134,14 @@
                                 <li class="sidebar-item">
                                     <a asp-page="/Verifications/Index" class="sidebar-link waves-effect waves-dark">
                                         <i class="mdi mdi-checkbox-marked-circle-outline"></i>
-                                        <span class="hide-menu">Verificaciones de equipos</span>
+                                        <span class="hide-menu">L6 · Verificaciones</span>
                                     </a>
                                 </li>
                             }
                             <li class="sidebar-item">
                                 <a asp-page="/Requests/Index" class="sidebar-link waves-effect waves-dark">
                                     <i class="mdi mdi-message-text-outline"></i>
-                                    <span class="hide-menu">Solicitudes de servicio técnico</span>
+                                    <span class="hide-menu">L7 · Servicio técnico</span>
                                 </a>
                             </li>
                             @if (isAdminMenu)
@@ -149,20 +149,20 @@
                                 <li class="sidebar-item">
                                     <a asp-page="/Maintenances/Index" class="sidebar-link waves-effect waves-dark">
                                         <i class="mdi mdi-clipboard-outline"></i>
-                                        <span class="hide-menu">Registros de mantenimiento</span>
+                                        <span class="hide-menu">L8 · Kardex</span>
                                     </a>
                                 </li>
                                 <li class="sidebar-item">
                                     <a asp-page="/Departures/Index" class="sidebar-link waves-effect waves-dark">
                                         <i class="mdi mdi-truck-delivery"></i>
-                                        <span class="hide-menu">Salidas de equipos</span>
+                                        <span class="hide-menu">L3 · Salidas</span>
                                     </a>
                                 </li>
                             }
                             <li class="sidebar-item">
                                 <a asp-page="/Acquisitions/Index" class="sidebar-link waves-effect waves-dark">
                                     <i class="mdi mdi-cart-outline"></i>
-                                    <span class="hide-menu">Solicitudes de compra</span>
+                                    <span class="hide-menu">Adquisición</span>
                                 </a>
                             </li>
                         </ul>
@@ -182,13 +182,6 @@
                             </a>
                         </li>
                     }
-
-                    <li class="sidebar-item">
-                        <a asp-page="/AssetView/Index" class="sidebar-link waves-effect waves-dark">
-                            <i class="mdi mdi-database"></i>
-                            <span class="hide-menu">Inventario general</span>
-                        </a>
-                    </li>
 
                     @if (isAdminMenu)
                     {

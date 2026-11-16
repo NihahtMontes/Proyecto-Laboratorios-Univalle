@@ -182,6 +182,8 @@ builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");
     options.Conventions.AllowAnonymousToPage("/Login");
+    // Inicio de la gestión (Admin, SuperAdmin, Supervisor): la página de inventario hace de portada.
+    options.Conventions.AddPageRoute("/AssetView/Index", "Inicio");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}/{*extra}");
     options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}");

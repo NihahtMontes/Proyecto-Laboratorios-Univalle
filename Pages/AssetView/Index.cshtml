@@ -2,7 +2,7 @@
 @model Proyecto_Laboratorios_Univalle.Pages.AssetView.IndexModel
 
 @{
-    ViewData["Title"] = "Ver Inventario";
+    ViewData["Title"] = "Inicio";
     // /Catalogs/Stock y /EquipmentUnits son solo para Administrator/SuperAdmin: el Supervisor ve la tarjeta sin enlace.
     var canOpenAdminLists = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin");
     var adminLinkStyle = canOpenAdminLists ? "" : "pointer-events:none;cursor:default;";
@@ -10,6 +10,59 @@
 
 @section Styles {
     <style>
+        .inicio-shortcut-card {
+            display: block;
+            background: #fff;
+            border: 1px solid #edf1f5;
+            border-radius: 10px;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, .05);
+            padding: 1.15rem 1.25rem;
+            height: 100%;
+            color: #263445;
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+
+        .inicio-shortcut-card:hover,
+        .inicio-shortcut-card:focus {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, .10);
+            border-color: #d9e2ef;
+            text-decoration: none;
+            color: #263445;
+        }
+
+        .inicio-shortcut-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .inicio-icon-blue { background: rgba(41, 98, 255, .10); color: #2962ff; }
+        .inicio-icon-green { background: rgba(0, 194, 146, .12); color: #00a584; }
+        .inicio-icon-amber { background: rgba(255, 178, 43, .16); color: #e08600; }
+        .inicio-icon-purple { background: rgba(116, 96, 238, .12); color: #7460ee; }
+        .inicio-icon-cyan { background: rgba(3, 169, 243, .12); color: #03a9f3; }
+        .inicio-icon-red { background: rgba(246, 45, 81, .10); color: #f62d51; }
+        .inicio-icon-slate { background: rgba(108, 117, 125, .12); color: #6c757d; }
+
+        .inicio-shortcut-value {
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        .inicio-shortcut-code {
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: .5px;
+        }
+
         .asset-metric-tile {
             min-height: 134px;
             border-radius: 8px;
@@ -59,14 +112,6 @@
             min-height: 58px;
         }
 
-        .asset-chart-body {
-            min-height: 250px;
-        }
-
-        .asset-chart-body.asset-chart-body-sm {
-            min-height: 220px;
-        }
-
         .asset-empty-state {
             min-height: 210px;
             display: flex;
@@ -84,6 +129,52 @@
             display: block;
             margin-bottom: .65rem;
             color: #b8c2d6;
+        }
+
+        .inicio-chart-box {
+            position: relative;
+            min-height: 250px;
+        }
+
+        .inicio-chart-box-small {
+            min-height: 220px;
+        }
+
+        .inicio-chart-box .inicio-empty-inline {
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #8d97ad;
+        }
+
+        .inicio-donut-legend {
+            list-style: none;
+            padding: 0;
+            margin: .75rem 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .35rem .9rem;
+        }
+
+        .inicio-donut-legend li {
+            display: inline-flex;
+            align-items: center;
+            font-size: .8rem;
+            color: #546e7a;
+        }
+
+        .inicio-donut-legend .inicio-legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: .4rem;
+        }
+
+        .inicio-spinner {
+            color: #7460ee;
         }
 
         .asset-quality-track {
@@ -165,11 +256,6 @@
             line-height: 1;
             letter-spacing: 0;
         }
-
-        .c3-tooltip {
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .15);
-            border: 0;
-        }
     </style>
 }
 
@@ -178,8 +264,8 @@
         <div class="card shadow-sm border-0">
             <ul class="nav nav-tabs customtab px-4 pt-3 border-0" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link @(Model.ShowInventoryTab ? "" : "active") font-weight-bold" data-toggle="tab" href="#metricas" role="tab">
-                        <span class="hidden-xs-down"><i class="fas fa-chart-pie mr-2"></i> Metricas</span>
+                    <a class="nav-link @(Model.ShowInventoryTab || Model.ShowIndicatorsTab ? "" : "active") font-weight-bold" data-toggle="tab" href="#resumen" role="tab">
+                        <span class="hidden-xs-down"><i class="fas fa-home mr-2"></i> Resumen</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -187,15 +273,127 @@
                         <span class="hidden-xs-down"><i class="fas fa-boxes mr-2"></i> Inventario</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link @(Model.ShowIndicatorsTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#indicadores" role="tab">
+                        <span class="hidden-xs-down"><i class="fas fa-chart-bar mr-2"></i> Indicadores</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="tab-content border-top">
-                <div class="tab-pane @(Model.ShowInventoryTab ? "" : "active")" id="metricas" role="tabpanel">
+                @* ════════════════════════════ RESUMEN ════════════════════════════ *@
+                <div class="tab-pane @(Model.ShowInventoryTab || Model.ShowIndicatorsTab ? "" : "active")" id="resumen" role="tabpanel">
                     <div class="card-body">
                         <div class="d-md-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
                             <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Metricas de Activos</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Indicadores vivos para revisar cobertura, clasificacion y estado del inventario.</h6>
+                                <h2 class="font-weight-bold text-dark mb-1">@Model.Greeting, @Model.UserDisplayName</h2>
+                                <div class="text-muted">
+                                    <i class="far fa-calendar mr-1"></i> @Model.TodayText
+                                    @if (Model.HasCorrective && !string.IsNullOrEmpty(Model.CorrectiveCode))
+                                    {
+                                        <span class="mx-2 text-muted">·</span>
+                                        <span><i class="fas fa-wrench mr-1"></i>Correctivo activo @Model.CorrectiveCode</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="text-muted small mt-2 mt-md-0">
+                                <i class="fas fa-database mr-1"></i> Unidades vigentes: <strong>@Model.TotalUnitsCount</strong>
+                            </div>
+                        </div>
+
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2 mb-1">Atajos rápidos</h3>
+                        <h6 class="card-subtitle text-muted ml-2 mb-4">Las tareas más frecuentes de tu rol, a un clic.</h6>
+
+                        <div class="row">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/LaboratoryOperations/Solicitudes/Index" class="inicio-shortcut-card" title="Revisar solicitudes de prácticas de docentes">
+                                    <span class="inicio-shortcut-icon inicio-icon-red mb-3"><i class="mdi mdi-inbox-arrow-down"></i></span>
+                                    <div class="inicio-shortcut-value font-weight-bold @(Model.PendingTeacherRequests == 0 ? "text-success" : "text-danger")">@(Model.PendingTeacherRequests > 0 ? Model.PendingTeacherRequests.ToString() : "✓")</div>
+                                    <div class="font-weight-bold mt-2">Solicitudes de docentes</div>
+                                    <small class="text-muted d-block">@(Model.PendingTeacherRequests == 0 ? "Sin prácticas por revisar" : $"{Model.PendingTeacherRequests} solicitud(es) por revisar")</small>
+                                </a>
+                            </div>
+
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Requests/Index" asp-page-handler="NewRequest" class="inicio-shortcut-card" title="Registrar una falla dentro del correctivo actual">
+                                    <span class="inicio-shortcut-icon inicio-icon-amber mb-3"><i class="mdi mdi-alert-circle-outline"></i></span>
+                                    <div class="inicio-shortcut-code font-weight-bold text-warning">Reportar</div>
+                                    <div class="font-weight-bold mt-2">Reportar una falla</div>
+                                    <small class="text-muted d-block">Crea la solicitud de servicio técnico del correctivo actual</small>
+                                </a>
+                            </div>
+
+                            @if (Model.IsAdminMenu)
+                            {
+                                <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                    <a asp-page="/Managements/Index" asp-page-handler="CurrentCorrective" class="inicio-shortcut-card" title="Abrir el panel de la gestión correctiva activa">
+                                        <span class="inicio-shortcut-icon inicio-icon-blue mb-3"><i class="mdi mdi-wrench"></i></span>
+                                        <div class="inicio-shortcut-value font-weight-bold @(Model.CorrectivePendingRequests == 0 ? "text-success" : "text-primary")">@(Model.CorrectivePendingRequests > 0 ? Model.CorrectivePendingRequests.ToString() : "✓")</div>
+                                        <div class="font-weight-bold mt-2">Panel del correctivo</div>
+                                        <small class="text-muted d-block">@(Model.HasCorrective ? $"{Model.CorrectivePendingRequests} solicitud(es) de servicio técnico pendientes" : "Sin gestión correctiva activa")</small>
+                                    </a>
+                                </div>
+
+                                <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                    <a asp-page="/Managements/Index" asp-page-handler="CurrentPreventive" class="inicio-shortcut-card" title="Abrir el panel de la gestión preventiva activa">
+                                        <span class="inicio-shortcut-icon inicio-icon-green mb-3"><i class="mdi mdi-shield-outline"></i></span>
+                                        <div class="inicio-shortcut-code font-weight-bold @(Model.HasPreventive ? "text-success" : "text-secondary")">@(Model.HasPreventive ? Model.PreventiveCode : "—")</div>
+                                        <div class="font-weight-bold mt-2">Mantenimiento preventivo</div>
+                                        <small class="text-muted d-block">
+                                            @(Model.HasPreventive
+                                                ? $"{Model.PreventivePlannedUnits} equipo(s) planificados · {Model.PreventiveCompletedUnits} completados"
+                                                : "Sin gestión preventiva activa")
+                                        </small>
+                                    </a>
+                                </div>
+                            }
+
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Requests/Index" class="inicio-shortcut-card" title="Listado y seguimiento de solicitudes de servicio técnico">
+                                    <span class="inicio-shortcut-icon inicio-icon-purple mb-3"><i class="mdi mdi-message-text-outline"></i></span>
+                                    <div class="inicio-shortcut-code font-weight-bold text-purple" style="color:#7460ee;">Solicitudes</div>
+                                    <div class="font-weight-bold mt-2">L7 · Servicio técnico</div>
+                                    <small class="text-muted d-block">Listado y seguimiento de solicitudes</small>
+                                </a>
+                            </div>
+
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Reports/Index" class="inicio-shortcut-card" title="Reportes institucionales">
+                                    <span class="inicio-shortcut-icon inicio-icon-cyan mb-3"><i class="mdi mdi-file-chart"></i></span>
+                                    <div class="inicio-shortcut-code font-weight-bold" style="color:#03a9f3;">PDF · Excel</div>
+                                    <div class="font-weight-bold mt-2">Reportes</div>
+                                    <small class="text-muted d-block">Reportes institucionales listos para descargar</small>
+                                </a>
+                            </div>
+
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/LaboratoryOperations/Index" class="inicio-shortcut-card" title="Panel de planificación académica">
+                                    <span class="inicio-shortcut-icon inicio-icon-blue mb-3"><i class="mdi mdi-view-dashboard"></i></span>
+                                    <div class="inicio-shortcut-code font-weight-bold" style="color:#2962ff;">Planificación</div>
+                                    <div class="font-weight-bold mt-2">Panel de planificación</div>
+                                    <small class="text-muted d-block">Solicitudes, grilla y calendario académico</small>
+                                </a>
+                            </div>
+
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Acquisitions/Index" class="inicio-shortcut-card" title="Solicitudes de compra y desembolsos">
+                                    <span class="inicio-shortcut-icon inicio-icon-amber mb-3"><i class="mdi mdi-cart-outline"></i></span>
+                                    <div class="inicio-shortcut-code font-weight-bold text-warning">Compras</div>
+                                    <div class="font-weight-bold mt-2">Adquisición</div>
+                                    <small class="text-muted d-block">Solicitudes de compra y desembolsos</small>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ════════════════════════════ INVENTARIO ════════════════════════════ *@
+                <div class="tab-pane @(Model.ShowInventoryTab ? "active" : "")" id="inventario" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por Tipo de Recurso</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Indicadores vivos y navegación en cascada para consultar unidades físicas vigentes.</h6>
                             </div>
                             <div class="text-muted small mt-2 mt-md-0">
                                 <i class="fas fa-database mr-1"></i> Unidades vigentes: <strong>@Model.TotalUnitsCount</strong>
@@ -208,16 +406,16 @@
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-cubes"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.TotalUnitsCount</div>
                                     <div class="font-weight-bold mt-2">Total activos</div>
-                                    <small>Unidades fisicas: patrimonio por N.º de inventario</small>
+                                    <small>Unidades físicas: patrimonio por N.º de inventario</small>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <a asp-page="/Catalogs/Stock/Index" class="text-decoration-none" title="Ver existencias de articulos consumibles" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                <a asp-page="/Catalogs/Stock/Index" class="text-decoration-none" title="Ver existencias de artículos consumibles" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
                                     <div class="asset-metric-tile asset-bg-teal p-3">
                                         <div class="asset-metric-icon mb-3"><i class="fas fa-boxes"></i></div>
                                         <div class="asset-metric-value font-weight-bold">@Model.StockRecordsCount</div>
                                         <div class="font-weight-bold mt-2">Existencias</div>
-                                        <small>Registros de stock de articulos consumibles</small>
+                                        <small>Registros de stock de artículos consumibles</small>
                                         <small class="d-block">Consumibles por stock en @Model.StockLaboratoriesCount ambiente(s)</small>
                                     </div>
                                 </a>
@@ -260,7 +458,7 @@
                             <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 @if (Model.UnitsWithoutSpecificClassificationCount > 0)
                                 {
-                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades físicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
                                         <div class="asset-metric-tile asset-bg-amber p-3">
                                             <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
                                             <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutSpecificClassificationCount</div>
@@ -275,7 +473,7 @@
                                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                                         <div class="asset-metric-value font-weight-bold">0</div>
                                         <div class="font-weight-bold mt-2">Por clasificar</div>
-                                        <small>Al dia: sin pendientes</small>
+                                        <small>Al día: sin pendientes</small>
                                     </div>
                                 }
                             </div>
@@ -292,7 +490,7 @@
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-exclamation-triangle"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutEnvironmentCount</div>
                                     <div class="font-weight-bold mt-2">Sin ambiente</div>
-                                    <small>Requieren ubicacion</small>
+                                    <small>Requieren ubicación</small>
                                 </div>
                             </div>
                         </div>
@@ -301,17 +499,8 @@
                             <div class="col-xl-4 col-lg-5 mb-4">
                                 <div class="asset-chart-panel p-4 h-100">
                                     <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Distribucion por recurso</h4>
-                                        <small class="text-muted">Equipos, utensilios y otros registrados.</small>
-                                    </div>
-                                    <div id="donut-chart" class="asset-chart-body"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-7 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Calidad de clasificacion</h4>
-                                        <small class="text-muted">Mide cuanto inventario ya tiene una clasificacion especifica.</small>
+                                        <h4 class="card-title mb-1">Calidad de clasificación</h4>
+                                        <small class="text-muted">Mide cuánto inventario ya tiene una clasificación específica.</small>
                                     </div>
                                     <div class="pt-3">
                                         <div class="d-flex align-items-end justify-content-between mb-2">
@@ -341,138 +530,45 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl-4 col-lg-12 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Estado operativo</h4>
-                                        <small class="text-muted">Situacion actual de las unidades fisicas.</small>
-                                    </div>
-                                    <div id="status-chart" class="asset-chart-body"></div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Equipos por clasificacion</h4>
-                                        <small class="text-muted">Subclasificacion tecnica de los equipos.</small>
-                                    </div>
-                                    <div id="bar-chart-equipment" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Utensilios por tipo</h4>
-                                        <small class="text-muted">Materiales, menaje y utensilios clasificados.</small>
-                                    </div>
-                                    <div id="bar-chart-utensil" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Otros por clasificacion</h4>
-                                        <small class="text-muted">Activos fuera de equipos y utensilios.</small>
-                                    </div>
-                                    <div id="bar-chart-other" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-6 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Condicion fisica</h4>
-                                        <small class="text-muted">Distribucion segun inspeccion fisica registrada.</small>
-                                    </div>
-                                    <div id="condition-chart" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-6 col-lg-12 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Top ambientes por inventario</h4>
-                                        <small class="text-muted">Ambientes con mayor carga de unidades vigentes.</small>
-                                    </div>
-                                    <div id="environment-chart" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane @(Model.ShowInventoryTab ? "active" : "")" id="inventario" role="tabpanel">
-                    <div class="card-body">
-                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
-                            <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por Tipo de Recurso</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Navegacion en cascada para consultar unidades fisicas vigentes.</h6>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <a asp-page="./EquipmentClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-primary h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-microscope"></i></div>
                                         <h4 class="asset-nav-title text-white font-weight-bold mb-4">Equipos</h4>
                                         <div class="asset-nav-value font-weight-bold mb-2">@Model.EquipmentUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas clasificadas como equipos.</p>
+                                        <p class="mb-0 font-weight-bold">Unidades físicas clasificadas como equipos.</p>
                                     </div>
                                 </a>
                             </div>
 
-                            <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <a asp-page="./UtensilClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-success h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-utensils"></i></div>
                                         <h4 class="asset-nav-title text-white font-weight-bold mb-4">Utensilios</h4>
                                         <div class="asset-nav-value font-weight-bold mb-2">@Model.UtensilUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas clasificadas como utensilios.</p>
+                                        <p class="mb-0 font-weight-bold">Unidades físicas clasificadas como utensilios.</p>
                                     </div>
                                 </a>
                             </div>
 
-                            <div class="col-xl-3 col-md-6 mb-3">
+                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
                                 <a asp-page="./OtherUnits" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-warning h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-layer-group"></i></div>
                                         <h4 class="asset-nav-title text-white font-weight-bold mb-4">Otros</h4>
                                         <div class="asset-nav-value font-weight-bold mb-2">@Model.OtherUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas fuera de equipos y utensilios.</p>
+                                        <p class="mb-0 font-weight-bold">Unidades fuera de equipos y utensilios.</p>
                                     </div>
                                 </a>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
-                                {
-                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
-                                        <div class="asset-nav-card bg-warning h-100 p-4">
-                                            <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
-                                            <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
-                                            <div class="asset-nav-value font-weight-bold mb-2">@Model.UnitsWithoutSpecificClassificationCount</div>
-                                            <p class="mb-0 font-weight-bold">Unidades fisicas pendientes de clasificacion.</p>
-                                        </div>
-                                    </a>
-                                }
-                                else
-                                {
-                                    <div class="asset-nav-card bg-secondary h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">0</div>
-                                        <p class="mb-0 font-weight-bold">Clasificacion al dia: sin pendientes.</p>
-                                    </div>
-                                }
                             </div>
                         </div>
 
                         <div class="d-md-flex align-items-center mt-4 mb-4 pb-3 border-bottom">
                             <div>
                                 <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por ambientes</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Consulta las unidades fisicas vigentes agrupadas por ambiente registrado.</h6>
+                                <h6 class="card-subtitle text-muted ml-2">Consulta las unidades físicas vigentes agrupadas por ambiente registrado.</h6>
                             </div>
                         </div>
 
@@ -487,6 +583,138 @@
                                     </div>
                                 </a>
                             </div>
+                            <div class="col-md-8 mb-3">
+                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
+                                {
+                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades físicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                        <div class="asset-nav-card bg-warning h-100 p-4">
+                                            <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
+                                            <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
+                                            <div class="asset-nav-value font-weight-bold mb-2">@Model.UnitsWithoutSpecificClassificationCount</div>
+                                            <p class="mb-0 font-weight-bold">Unidades físicas pendientes de clasificación.</p>
+                                        </div>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="asset-nav-card bg-secondary h-100 p-4">
+                                        <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
+                                        <div class="asset-nav-value font-weight-bold mb-2">0</div>
+                                        <p class="mb-0 font-weight-bold">Clasificación al día: sin pendientes.</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* ════════════════════════════ INDICADORES ════════════════════════════ *@
+                <div class="tab-pane @(Model.ShowIndicatorsTab ? "active" : "")" id="indicadores" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Indicadores del inventario</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Qué dice el inventario hoy: composición, estado y distribución por ambiente.</h6>
+                            </div>
+                            <div class="text-muted small mt-2 mt-md-0" id="indicadores-meta" data-placeholder="meta">
+                                <i class="far fa-clock mr-1"></i> Se actualiza cada 5 minutos.
+                            </div>
+                        </div>
+
+                        <div id="indicadores-loading" class="text-center py-5 inicio-spinner">
+                            <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+                            <div class="mt-3 text-muted">Cargando indicadores…</div>
+                        </div>
+
+                        <div id="indicadores-error" class="alert alert-warning d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            No se pudieron cargar los indicadores.
+                            <button type="button" class="btn btn-sm btn-outline-warning ml-2" id="indicadores-retry">Reintentar</button>
+                        </div>
+
+                        <div id="indicadores-content" class="d-none">
+                            <div class="row">
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="category"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="category"></small>
+                                        </div>
+                                        <div class="inicio-chart-box pt-2" data-indicadores-box="category">
+                                            <canvas id="indicadores-chart-category" role="img" aria-label="Distribución del inventario por tipo de recurso"></canvas>
+                                        </div>
+                                        <ul class="inicio-donut-legend" data-indicadores-legend="category"></ul>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="status"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="status"></small>
+                                        </div>
+                                        <div class="inicio-chart-box pt-2" data-indicadores-box="status">
+                                            <canvas id="indicadores-chart-status" role="img" aria-label="Estado operativo de las unidades físicas"></canvas>
+                                        </div>
+                                        <ul class="inicio-donut-legend" data-indicadores-legend="status"></ul>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="equipment"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="equipment"></small>
+                                        </div>
+                                        <div class="inicio-chart-box inicio-chart-box-small pt-2" data-indicadores-box="equipment">
+                                            <canvas id="indicadores-chart-equipment" role="img" aria-label="Equipos por clasificación técnica"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="utensil"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="utensil"></small>
+                                        </div>
+                                        <div class="inicio-chart-box inicio-chart-box-small pt-2" data-indicadores-box="utensil">
+                                            <canvas id="indicadores-chart-utensil" role="img" aria-label="Utensilios por tipo"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="other"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="other"></small>
+                                        </div>
+                                        <div class="inicio-chart-box inicio-chart-box-small pt-2" data-indicadores-box="other">
+                                            <canvas id="indicadores-chart-other" role="img" aria-label="Otros activos por clasificación"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-4 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="condition"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="condition"></small>
+                                        </div>
+                                        <div class="inicio-chart-box inicio-chart-box-small pt-2" data-indicadores-box="condition">
+                                            <canvas id="indicadores-chart-condition" role="img" aria-label="Condición física del inventario"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl-8 col-lg-6 col-12 mb-4">
+                                    <div class="asset-chart-panel p-4 h-100">
+                                        <div class="asset-chart-header">
+                                            <h4 class="card-title mb-1" data-indicadores-title="environment"></h4>
+                                            <small class="text-muted" data-indicadores-conclusion="environment"></small>
+                                        </div>
+                                        <div class="inicio-chart-box inicio-chart-box-small pt-2" data-indicadores-box="environment">
+                                            <canvas id="indicadores-chart-environment" role="img" aria-label="Ambientes con mayor cantidad de unidades"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -496,220 +724,254 @@
 </div>
 
 @section Scripts {
+    <!-- Chart.js 3.9.1 (misma URL de CDN que Managements/Details) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script>
         $(function () {
-            var categoryData = @Html.Raw(Model.CategoryDataJson);
-            var equipmentData = @Html.Raw(Model.EquipmentSubClassJson);
-            var utensilData = @Html.Raw(Model.UtensilSubClassJson);
-            var otherData = @Html.Raw(Model.OtherSubClassJson);
-            var statusData = @Html.Raw(Model.StatusDataJson);
-            var conditionData = @Html.Raw(Model.ConditionDataJson);
-            var environmentData = @Html.Raw(Model.EnvironmentDataJson);
-            var totalUnits = @Model.TotalUnitsCount;
-            var pendingClassificationUnits = @Model.UnitsWithoutSpecificClassificationCount;
-            var charts = [];
+            'use strict';
 
-            function hasDonutData(columns) {
-                return Array.isArray(columns) && columns.length > 0;
+            var indicadoresUrl = '@Url.Page("/AssetView/Index", "Indicadores")';
+            var chartsBuilt = false;
+            var activeCharts = [];
+
+            var donutPalette = ['#1e88e5', '#00c292', '#ffb22b', '#7460ee', '#03a9f3', '#95a5a6'];
+            var statusPalette = ['#00c292', '#1e88e5', '#ffb22b', '#f62d51', '#7460ee', '#03a9f3', '#95a5a6'];
+            var barColors = {
+                equipment: '#1e88e5',
+                utensil: '#00c292',
+                other: '#ffb22b',
+                condition: '#7460ee',
+                environment: '#03a9f3'
+            };
+
+            function escapeHtml(text) {
+                return $('<div>').text(text == null ? '' : String(text)).html();
             }
 
-            function hasBarData(payload) {
-                return payload && Array.isArray(payload.columns) && payload.columns.length > 0 &&
-                    Array.isArray(payload.categories) && payload.categories.length > 0;
-            }
-
-            function showEmpty(selector, icon, title, text) {
-                $(selector).html(
-                    '<div class="asset-empty-state">' +
-                    '<div><i class="' + icon + '"></i>' +
-                    '<h6 class="font-weight-bold mb-1">' + title + '</h6>' +
-                    '<div class="small">' + text + '</div></div>' +
-                    '</div>');
-            }
-
-            function renderDonut(selector, columns, title, colors, emptyIcon, emptyTitle, emptyText) {
-                if (!window.c3) {
-                    showEmpty(selector, "fas fa-chart-pie", "Graficos no disponibles", "No se pudo cargar C3.");
-                    return;
-                }
-
-                if (!hasDonutData(columns)) {
-                    showEmpty(selector, emptyIcon, emptyTitle, emptyText);
-                    return;
-                }
-
-                var chart = c3.generate({
-                    bindto: selector,
-                    size: { height: 250 },
-                    color: { pattern: colors },
-                    data: {
-                        columns: columns,
-                        type: "donut"
-                    },
-                    donut: {
-                        title: title,
-                        width: 28,
-                        label: {
-                            format: function (value, ratio) {
-                                return ratio >= 0.08 ? d3.format(".0%")(ratio) : "";
-                            }
+            // Escribe el valor al final de cada barra (plugin local, sin librerías extra).
+            var valueLabelsPlugin = {
+                id: 'inicioValueLabels',
+                afterDatasetsDraw: function (chart) {
+                    var ctx = chart.ctx;
+                    ctx.save();
+                    ctx.font = '600 11px "Segoe UI", Arial, sans-serif';
+                    ctx.fillStyle = '#475569';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    chart.getDatasetMeta(0).data.forEach(function (element, index) {
+                        var value = chart.data.datasets[0].data[index];
+                        if (value !== null && value !== undefined) {
+                            ctx.fillText(String(value), element.x + 6, element.y);
                         }
-                    },
-                    legend: {
-                        position: "bottom"
-                    },
-                    tooltip: {
-                        format: {
-                            value: function (value) {
-                                return value + " unidades";
-                            }
-                        }
-                    }
-                });
-                charts.push(chart);
+                    });
+                    ctx.restore();
+                }
+            };
+
+            // Total al centro de las donas.
+            var centerTotalPlugin = {
+                id: 'inicioCenterTotal',
+                afterDraw: function (chart) {
+                    var opts = chart.options.plugins.inicioCenterTotal;
+                    if (!opts || !opts.display) return;
+                    var arc = chart.getDatasetMeta(0).data[0];
+                    if (!arc) return;
+                    var ctx = chart.ctx;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+                    ctx.fillStyle = '#1f2937';
+                    ctx.fillText(opts.total, arc.x, arc.y - 9);
+                    ctx.font = '500 11px "Segoe UI", Arial, sans-serif';
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillText(opts.label, arc.x, arc.y + 12);
+                    ctx.restore();
+                }
+            };
+
+            function showEmptyBox(box, icon) {
+                box.css('min-height', '220px');
+                box.html(
+                    '<div class="inicio-empty-inline"><div>' +
+                    '<i class="' + icon + ' fa-2x mb-2 d-block" style="color:#b8c2d6;"></i>' +
+                    '<strong>Sin datos todavía</strong>' +
+                    '<div class="small text-muted mt-1">Cuando existan registros, el gráfico aparecerá aquí.</div>' +
+                    '</div></div>');
             }
 
-            function renderBar(selector, payload, color, emptyIcon, emptyTitle, emptyText, leftPadding) {
-                if (!window.c3) {
-                    showEmpty(selector, "fas fa-chart-bar", "Graficos no disponibles", "No se pudo cargar C3.");
+            function renderBar(chart, color) {
+                var box = $('[data-indicadores-box="' + chart.key + '"]');
+                var canvas = document.getElementById('indicadores-chart-' + chart.key);
+                if (!canvas || !chart.items || chart.items.length === 0) {
+                    showEmptyBox(box, 'fas fa-chart-bar');
                     return;
                 }
 
-                if (!hasBarData(payload)) {
-                    showEmpty(selector, emptyIcon, emptyTitle, emptyText);
-                    return;
-                }
+                var labels = chart.items.map(function (item) { return item.label; });
+                var values = chart.items.map(function (item) { return item.value; });
+                var maxValue = Math.max.apply(null, values);
+                box.css('min-height', Math.max(220, chart.items.length * 36 + 30) + 'px');
 
-                var height = Math.max(220, Math.min(360, payload.categories.length * 34 + 80));
-                var chart = c3.generate({
-                    bindto: selector,
-                    size: { height: height },
-                    padding: {
-                        left: leftPadding || 120,
-                        right: 20
-                    },
-                    color: { pattern: [color] },
+                activeCharts.push(new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
                     data: {
-                        columns: payload.columns,
-                        type: "bar",
-                        labels: false
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: color,
+                            borderRadius: 4,
+                            barThickness: 18
+                        }]
                     },
-                    axis: {
-                        rotated: true,
-                        x: {
-                            type: "category",
-                            categories: payload.categories,
-                            tick: {
-                                multiline: false,
-                                culling: false
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { right: 56 } },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return context.parsed.x + ' unidades';
+                                    }
+                                }
                             }
                         },
-                        y: {
-                            min: 0,
-                            padding: { bottom: 0 },
-                            tick: {
-                                format: d3.format("d")
+                        scales: {
+                            x: { display: false, beginAtZero: true, suggestedMax: maxValue * 1.12 },
+                            y: {
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#475569', font: { size: 11 }, autoSkip: false }
                             }
                         }
                     },
-                    bar: {
-                        width: { ratio: 0.55 }
+                    plugins: [valueLabelsPlugin]
+                }));
+            }
+
+            function renderDonut(chart, palette) {
+                var box = $('[data-indicadores-box="' + chart.key + '"]');
+                var canvas = document.getElementById('indicadores-chart-' + chart.key);
+                var legend = $('[data-indicadores-legend="' + chart.key + '"]');
+                if (!canvas || !chart.items || chart.items.length === 0) {
+                    showEmptyBox(box, 'fas fa-chart-pie');
+                    if (legend) legend.empty();
+                    return;
+                }
+
+                var labels = chart.items.map(function (item) { return item.label; });
+                var values = chart.items.map(function (item) { return item.value; });
+                var total = chart.total || values.reduce(function (sum, value) { return sum + value; }, 0);
+                var colors = palette.slice(0, values.length);
+
+                activeCharts.push(new Chart(canvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
                     },
-                    grid: {
-                        y: { show: true }
-                    },
-                    legend: {
-                        show: false
-                    },
-                    tooltip: {
-                        format: {
-                            title: function (index) {
-                                return payload.categories[index] || "";
-                            },
-                            value: function (value) {
-                                return value + " unidades";
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '68%',
+                        plugins: {
+                            legend: { display: false },
+                            inicioCenterTotal: { display: true, total: String(total), label: 'unidades' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        var value = context.parsed;
+                                        var pct = total > 0 ? Math.round(value * 100 / total) : 0;
+                                        return ' ' + value + ' unidades (' + pct + ' %)';
+                                    }
+                                }
                             }
                         }
+                    },
+                    plugins: [centerTotalPlugin]
+                }));
+
+                if (legend) {
+                    legend.html(chart.items.map(function (item, index) {
+                        var pct = total > 0 ? Math.round(item.value * 100 / total) : 0;
+                        return '<li><span class="inicio-legend-dot" style="background:' + colors[index] + ';"></span>' +
+                            escapeHtml(item.label) + ' · ' + item.value + ' (' + pct + ' %)</li>';
+                    }).join(''));
+                }
+            }
+
+            function renderAll(data) {
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js no está disponible');
+                }
+
+                var meta = $('#indicadores-meta');
+                if (meta && data.totalUnits !== undefined) {
+                    meta.html('<i class="fas fa-database mr-1"></i> Unidades vigentes: <strong>' +
+                        escapeHtml(data.totalUnits) + '</strong> · actualizado a las ' + escapeHtml(data.generatedAt));
+                }
+
+                (data.charts || []).forEach(function (chart) {
+                    $('[data-indicadores-title="' + chart.key + '"]').text(chart.title);
+                    $('[data-indicadores-conclusion="' + chart.key + '"]').text(chart.conclusion);
+                    if (chart.type === 'donut') {
+                        renderDonut(chart, chart.key === 'status' ? statusPalette : donutPalette);
+                    } else {
+                        renderBar(chart, barColors[chart.key] || '#1e88e5');
                     }
                 });
-                charts.push(chart);
             }
 
-            var donutEmptyTitle = "Sin inventario vigente";
-            var donutEmptyText = "No hay unidades fisicas para graficar.";
-            if (totalUnits > 0 && pendingClassificationUnits > 0 && !hasDonutData(categoryData)) {
-                donutEmptyTitle = "Nada clasificado aun";
-                donutEmptyText = "Hay " + pendingClassificationUnits + " unidades por clasificar.";
+            function loadIndicadores() {
+                if (chartsBuilt) return;
+
+                var loading = $('#indicadores-loading');
+                var error = $('#indicadores-error');
+                var content = $('#indicadores-content');
+                loading.removeClass('d-none');
+                error.addClass('d-none');
+                content.addClass('d-none');
+
+                fetch(indicadoresUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        renderAll(data);
+                        loading.addClass('d-none');
+                        content.removeClass('d-none');
+                        chartsBuilt = true;
+                    })
+                    .catch(function (err) {
+                        // Se reporta en consola y se ofrece reintento: no es un error silencioso.
+                        console.error('No se pudieron cargar los indicadores:', err);
+                        loading.addClass('d-none');
+                        error.removeClass('d-none');
+                    });
             }
 
-            renderDonut(
-                "#donut-chart",
-                categoryData,
-                "Activos",
-                ["#7460ee", "#00c292", "#ffb22b"],
-                "fas fa-box-open",
-                donutEmptyTitle,
-                donutEmptyText);
+            $('#indicadores-retry').on('click', loadIndicadores);
 
-            renderDonut(
-                "#status-chart",
-                statusData,
-                "Estado",
-                ["#00c292", "#ffb22b", "#f62d51", "#03a9f3", "#7460ee", "#8d97ad"],
-                "fas fa-heartbeat",
-                "Sin estados registrados",
-                "No hay unidades con estado operativo.");
-
-            renderBar(
-                "#bar-chart-equipment",
-                equipmentData,
-                "#2962ff",
-                "fas fa-microscope",
-                "Sin equipos clasificados",
-                "Cuando existan equipos, se mostraran por clasificacion tecnica.",
-                150);
-
-            renderBar(
-                "#bar-chart-utensil",
-                utensilData,
-                "#00c292",
-                "fas fa-utensils",
-                "Sin utensilios clasificados",
-                "Actualmente no hay unidades registradas como utensilios.",
-                150);
-
-            renderBar(
-                "#bar-chart-other",
-                otherData,
-                "#ffb22b",
-                "fas fa-layer-group",
-                "Sin otros activos",
-                "Actualmente no hay unidades fuera de equipos y utensilios.",
-                150);
-
-            renderBar(
-                "#condition-chart",
-                conditionData,
-                "#f62d51",
-                "fas fa-clipboard-check",
-                "Sin condicion fisica",
-                "No hay condicion registrada para graficar.",
-                150);
-
-            renderBar(
-                "#environment-chart",
-                environmentData,
-                "#03a9f3",
-                "fas fa-door-open",
-                "Sin ambientes con inventario",
-                "Asigna unidades a ambientes para ver la distribucion.",
-                230);
-
-            $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
-                charts.forEach(function (chart) {
-                    chart.flush();
-                });
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                if ($(e.target).attr('href') === '#indicadores') {
+                    loadIndicadores();
+                }
+                activeCharts.forEach(function (chart) { chart.resize(); });
             });
+
+            @if (Model.ShowIndicatorsTab)
+            {
+                <text>loadIndicadores();</text>
+            }
         });
     </script>
 }
