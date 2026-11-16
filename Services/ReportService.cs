@@ -3,7 +3,6 @@ using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Drawing;
 
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
@@ -51,6 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Include(r => r.Equipment).ThenInclude(e => e!.City)
                 .Include(r => r.Equipment).ThenInclude(e => e!.Country)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.EquipmentUnit).ThenInclude(u => u!.Laboratory).ThenInclude(l => l!.Faculty)
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(r => r.Id == requestId);

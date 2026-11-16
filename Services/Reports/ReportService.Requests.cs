@@ -3,7 +3,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.Drawing;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -34,10 +33,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ========================================
                 // LIMPIEZA DE SEGURIDAD
                 // ========================================
-                // LIMPIEZA SEGURA: No usar .Merge=false en rangos amplios (crash 0xffffffff)
+                // LIMPIEZA SEGURA: No usar .Merge=false en rangos amplios (crash 0xffffffff).
+                // Asignar .Value = null no lanza excepciones en EPPlus, ni en celdas combinadas.
                 for (int r = 40; r <= 60; r++)
                     for (int c = 1; c <= 26; c++)
-                        try { worksheet.Cells[r, c].Value = null; } catch { }
+                        worksheet.Cells[r, c].Value = null;
 
                 // ========================================
                 // 4. RELLENAR DATOS SEGÚN TU PLANTILLA
@@ -49,7 +49,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Configuración Fila 2 (Arial 16, Fusionando A-E)
                 var range1 = worksheet.Cells["A2:E2"];
-                try { range1.Merge = true; } catch { }
+                CombinarSiHaceFalta(worksheet, 2, 1, 2, 5);
                 range1.Value = "SOLICITUD MANTENIMIENTO Y CALIBRACION DE";
                 range1.Style.Font.Bold = true;
                 range1.Style.Font.Name = "Arial";
@@ -59,7 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Configuración Fila 3
                 var range2 = worksheet.Cells["A3:E3"];
-                try { range2.Merge = true; } catch { }
+                CombinarSiHaceFalta(worksheet, 3, 1, 3, 5);
                 range2.Value = "EQUIPOS DE LABORATORIO";
                 range2.Style.Font.Bold = true;
                 range2.Style.Font.Name = "Arial";
@@ -149,12 +149,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ===============================================
                 // Se coloca en la fila 50, centrado entre la columna B y D
                 var firmaRange = worksheet.Cells["B50:D50"];
-                try { firmaRange.Merge = true; } catch { }
+                CombinarSiHaceFalta(worksheet, 50, 2, 50, 4);
                 firmaRange.Value = "____________________________________";
                 firmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 var labelFirmaRange = worksheet.Cells["B51:D51"];
-                try { labelFirmaRange.Merge = true; } catch { }
+                CombinarSiHaceFalta(worksheet, 51, 2, 51, 4);
                 labelFirmaRange.Value = "Firma Encargado de Laboratorio";
                 labelFirmaRange.Style.Font.Bold = true;
                 labelFirmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -196,7 +196,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var cell = worksheet.Cells[celda];
                 cell.Style.Font.Bold = true;
                 cell.Style.Font.Size = 10;
-                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin, Color.Black);
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                cell.Style.Border.Top.Color.SetColor(255, 0, 0, 0);
+                cell.Style.Border.Bottom.Color.SetColor(255, 0, 0, 0);
+                cell.Style.Border.Left.Color.SetColor(255, 0, 0, 0);
+                cell.Style.Border.Right.Color.SetColor(255, 0, 0, 0);
                 cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
             }
 

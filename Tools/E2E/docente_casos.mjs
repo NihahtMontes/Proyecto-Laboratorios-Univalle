@@ -21,7 +21,9 @@ const creds = Object.fromEntries([...readFileSync(process.env.E2E_CRED_FILE, "ut
 // Escenario de la copia (2026-2): docente A = persona 41, grupo 128; docente B = persona 46, grupo 129.
 const A = { person: 41, group: 128, user: "docente.a", pw: "DocenteA#2026Seguro" };
 const B = { person: 46, group: 129, user: "docente.b", pw: "DocenteB#2026Seguro" };
-const DAY = "2026-11-17", MONDAY = "2026-11-16", LAB_A = 1, LAB_B = 6;
+// La solicitud exige 2 días hábiles de anticipación: cuando estas fechas quedan atrás, pasar otras
+// (E2E_DAY = un martes con clases, E2E_MONDAY = el lunes de esa semana).
+const DAY = process.env.E2E_DAY || "2026-11-17", MONDAY = process.env.E2E_MONDAY || "2026-11-16", LAB_A = 1, LAB_B = 6;
 const PALA = 522, COLADOR = 262;   // reutilizables con stock en dos ambientes (Economato + otro)
 
 const here = dirname(fileURLToPath(import.meta.url));
