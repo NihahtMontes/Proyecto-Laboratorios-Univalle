@@ -420,7 +420,7 @@
                         </div>
                     }
 
-                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 pt-3 border-top">
                         @if (!closureOnly)
                         {
                             <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
@@ -434,10 +434,10 @@
                         }
                         else if (canWrite && Model.CanFinalize)
                         {
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex flex-wrap align-items-center justify-content-end mt-2 mt-md-0">
                                 @if (Model.HasReusablePending)
                                 {
-                                    <form method="post" asp-page-handler="FinalizeClean" asp-route-id="@Model.Id" id="formFinalizeCleanL3" class="m-0 mr-2">
+                                    <form method="post" asp-page-handler="FinalizeClean" asp-route-id="@Model.Id" id="formFinalizeCleanL3" class="m-0 mr-2 mb-2 mb-md-0">
                                         <input type="hidden" name="responsiblePersonId" id="finalizeCleanResponsible" />
                                         <button type="button" class="btn btn-outline-success font-weight-bold px-4 py-2" id="btnFinalizeClean"
                                                 title="Devuelve todo el material reutilizable pendiente y finaliza la práctica">
@@ -445,7 +445,7 @@
                                         </button>
                                     </form>
                                 }
-                                <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
+                                <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0 mb-2 mb-md-0">
                                     <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
                                             disabled="@(Model.BlockFinalization ? "disabled" : null)"
                                             title="@(Model.BlockFinalization ? "Hay faltantes sin incidente registrado" : "Cerrar la planificación")">

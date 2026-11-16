@@ -92,6 +92,10 @@ try {
   const admin = await session("admin.qa", creds["admin.qa"]);
   // Copias anteriores: liberar a las personas docentes.
   sql(`UPDATE Users SET PersonId=NULL, Role=99, Status=2 WHERE PersonId IN (${A.person},${B.person})`);
+  // Corridas anteriores: sus solicitudes (creadas por cuentas docente.*) dejan de ocupar horarios en la copia.
+  sql(`UPDATE Plannings SET IsDeleted=1, DeletedDate=SYSDATETIME() WHERE IsDeleted=0 AND CreatedById IN (SELECT Id FROM Users WHERE UserName LIKE 'docente.%')`);
+  // Corridas anteriores: se libera el nombre de usuario (es único) para poder repetir los casos en la misma copia.
+  sql(`UPDATE Users SET UserName=CONCAT(UserName,'.old',Id), NormalizedUserName=UPPER(CONCAT(UserName,'.old',Id)), Email=CONCAT('old',Id,'.',Email), NormalizedEmail=UPPER(CONCAT('old',Id,'.',Email)) WHERE UserName IN ('${A.user}','${B.user}') AND Status=2`);
   const practiceA = Number(sql(`SELECT TOP 1 p.Id FROM Practices p JOIN CourseGroups g ON g.SubjectId=p.SubjectId WHERE g.Id=${A.group} AND p.Status=0 ORDER BY p.Id`));
   const practiceB = Number(sql(`SELECT TOP 1 p.Id FROM Practices p JOIN CourseGroups g ON g.SubjectId=p.SubjectId WHERE g.Id=${B.group} AND p.Status=0 ORDER BY p.Id`));
   const teacherA = await createTeacher(admin, A);

@@ -709,6 +709,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
             planning.PracticeName = PlanificacionModel.PracticeLabel(practice);
             planning.PracticeNumber = practice.Number;
             planning.Observations = Trim(input.Observations, 1000);
+            planning.StudentCount = input.StudentCount;
             planning.Status = PlanningStatus.Requested;
             planning.RequestDate = DateTime.UtcNow;
             planning.PracticeSchedule = schedule;

@@ -90,6 +90,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Range(1, 12)]
         public int? PeriodCount { get; set; }
 
+        /// <summary>
+        /// Estudiantes de esta sesión. La programación (PracticeSchedule) puede compartirse entre varias sesiones del
+        /// mismo grupo, así que el número propio de cada solicitud vive aquí; si es nulo se usa el de la programación.
+        /// </summary>
+        [Range(1, 500)]
+        public int? StudentCount { get; set; }
+
         public DateTime ScheduledDate { get; set; }
 
         public DateTime? ScheduledEndDate { get; set; }

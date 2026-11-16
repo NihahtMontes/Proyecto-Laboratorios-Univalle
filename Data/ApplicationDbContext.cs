@@ -68,27 +68,54 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 .ToList();
 
             // Stock por horario: la rotura/pérdida de un artículo reutilizable (sin unidad física) es lo único que
-            // reduce su existencia. Se descuenta del laboratorio de origen de la salida de la planificación
-            // (Economato si no hay salida), sin bajar de 0. La entrega/devolución L-3 no toca la existencia.
+            // reduce su existencia. Se descuenta del laboratorio desde el que salió ese artículo: el origen de cada
+            // ítem de la salida (o el de la salida si el ítem no lo indica). Si el artículo salió de varios
+            // orígenes, se reparte empezando por el que entregó más; sin salida se usa el Economato. Nunca baja de 0.
+            // La entrega/devolución L-3 no toca la existencia.
             foreach (var incident in newL5Incidents.Where(i => i.EquipmentUnitId == null && i.ArticleId != null && i.AffectedQuantity > 0))
             {
-                int? originLabId = incident.PlanningId is int planningId
-                    ? await Departures.AsNoTracking()
-                        .Where(d => d.PlanningId == planningId && d.Status != Proyecto_Laboratorios_Univalle.Models.Enums.LoanStatus.Cancelled)
-                        .OrderByDescending(d => d.Id)
-                        .Select(d => d.OriginLaboratoryId)
-                        .FirstOrDefaultAsync(cancellationToken)
-                    : null;
-                originLabId ??= await Laboratories.AsNoTracking()
-                    .Where(l => l.Code == "ECONO").Select(l => (int?)l.Id).FirstOrDefaultAsync(cancellationToken);
-                if (originLabId is not int labId) continue;
+                var deliveredByOrigin = incident.PlanningId is int planningId
+                    ? (await DepartureItems.AsNoTracking()
+                        .Where(i => i.ArticleId == incident.ArticleId
+                            && i.Departure!.PlanningId == planningId
+                            && i.Departure.Status != Proyecto_Laboratorios_Univalle.Models.Enums.LoanStatus.Cancelled)
+                        .Select(i => new { Origin = i.OriginLaboratoryId ?? i.Departure!.OriginLaboratoryId, i.Quantity })
+                        .ToListAsync(cancellationToken))
+                        .Where(x => x.Origin != null)
+                        .GroupBy(x => x.Origin!.Value)
+                        .Select(g => (LabId: g.Key, Delivered: g.Sum(x => x.Quantity ?? 0m)))
+                        .OrderByDescending(x => x.Delivered).ThenBy(x => x.LabId)
+                        .ToList()
+                    : [];
+                if (deliveredByOrigin.Count == 0)
+                {
+                    var economatoId = await Laboratories.AsNoTracking()
+                        .Where(l => l.Code == "ECONO").Select(l => (int?)l.Id).FirstOrDefaultAsync(cancellationToken);
+                    if (economatoId is not int econo) continue;
+                    deliveredByOrigin.Add((econo, incident.AffectedQuantity));
+                }
 
-                var stock = ArticleStocks.Local.FirstOrDefault(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId)
-                    ?? await ArticleStocks.AsTracking()
-                        .FirstOrDefaultAsync(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId, cancellationToken);
-                if (stock == null) continue;
-                stock.AvailableQuantity = Math.Max(0, stock.AvailableQuantity - incident.AffectedQuantity);
-                stock.UpdatedOn = now;
+                decimal remaining = incident.AffectedQuantity;
+                var shares = new List<(int LabId, decimal Quantity)>();
+                foreach (var (labId, delivered) in deliveredByOrigin)
+                {
+                    if (remaining <= 0) break;
+                    var take = Math.Min(remaining, delivered);
+                    if (take > 0) shares.Add((labId, take));
+                    remaining -= take;
+                }
+                // Si se reporta más de lo entregado, el excedente va al origen principal.
+                if (remaining > 0) shares.Add((deliveredByOrigin[0].LabId, remaining));
+
+                foreach (var (labId, quantity) in shares)
+                {
+                    var stock = ArticleStocks.Local.FirstOrDefault(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId)
+                        ?? await ArticleStocks.AsTracking()
+                            .FirstOrDefaultAsync(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId, cancellationToken);
+                    if (stock == null) continue;
+                    stock.AvailableQuantity = Math.Max(0, stock.AvailableQuantity - quantity);
+                    stock.UpdatedOn = now;
+                }
             }
 
             // Varias incidencias de la misma unidad en un mismo guardado abren un solo historial.

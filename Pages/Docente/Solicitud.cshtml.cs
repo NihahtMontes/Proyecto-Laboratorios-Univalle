@@ -68,7 +68,7 @@ public class SolicitudModel : TeacherPageBase
         var extra = await Mine().Where(p => p.Id == id)
             .Select(p => new
             {
-                Students = p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null,
+                Students = p.StudentCount ?? (p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null),
                 p.Observations,
                 HasDeparture = p.Departures.Any(),
                 Incidents = p.Incidents.Count

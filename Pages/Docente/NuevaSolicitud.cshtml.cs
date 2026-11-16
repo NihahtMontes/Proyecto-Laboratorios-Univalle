@@ -100,7 +100,7 @@ public class NuevaSolicitudModel : TeacherPageBase
                 planningId = id,
                 groupId = Groups.Any(g => g.Id == plan.CourseGroupId) ? plan.CourseGroupId : null,
                 practiceId = plan.PracticeSchedule?.PracticeId,
-                students = plan.PracticeSchedule?.StudentCount,
+                students = plan.StudentCount ?? plan.PracticeSchedule?.StudentCount,
                 date = id.HasValue ? plan.ScheduledDate.ToString("yyyy-MM-dd") : null,
                 startPeriodId = plan.StartPeriodId,
                 periodCount = plan.PeriodCount ?? 2,

@@ -218,6 +218,46 @@ public class PlanningAssignmentTests
     }
 
     [Fact]
+    public async Task La_incidencia_descuenta_del_origen_de_cada_item_y_reparte_entre_origenes()
+    {
+        using var db = new TestDb();
+        Seed(db);
+        db.AddPlanning(1, TestDb.Week1Monday, 2, 2, status: PlanningStatus.Approved);
+        db.AddRequirement(1, Bowl, 6);
+        var requirementId = RequirementId(db, 1, Bowl);
+        // 2 del Economato y 4 del Laboratorio A: la salida queda con origen principal Economato.
+        db.Context.PlanningAssignments.AddRange(
+            new PlanningAssignment { PlanningRequirementId = requirementId, LaboratoryId = Econo, Quantity = 2 },
+            new PlanningAssignment { PlanningRequirementId = requirementId, LaboratoryId = TestDb.LabA, Quantity = 4 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        Assert.True((await Circuit(db).CreateDepartureAsync(1, Econo, [new DepartureLine(requirementId, 6)], null)).Ok);
+        db.Context.ChangeTracker.Clear();
+
+        decimal StockAt(int lab) => db.Context.ArticleStocks.AsNoTracking().Single(s => s.ArticleId == Bowl && s.LaboratoryId == lab).AvailableQuantity;
+        async Task Incident(int quantity)
+        {
+            db.Context.L5Incidents.Add(new L5Incident
+            {
+                PlanningId = 1, ArticleId = Bowl, IncidentType = "Rotura", DamageDescription = "Se cayeron",
+                AffectedQuantity = quantity, ResponsibleName = "Grupo A", ResponsibleType = "Estudiante", RepositionStatus = "Pendiente"
+            });
+            await db.Context.SaveChangesAsync();
+            db.Context.ChangeTracker.Clear();
+        }
+
+        // 3 rotos: salen primero del origen que entregó más (Laboratorio A), no del Economato de la cabecera.
+        await Incident(3);
+        Assert.Equal(2m, StockAt(TestDb.LabA));
+        Assert.Equal(3m, StockAt(Econo));
+
+        // 5 rotos: 4 del Laboratorio A y 1 del Economato (cada uno hasta lo que entregó).
+        await Incident(5);
+        Assert.Equal(0m, StockAt(TestDb.LabA));
+        Assert.Equal(2m, StockAt(Econo));
+    }
+
+    [Fact]
     public async Task La_salida_se_bloquea_si_un_origen_asignado_no_tiene_libre()
     {
         using var db = new TestDb();

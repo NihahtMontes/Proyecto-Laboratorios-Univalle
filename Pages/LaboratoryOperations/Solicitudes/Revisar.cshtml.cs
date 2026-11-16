@@ -107,7 +107,7 @@ public class RevisarModel : PageModel
         if (plan == null) return false;
         Plan = plan;
         StartOrder = plan.StartPeriod?.Order;
-        Students = plan.PracticeSchedule?.StudentCount ?? plan.CourseGroup?.StudentCount;
+        Students = plan.StudentCount ?? plan.PracticeSchedule?.StudentCount ?? plan.CourseGroup?.StudentCount;
         TeacherName = await NameAsync(plan.TeacherPersonId);
         Lines = await _requests.GetLinesAsync(id);
         History = await _requests.GetHistoryAsync(id);

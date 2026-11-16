@@ -102,7 +102,7 @@ public sealed class SlotValidationService : ISlotValidationService
                 p.AcademicWeekId,
                 p.StartPeriodId,
                 p.PeriodCount,
-                ScheduleStudents = p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null,
+                ScheduleStudents = p.StudentCount ?? (p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null),
                 GroupStudents = p.CourseGroup != null ? p.CourseGroup.StudentCount : null
             })
             .FirstOrDefaultAsync(ct);
