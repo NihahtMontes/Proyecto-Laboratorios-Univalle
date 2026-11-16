@@ -47,6 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             var query = _context.Requests
                 .Where(r => r.Type == RequestType.Purchasing)
                 .Include(r => r.Equipment)
+                .Include(r => r.Laboratory)
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu != null ? eu.Laboratory : null)
                 .Include(r => r.RequestedBy)

@@ -170,31 +170,10 @@
                     </table>
                 </div>
 
-                @if (Model.StockRows!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.StockRows.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.StockRows.PageIndex - 1)" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.StockRows.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.StockRows.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">@i</a>
-                                </li>
-                            }
-                            @if (Model.StockRows.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.StockRows.PageIndex + 1)" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.StockRows!, new Dictionary<string, string?> { ["LaboratoryFilter"] = Model.LaboratoryFilter?.ToString(), ["SearchTerm"] = Model.SearchTerm }, itemLabel: "artículos");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

@@ -71,7 +71,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model.ManagementList == null || !Model.ManagementList.Any(m => m.Status != ManagementStatus.Deleted))
+                                    @* El filtro de borrados (Status == Deleted) ya lo aplica el servidor en la consulta. *@
+                                    @if (Model.ManagementList == null || !Model.ManagementList.Any())
                                     {
                                          <tr>
                                             <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
@@ -82,7 +83,7 @@
                                     }
                                     else
                                     {
-                                        foreach (var item in Model.ManagementList.Where(m => m.Status != ManagementStatus.Deleted))
+                                         foreach (var item in Model.ManagementList)
                                         {
                                             <tr>
                                                 <td>
@@ -94,7 +95,7 @@
                                                         </div>
                                                         <div>
                                                             <h6 class="m-b-0 font-weight-bold text-dark">@item.Year - Semestre @item.Semester</h6>
-                                                            <span class="text-muted small">ID: @item.Code</span>
+                                                            <span class="text-muted small">Código: @item.Code</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -157,13 +158,16 @@
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     @{
-                                                        var (statusClass, statusText) = item.Status switch
+                                                        // Texto visible = Display del enum (Activa, Inactiva, Completada (Histórico)).
+                                                        // Colores: Activa verde, Completada gris; nunca rojo.
+                                                        var statusClass = item.Status switch
                                                         {
-                                                            ManagementStatus.Active => ("badge-light-success text-success", "ACTIVO"),
-                                                            ManagementStatus.Inactive => ("badge-light-warning text-warning", "INACTIVO"),
-                                                            ManagementStatus.Completed => ("badge-light-danger text-danger", "TERMINADO"),
-                                                            _ => ("badge-secondary", "DESCONOCIDO")
+                                                            ManagementStatus.Active => "badge-light-success text-success",
+                                                            ManagementStatus.Inactive => "badge-light-warning text-warning",
+                                                            ManagementStatus.Completed => "badge-secondary",
+                                                            _ => "badge-secondary"
                                                         };
+                                                        var statusText = EnumHelper.GetDisplayName(item.Status);
                                                     }
                                                     <span class="badge badge-pill @statusClass px-3 py-1 font-weight-bold shadow-sm border">@statusText</span>
                                                 </td>
@@ -202,7 +206,7 @@
                                                             @if (item.Status != ManagementStatus.Active || item.Type == ManagementType.Corrective)
                                                             {
                                                                 <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline js-delete-management-form">
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar (Lógico)">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar">
                                                                         <i class="fas fa-trash"></i>
                                                                     </button>
                                                                 </form>
@@ -223,31 +227,11 @@
                             </table>
                         </div>
 
-                        @if (Model.ManagementList!.TotalPages > 1)
-                        {
-                            <nav aria-label="Paginación">
-                                <ul class="pagination justify-content-center">
-                                    @if (Model.ManagementList.HasPreviousPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-type="@Model.Type" asp-route-pageIndex="@(Model.ManagementList.PageIndex - 1)">Anterior</a>
-                                        </li>
-                                    }
-                                    @for (var i = 1; i <= Model.ManagementList.TotalPages; i++)
-                                    {
-                                        <li class="page-item @(i == Model.ManagementList.PageIndex ? "active" : "")">
-                                            <a class="page-link" asp-page="./Index" asp-route-type="@Model.Type" asp-route-pageIndex="@i">@i</a>
-                                        </li>
-                                    }
-                                    @if (Model.ManagementList.HasNextPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-type="@Model.Type" asp-route-pageIndex="@(Model.ManagementList.PageIndex + 1)">Siguiente</a>
-                                        </li>
-                                    }
-                                </ul>
-                            </nav>
+                        @{
+                            // Paginador común (Pages/Shared/_Pager.cshtml): conserva el filtro de pestaña (Type) en la ruta.
+                            var pager = PagerModel.From(Model.ManagementList, new Dictionary<string, string?> { ["Type"] = Model.Type }, itemLabel: "gestiones");
                         }
+                        <partial name="_Pager" model="pager" />
                     </div>
                 </div>
             </div>

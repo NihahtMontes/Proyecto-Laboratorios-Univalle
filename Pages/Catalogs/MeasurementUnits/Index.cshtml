@@ -126,31 +126,10 @@
                     </table>
                 </div>
 
-                @if (Model.Units!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Units.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Units.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Units.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Units.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                </li>
-                            }
-                            @if (Model.Units.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Units.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Units, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString() }, itemLabel: "unidades");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

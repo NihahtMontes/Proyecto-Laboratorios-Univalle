@@ -21,7 +21,14 @@ from http_forms import Client
 PW = os.environ["E2E_PW"]
 BASE = e2e_lib.BASE
 ROLES = {"SuperAdmin": "qa_super", "Administrador": "qa_adm", "Supervisor": "qa_sup", "Cierre": "qa_cierre"}
+# En otra copia los usuarios se llaman distinto: E2E_ROLE_USERS="SuperAdmin=super.qa,Administrador=admin.qa"
+# (solo los roles listados; todos con la contraseña de E2E_PW).
+if os.environ.get("E2E_ROLE_USERS"):
+    ROLES = dict(pair.split("=", 1) for pair in os.environ["E2E_ROLE_USERS"].split(","))
 CODE = re.compile(r"\bL-?(?:3|5|6|7|8|12|48)\b|\bWizard\b|\bDashboard\b|\bKardex\b|¡Ups!", re.I)
+# Decisión del usuario 2026-11-16: el menú, los títulos de los listados y las tarjetas del panel muestran
+# código + nombre. Solo estas etiquetas exactas quedan permitidas; cualquier otro código sigue siendo falla.
+ALLOWED_LABELS = ("L6 · Verificaciones", "L6 · Verificación", "L7 · Servicio técnico", "L8 · Kardex", "L3 · Salidas")
 LOG, FAILS = [], 0
 
 
@@ -76,7 +83,10 @@ def check_page(role, client, label, path):
     name = _html.unescape(title.group(1)).replace("Laboratorios Univalle", "").strip(" -–|") if title else ""
     ok(case, bool(name), f"pestaña con nombre: «{name}»")
     if not path.lower().startswith("/ayuda"):
-        hits = sorted({m.group(0) for m in CODE.finditer(visible_text(page))})
+        text = visible_text(page)
+        for allowed in ALLOWED_LABELS:
+            text = text.replace(allowed, " ")
+        hits = sorted({m.group(0) for m in CODE.finditer(text)})
         ok(case, not hits, f"sin códigos ni jerga visibles: {hits[:8]}")
     return page
 

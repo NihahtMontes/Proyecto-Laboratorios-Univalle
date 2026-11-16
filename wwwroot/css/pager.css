@@ -1,0 +1,78 @@
+/* ============================================================================
+   Paginador compartido (Pages/Shared/_Pager.cshtml · Helpers/PagerModel.cs).
+   NiceAdmin / Bootstrap 4: píldoras redondeadas, azul primario #2962ff,
+   se apila en teléfono (texto arriba, paginación abajo) sin scroll horizontal.
+   Prefijo `pg-` para no colisionar con estilos existentes.
+   ========================================================================== */
+.pg-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-top: 1rem;
+}
+
+.pg-info {
+    font-size: 0.875rem;
+}
+
+.pg-info strong {
+    color: #1e293b;
+    font-weight: 700;
+}
+
+.pg-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pg-pagination .page-item {
+    margin: 0 2px;
+}
+
+.pg-pagination .pg-link {
+    min-width: 2.4rem;
+    min-height: 2.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.75rem;
+    border: 0;
+    border-radius: 50rem !important;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #5e6e82;
+    background-color: #f1f4f9;
+    transition: all 0.2s ease-in-out;
+}
+
+.pg-pagination .pg-link:focus {
+    box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.2);
+}
+
+.pg-pagination a.pg-link:hover {
+    color: #2962ff;
+    background-color: #e3eaf9;
+    text-decoration: none;
+}
+
+.pg-pagination .page-item.active .pg-link {
+    color: #fff;
+    background-color: #2962ff;
+    box-shadow: 0 2px 6px rgba(41, 98, 255, 0.35);
+}
+
+.pg-pagination .page-item.disabled .pg-link {
+    color: #b7c1cf;
+    background-color: #f6f8fa;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.pg-pagination .pg-gap .pg-link {
+    background-color: transparent;
+    color: #8a98a9;
+    min-width: 1.6rem;
+}

@@ -170,31 +170,10 @@
                     </table>
                 </div>
 
-                @if (Model.Practices!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Practices.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Practices.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-CareerId="@Model.CareerId" asp-route-SubjectId="@Model.SubjectId" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Practices.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Practices.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-CareerId="@Model.CareerId" asp-route-SubjectId="@Model.SubjectId" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                </li>
-                            }
-                            @if (Model.Practices.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Practices.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-CareerId="@Model.CareerId" asp-route-SubjectId="@Model.SubjectId" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Practices, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["CareerId"] = Model.CareerId?.ToString(), ["SubjectId"] = Model.SubjectId?.ToString(), ["StatusFilter"] = Model.StatusFilter?.ToString() }, itemLabel: "prácticas");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

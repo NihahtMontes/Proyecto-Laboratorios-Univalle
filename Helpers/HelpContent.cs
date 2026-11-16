@@ -3,7 +3,9 @@ namespace Proyecto_Laboratorios_Univalle.Helpers;
 /// <summary>
 /// Fuente única de los textos de ayuda (docs/ux/GLOSARIO.md): glosario, recuadros «¿Qué hago aquí?» por pantalla
 /// (Pages/Shared/_PageHelp.cshtml), iconos «?» junto a conceptos (Pages/Shared/_HelpHint.cshtml) y la página /Ayuda.
-/// Los códigos de formato institucional (L-3, L-7…) solo aparecen aquí, en la columna Format del glosario.
+/// Desde 2026-11-16 el menú, los títulos de los listados y las tarjetas del panel usan nombres cortos con código
+/// («L6 · Verificaciones», «L8 · Kardex»…); los códigos de formato institucional completos (L-3, L-7…) siguen
+/// apareciendo aquí, en la columna Format del glosario.
 /// </summary>
 public static class HelpContent
 {
@@ -19,13 +21,13 @@ public static class HelpContent
         new("preventive", "Mantenimiento preventivo", "Revisión planificada de los equipos elegidos para la gestión. Se hace con el asistente, paso a paso.", null, "Mantenimiento de equipos"),
         new("corrective", "Mantenimiento correctivo", "Atención de una falla reportada. Empieza con una solicitud de servicio técnico.", null, "Mantenimiento de equipos"),
         new("wizard", "Asistente", "Guía paso a paso que muestra en qué etapa está cada equipo y qué formulario falta completar.", null, "Mantenimiento de equipos"),
-        new("verification", "Verificación de equipos", "Revisión del estado de los equipos de un laboratorio (bueno, regular, malo o baja). Si un equipo falla, pasa a la solicitud de servicio técnico.", "L-6", "Mantenimiento de equipos"),
-        new("service-request", "Solicitud de servicio técnico", "Pedido de reparación o mantenimiento de un equipo con falla, con su checklist técnico.", "L-7", "Mantenimiento de equipos"),
-        new("maintenance-record", "Registro de mantenimiento", "Acta de lo realizado: técnico, tareas, costos y estado final del equipo.", "L-8", "Mantenimiento de equipos"),
-        new("equipment-departure", "Salida de equipos", "Registro de los equipos que salen del laboratorio (mantenimiento externo o préstamo) y de su devolución.", "L-3", "Mantenimiento de equipos"),
-        new("maintenance-closure", "Cierre del mantenimiento", "Registro final: fechas, costo real, satisfacción y próximo mantenimiento. Alimenta el historial del equipo.", "Kardex", "Mantenimiento de equipos"),
+        new("verification", "L6 · Verificaciones (verificación de equipos)", "Revisión del estado de los equipos de un laboratorio (bueno, regular, malo o baja). Si un equipo falla, pasa a la solicitud de servicio técnico.", "L-6", "Mantenimiento de equipos"),
+        new("service-request", "L7 · Servicio técnico (solicitud de servicio técnico)", "Pedido de reparación o mantenimiento de un equipo con falla, con su checklist técnico.", "L-7", "Mantenimiento de equipos"),
+        new("maintenance-record", "L8 · Kardex (registro de mantenimiento)", "Acta de lo realizado: técnico, tareas, costos y estado final del equipo. «L8 · Kardex» es este registro de mantenimiento; el «Cierre del mantenimiento» del asistente es otra cosa (ver siguiente).", "L-8", "Mantenimiento de equipos"),
+        new("equipment-departure", "L3 · Salidas (salida de equipos)", "Registro de los equipos que salen del laboratorio (mantenimiento externo o préstamo) y de su devolución.", "L-3", "Mantenimiento de equipos"),
+        new("maintenance-closure", "Cierre del mantenimiento", "Registro final del asistente (paso 5): fechas, costo real, satisfacción y próximo mantenimiento. Alimenta el historial del equipo. No es el «L8 · Kardex»: aquel es el registro de lo hecho en el taller.", null, "Mantenimiento de equipos"),
         new("equipment-history", "Historial del equipo", "Todo lo ocurrido con una unidad física: verificaciones, solicitudes, mantenimientos y costos.", "Kardex", "Mantenimiento de equipos"),
-        new("purchase-request", "Solicitud de compra", "Trámite administrativo para comprar repuestos o insumos usados en el mantenimiento.", "L-12", "Mantenimiento de equipos"),
+        new("purchase-request", "Adquisición (solicitud de compra)", "Trámite administrativo para comprar repuestos o insumos usados en el mantenimiento.", "L-12", "Mantenimiento de equipos"),
         new("maintenance-schedule", "Cronograma de mantenimiento", "Calendario de los mantenimientos planificados de la gestión.", "L-48", "Mantenimiento de equipos"),
         new("maintenance-tasks", "Tareas de mantenimiento", "Lista de tareas que el técnico marca al registrar el mantenimiento; el avance debe llegar al 100 % para completar el equipo.", "L-48", "Mantenimiento de equipos"),
         new("draft", "Borrador", "Guarda el avance de un formulario sin pasar al paso siguiente. Se retoma desde el asistente, en el mismo paso.", null, "Mantenimiento de equipos"),

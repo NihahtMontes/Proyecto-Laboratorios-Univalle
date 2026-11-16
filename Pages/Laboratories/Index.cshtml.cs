@@ -22,8 +22,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         public PaginatedList<Faculty> Faculties { get; set; } = new PaginatedList<Faculty>(new List<Faculty>(), 0, 1, 20);
         public PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career> Careers { get; set; } = new PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career>(new List<Proyecto_Laboratorios_Univalle.Models.Career>(), 0, 1, 20);
 
+        /// <summary>Página de la pestaña «Centros de Laboratorio» (paginación independiente por pestaña).</summary>
         [BindProperty(SupportsGet = true)]
         public int? PageIndex { get; set; }
+
+        /// <summary>Página de la pestaña «Unidades Académicas»: no comparte pageIndex para no perder la pestaña.</summary>
+        [BindProperty(SupportsGet = true)]
+        public int? FacultiesPageIndex { get; set; }
+
+        /// <summary>Página de la pestaña «Carreras / Programas»: no comparte pageIndex para no perder la pestaña.</summary>
+        [BindProperty(SupportsGet = true)]
+        public int? CareersPageIndex { get; set; }
+
+        /// <summary>Pestaña activa al cargar (server-side, más fiable que el hash): «faculties» / «careers».</summary>
+        [BindProperty(SupportsGet = true)]
+        public string? Tab { get; set; }
+
+        public bool IsFacultiesTab => string.Equals(Tab, "faculties", StringComparison.OrdinalIgnoreCase);
+        public bool IsCareersTab => string.Equals(Tab, "careers", StringComparison.OrdinalIgnoreCase);
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -31,7 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
-        public async Task OnGetAsync(int? pageIndex)
+        public async Task OnGetAsync(int? pageIndex, int? facultiesPageIndex, int? careersPageIndex)
         {
             // Base Queries for Laboratories and Faculties (Excluding deleted)
             var labQuery = _context.Laboratories
@@ -80,8 +96,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             // Ordering for both collections
             Laboratories = await PaginatedList<Laboratory>.CreateAsync(labQuery.OrderBy(l => l.Name), pageIndex ?? 1, 20);
-            Faculties = await PaginatedList<Faculty>.CreateAsync(facQuery.OrderBy(f => f.Name), pageIndex ?? 1, 20);
-            Careers = await PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career>.CreateAsync(carQuery.OrderBy(c => c.Name), pageIndex ?? 1, 20);
+            Faculties = await PaginatedList<Faculty>.CreateAsync(facQuery.OrderBy(f => f.Name), facultiesPageIndex ?? 1, 20);
+            Careers = await PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career>.CreateAsync(carQuery.OrderBy(c => c.Name), careersPageIndex ?? 1, 20);
         }
     }
 }

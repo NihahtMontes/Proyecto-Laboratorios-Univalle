@@ -202,7 +202,7 @@
                     <div class="asset-metric-tile asset-bg-red p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L8Maintenances</div>
-                        <div class="font-weight-bold mt-2">Mantenimientos</div>
+                        <div class="font-weight-bold mt-2">L8 · Kardex</div>
                     </div>
                 </div>
                 <!-- L-6 Verificaciones -->
@@ -210,7 +210,7 @@
                     <div class="asset-metric-tile asset-bg-cyan p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L6Verifications</div>
-                        <div class="font-weight-bold mt-2">Verificaciones</div>
+                        <div class="font-weight-bold mt-2">L6 · Verificación</div>
                     </div>
                 </div>
                 <!-- L-7 Solicitudes -->
@@ -218,7 +218,7 @@
                     <div class="asset-metric-tile asset-bg-amber p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L7Requests</div>
-                        <div class="font-weight-bold mt-2">Solicitudes de servicio técnico</div>
+                        <div class="font-weight-bold mt-2">L7 · Servicio técnico</div>
                     </div>
                 </div>
             </div>
@@ -285,7 +285,7 @@
                     <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.CountL6</div>
-                        <div class="font-weight-bold mt-2">Verificación</div>
+                        <div class="font-weight-bold mt-2">L6 · Verificación</div>
                     </a>
                 </div>
             }
@@ -294,7 +294,7 @@
                 <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-amber p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL7</div>
-                    <div class="font-weight-bold mt-2">Solicitud</div>
+                    <div class="font-weight-bold mt-2">L7 · Servicio técnico</div>
                 </a>
             </div>
             <!-- L8 -->
@@ -302,7 +302,7 @@
                 <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-red p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL8</div>
-                    <div class="font-weight-bold mt-2">Mantenimiento</div>
+                    <div class="font-weight-bold mt-2">L8 · Kardex</div>
                 </a>
             </div>
             <!-- L3 / Salida -->
@@ -310,7 +310,7 @@
                 <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-purple p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-truck-loading"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountSalida</div>
-                    <div class="font-weight-bold mt-2">Salida</div>
+                    <div class="font-weight-bold mt-2">L3 · Salidas</div>
                 </a>
             </div>
             <!-- Desembolso -->
@@ -318,7 +318,7 @@
                 <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-dollar-sign"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
-                    <div class="font-weight-bold mt-2">Compra</div>
+                    <div class="font-weight-bold mt-2">Adquisición</div>
                 </a>
             </div>
         </div>

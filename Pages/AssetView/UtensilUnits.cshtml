@@ -110,33 +110,9 @@
                 </div>
 
                 @{
-                    var pagedUnits = Model.Units;
+                    var pager = PagerModel.From(Model.Units, new Dictionary<string, string?> { ["utensilType"] = Model.UtensilType.ToString(), ["searchTerm"] = Model.SearchTerm }, itemLabel: "unidades");
                 }
-                @if (pagedUnits != null && pagedUnits.TotalPages > 1)
-                {
-                    <nav aria-label="Paginacion de unidades">
-                        <ul class="pagination justify-content-center">
-                            @if (pagedUnits.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./UtensilUnits" asp-route-utensilType="@Model.UtensilType" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@(pagedUnits.PageIndex - 1)">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= pagedUnits.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == pagedUnits.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./UtensilUnits" asp-route-utensilType="@Model.UtensilType" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@i">@i</a>
-                                </li>
-                            }
-                            @if (pagedUnits.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./UtensilUnits" asp-route-utensilType="@Model.UtensilType" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@(pagedUnits.PageIndex + 1)">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
-                }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

@@ -237,31 +237,10 @@
                     </table>
                 </div>
 
-                @if (Model.Equipment!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Equipment.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Equipment.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Equipment.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">@i</a>
-                                </li>
-                            }
-                            @if (Model.Equipment.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Equipment, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["SelectedLaboratoryId"] = Model.SelectedLaboratoryId?.ToString(), ["SelectedCategory"] = Model.SelectedCategory?.ToString(), ["SelectedEquipmentTypeClassification"] = Model.SelectedEquipmentTypeClassification?.ToString(), ["SelectedUtensilType"] = Model.SelectedUtensilType?.ToString(), ["SelectedReviewStatus"] = Model.SelectedReviewStatus?.ToString() }, itemLabel: "equipos");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

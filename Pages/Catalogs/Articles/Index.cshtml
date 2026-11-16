@@ -193,46 +193,10 @@
                     </table>
                 </div>
 
-                @if (Model.Articles!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Articles.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index"
-                                       asp-route-pageIndex="@(Model.Articles.PageIndex - 1)"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-StatusFilter="@Model.StatusFilter"
-                                       asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Articles.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Articles.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index"
-                                       asp-route-pageIndex="@i"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-StatusFilter="@Model.StatusFilter"
-                                       asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">@i</a>
-                                </li>
-                            }
-                            @if (Model.Articles.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index"
-                                       asp-route-pageIndex="@(Model.Articles.PageIndex + 1)"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-StatusFilter="@Model.StatusFilter"
-                                       asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Articles, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString(), ["ArticleCategoryId"] = Model.ArticleCategoryId?.ToString(), ["ReviewStatusFilter"] = Model.ReviewStatusFilter?.ToString() }, itemLabel: "artículos");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

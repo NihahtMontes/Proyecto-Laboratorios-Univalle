@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Verificaciones de equipos";
+    ViewData["Title"] = "L6 · Verificaciones";
     ViewData["Section"] = "Mantenimiento de equipos";
     ViewData["HidePageTitle"] = true;
     var hasActiveFilters = Model.FilterLaboratoryId.HasValue;
@@ -25,7 +25,7 @@
                 }
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Historial de verificaciones de equipos</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">L6 · Verificaciones</h3>
                         <h6 class="card-subtitle text-muted ml-2">Sesiones de inspección agrupadas por laboratorio y fecha.</h6>
                     </div>
                 </div>
@@ -118,31 +118,8 @@
                         </table>
                     </div>
 
-                    @if (Model.Sessions.HasPreviousPage || Model.Sessions.HasNextPage)
-                    {
-                        <nav aria-label="Page navigation" class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                @if (Model.Sessions.HasPreviousPage)
-                                {
-                                    <li class="page-item">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Sessions.PageIndex - 1)" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
-                                    </li>
-                                }
-                                @for (var i = 1; i <= Model.Sessions.TotalPages; i++)
-                                {
-                                    <li class="page-item @(i == Model.Sessions.PageIndex ? "active" : "")">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
-                                    </li>
-                                }
-                                @if (Model.Sessions.HasNextPage)
-                                {
-                                    <li class="page-item">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Sessions.PageIndex + 1)" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
-                                    </li>
-                                }
-                            </ul>
-                        </nav>
-                    }
+                    var pager = PagerModel.From(Model.Sessions, new Dictionary<string, string?> { ["filterLaboratoryId"] = Model.FilterLaboratoryId?.ToString() }, itemLabel: "sesiones");
+                    <partial name="_Pager" model="pager" />
                 }
 
 

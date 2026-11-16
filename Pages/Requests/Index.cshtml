@@ -1,7 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.IndexModel
 @{
-    ViewData["Title"] = "Solicitudes de servicio técnico";
+    ViewData["Title"] = "L7 · Servicio técnico";
     ViewData["Section"] = "Mantenimiento de equipos";
     ViewData["HidePageTitle"] = true;
     // Eliminar una solicitud es del área de mantenimiento (Administrator/SuperAdmin).
@@ -28,7 +28,7 @@
             <div class="card-body">
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de servicio técnico</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">L7 · Servicio técnico</h3>
                         <h6 class="card-subtitle text-muted ml-2">Gestión y seguimiento de requerimientos para el mantenimiento técnico de activos.</h6>
                     </div>
                     <div class="ml-auto mt-3">
@@ -196,31 +196,10 @@
                     </table>
                 </div>
 
-                @if (Model.Requests!.HasPreviousPage || Model.Requests.HasNextPage)
-                {
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Requests.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Requests.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Requests.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
-                                </li>
-                            }
-                            @if (Model.Requests.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Requests!, new Dictionary<string, string?> { ["searchTerm"] = Model.SearchTerm, ["statusFilter"] = Model.StatusFilter?.ToString(), ["priorityFilter"] = Model.PriorityFilter?.ToString(), ["filterLaboratoryId"] = Model.FilterLaboratoryId?.ToString() }, itemLabel: "solicitudes");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>
