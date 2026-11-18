@@ -89,22 +89,23 @@ check("A3 Segunda vez: nada por crear (botón deshabilitado)", !(await page.loca
 await page.goto(`${BASE}/`);
 await settle(page);
 check("B1 «/» lleva al nuevo Inicio", /\/(AssetView(\/Index)?|Inicio)$/i.test(new URL(page.url()).pathname), page.url());
-const resumen = await page.locator("#resumen").innerText();
-check("B1 Saludo según la hora", /Buen(os días|as tardes|as noches),/.test(resumen), resumen.split("\n")[0]);
-for (const label of ["Reportar una falla", "Reportes", "Panel de planificación", "Adquisición"]) {
-  check(`B1 Atajo «${label}»`, resumen.includes(label));
+const inicioText = await page.locator(".ip-panel").innerText();
+check("B1 Saludo según la hora", /Buen(os días|as tardes|as noches),/.test(inicioText), inicioText.split("\n")[0]);
+for (const label of ["Reportar una falla", "Reportes", "Bandeja de pendientes", "Prácticas de la semana"]) {
+  check(`B1 Sección «${label}»`, inicioText.includes(label));
 }
-await shot(page, "B1_inicio_resumen");
+check("B1 Panel único con bandeja e inventario", (await page.locator("#bandeja").count()) > 0 && (await page.locator("#inventario").count()) > 0);
+await shot(page, "B1_inicio_panel");
 const menu = await menuText(page);
 check("B2 Menú sin «Inventario general»", !/Inventario general/.test(menu));
 for (const label of ["L6 · Verificaciones", "L7 · Servicio técnico", "L8 · Kardex", "L3 · Salidas", "Adquisición"]) {
   check(`B2 Menú con «${label}»`, menu.includes(label));
 }
-await page.locator('a[href="#inventario"]').click();
+await page.locator("#ph-tab-inventario").click();
 await page.locator("#inventario").waitFor({ state: "visible" });
 await shot(page, "B3_inicio_inventario");
-check("B3 Pestaña Inventario con sus accesos", /Equipos|Utensilios/.test(await page.locator("#inventario").innerText()));
-await page.locator('a[href="#indicadores"]').click();
+check("B3 Inventario con sus accesos", /Equipos|Utensilios/.test(await page.locator("#inventario").innerText()));
+await page.locator("#ph-tab-graficos").click();
 await page.locator("#indicadores-content").waitFor({ state: "visible", timeout: 30000 });
 await page.waitForTimeout(800);
 const canvases = await page.locator("#indicadores-content canvas").count();
@@ -114,7 +115,9 @@ check("B4 Indicadores: frases de conclusión", /%|más/.test(conclusions));
 await shot(page, "B4_inicio_indicadores");
 await page.goto(`${BASE}/Inicio?ActiveTab=Indicadores`);
 await settle(page);
-check("B5 Ruta /Inicio responde y abre la pestaña pedida", await page.locator("#indicadores").isVisible());
+await page.locator("#indicadores-content").waitFor({ state: "visible", timeout: 30000 });
+check("B5 Ruta /Inicio responde y abre los indicadores pedidos", (await page.locator("#ph-tab-graficos").getAttribute("aria-selected")) === "true");
+await shot(page, "B5_inicio_active_tab");
 
 // ───── C. Mantenimiento preventivo → panel de la gestión ─────
 await page.goto(`${BASE}/Managements?handler=CurrentPreventive`);
@@ -176,7 +179,7 @@ await page.context().close();
 // ───── G. Teléfono ─────
 page = await session(ADMIN, phone());
 await page.goto(`${BASE}/Inicio`);
-await noOverflow(page, "G1_tel_inicio_resumen");
+await noOverflow(page, "G1_tel_inicio_panel");
 await page.goto(`${BASE}/Inicio?ActiveTab=Indicadores`);
 await page.locator("#indicadores-content").waitFor({ state: "visible", timeout: 30000 });
 await page.waitForTimeout(800);
