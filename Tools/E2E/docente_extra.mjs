@@ -47,7 +47,7 @@ async function phoneCheck(page, path, name) {
   await settle(page);
   const overflow = await page.evaluate(() => {
     const wide = [...document.querySelectorAll("body *")]
-      .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 2 && !el.closest(".table-responsive, .dataTables_wrapper, .select2-container, [style*='overflow']"); })
+      .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 2 && !el.closest(".ph-tabs, .table-responsive, .dataTables_wrapper, .select2-container, [style*='overflow']"); })
       .slice(0, 3).map(el => `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""}`);
     return { scroll: document.documentElement.scrollWidth, width: window.innerWidth, wide };
   });
@@ -66,7 +66,7 @@ try {
   check("Ingresan el revisor y el docente", teacher.url().includes("/Docente") && !admin.url().includes("/Login"), teacher.url());
 
   // ───── A. Solicitar desde el cronograma con estudiantes propios ─────
-  await teacher.goto(`${BASE}/Docente`);
+  await teacher.goto(`${BASE}/Docente?tab=solicitar`);
   const solicitar = teacher.locator('a:has-text("Solicitar")[href*="scheduleId"]').first();
   if (await solicitar.count() === 0) throw new Error("No hay prácticas programadas por solicitar para el docente A");
   const scheduleId = Number(new URL(await solicitar.getAttribute("href"), BASE).searchParams.get("scheduleId"));

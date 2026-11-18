@@ -47,7 +47,7 @@ async function noOverflow(page, name) {
   await settle(page);
   const o = await page.evaluate(() => {
     const wide = [...document.querySelectorAll("body *")]
-      .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 2 && !el.closest(".table-responsive, .dataTables_wrapper, .select2-container, [style*='overflow']"); })
+      .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 2 && !el.closest(".ph-tabs, .table-responsive, .dataTables_wrapper, .select2-container, [style*='overflow']"); })
       .slice(0, 3).map(el => `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${typeof el.className === "string" && el.className ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""}`);
     return { scroll: document.documentElement.scrollWidth, width: window.innerWidth, wide };
   });

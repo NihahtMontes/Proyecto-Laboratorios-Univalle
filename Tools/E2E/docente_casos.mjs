@@ -245,7 +245,7 @@ try {
   // ───── 7. Práctica programada y control semanal ─────
   // Práctica futura del cronograma sin solicitud vigente: en la copia se cancela la planificación histórica del 27/11.
   sql(`UPDATE Plannings SET Status='Cancelada' WHERE PracticeScheduleId IN (SELECT Id FROM PracticeSchedules WHERE CourseGroupId=${A.group} AND ExecutionDate='2026-11-27')`);
-  await teacherA.goto(`${BASE}/Docente`);
+  await teacherA.goto(`${BASE}/Docente?tab=solicitar`);
   await shot(teacherA, "04_inicio_programadas");
   const solicitar = teacherA.locator('a:has-text("Solicitar")[href*="scheduleId"]').first();
   const hasProgrammed = await solicitar.count() > 0;
