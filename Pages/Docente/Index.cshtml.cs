@@ -24,10 +24,14 @@ public class IndexModel : TeacherPageBase
     /// <summary>Prácticas del cronograma que todavía no solicitó (para iniciarlas con un clic).</summary>
     public IReadOnlyList<ProgrammedPractice> Programmed { get; private set; } = [];
 
+    /// <summary>Pestaña activa del portal: resumen (predeterminada), semana, solicitar o novedades.</summary>
+    public string ActiveTab { get; private set; } = "resumen";
+
     public sealed record NewsItem(int PlanningId, string Code, string Practice, PlanningReviewAction Action, string? Comment, DateTime Date);
 
-    public async Task OnGetAsync(DateTime? week)
+    public async Task OnGetAsync(DateTime? week, string? tab)
     {
+        ActiveTab = NormalizeTab(tab) ?? (week.HasValue ? "semana" : "resumen");
         var today = DateTime.Today;
         var reference = (week ?? today).Date;
         WeekStart = reference.AddDays(-(((int)reference.DayOfWeek + 6) % 7));
@@ -68,4 +72,14 @@ public class IndexModel : TeacherPageBase
             .Select(r => new NewsItem(r.PlanningId, r.Planning!.Code ?? "", r.Planning.PracticeName, r.Action, r.Comment, r.CreatedDate))
             .ToListAsync();
     }
+
+    /// <summary>Devuelve la pestaña reconocida (sin mayúsculas) o null si no llega o es desconocida.</summary>
+    private static string? NormalizeTab(string? tab) => tab?.Trim().ToLowerInvariant() switch
+    {
+        "resumen" => "resumen",
+        "semana" => "semana",
+        "solicitar" => "solicitar",
+        "novedades" => "novedades",
+        _ => null
+    };
 }

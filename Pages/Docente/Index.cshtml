@@ -11,259 +11,463 @@
     var today = DateTime.Today;
     var hour = DateTime.Now.Hour;
     var greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+    var tab = Model.ActiveTab;
+    var weekCounts = Enumerable.Range(0, 6)
+        .Select(i => Model.Week.Count(w => w.Date.Date == Model.WeekStart.AddDays(i)))
+        .ToArray();
+    var weekMax = Math.Max(1, weekCounts.Max());
 }
 
 @section Styles {
+    <link href="~/css/panel-home.css" rel="stylesheet" asp-append-version="true" />
     <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
 }
 
-<div class="page-breadcrumb">
-    <div class="row align-items-center">
-        <div class="col-md-8">
-            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">PORTAL DOCENTE</h4>
-            <h2 class="font-weight-bold text-dark mb-0">@greeting, @Model.Teacher.Name</h2>
-            <div class="text-muted small">
-                @if (Model.Window.IsOpen)
+<div class="ph-home">
+
+    <div class="page-breadcrumb">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#1e88e5;">PORTAL DOCENTE</h4>
+                <h2 class="font-weight-bold text-dark mb-0">@greeting, @Model.Teacher.Name</h2>
+                <div class="text-muted small">
+                    @if (Model.Window.IsOpen)
+                    {
+                        <span><i class="far fa-calendar-check mr-1"></i>Gestión @Model.Window.ManagementCode · puedes solicitar prácticas @Model.Window.RangeText.</span>
+                    }
+                    else
+                    {
+                        <span class="text-warning"><i class="fas fa-lock mr-1"></i>@Model.Window.ClosedReason</span>
+                    }
+                </div>
+            </div>
+            <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                @if (Model.Window.IsOpen && Model.GroupCount > 0)
                 {
-                    <span><i class="far fa-calendar-check mr-1"></i>Gestión @Model.Window.ManagementCode · puedes solicitar prácticas @Model.Window.RangeText.</span>
-                }
-                else
-                {
-                    <span class="text-warning"><i class="fas fa-lock mr-1"></i>@Model.Window.ClosedReason</span>
+                    <a asp-page="./NuevaSolicitud" class="btn btn-lg rounded-pill px-4 shadow-sm text-white" style="background:#1e88e5;">
+                        <i class="fas fa-plus-circle mr-2"></i>Solicitar práctica
+                    </a>
                 }
             </div>
-        </div>
-        <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            @if (Model.Window.IsOpen && Model.GroupCount > 0)
-            {
-                <a asp-page="./NuevaSolicitud" class="btn btn-lg rounded-pill px-4 shadow-sm text-white" style="background:#7460ee;">
-                    <i class="fas fa-plus-circle mr-2"></i>Solicitar práctica
-                </a>
-            }
         </div>
     </div>
-</div>
 
-<div class="container-fluid mt-3">
+    <div class="container-fluid mt-3">
 
-    @if (Model.GroupCount == 0)
-    {
-        <div class="alert border-0 shadow-sm d-flex align-items-center mb-4" style="background:#fff8e8;">
-            <i class="fas fa-users fa-lg text-warning mr-3"></i>
-            <div><strong>No tienes grupos asignados en la gestión vigente.</strong> Pide al administrador que te asigne tus grupos en Materias para poder solicitar prácticas.</div>
-        </div>
-    }
-
-    @if (Model.Observed > 0)
-    {
-        <a asp-page="./Solicitudes" asp-route-tab="observadas" class="alert border-0 shadow-sm d-flex align-items-center mb-4 text-decoration-none" style="background:#fff4e5;">
-            <span class="dc-kpi__icon dc-soft-orange mr-3"><i class="fas fa-comment-dots"></i></span>
-            <div class="flex-grow-1 text-dark">
-                <strong>Tienes @Model.Observed solicitud(es) observada(s).</strong>
-                <div class="small text-muted">El revisor dejó comentarios: corrígelas y reenvíalas para que puedan aprobarse.</div>
+        @if (Model.GroupCount == 0)
+        {
+            <div class="alert border-0 shadow-sm d-flex align-items-center mb-4" style="background:#fff8e8;">
+                <i class="fas fa-users fa-lg text-warning mr-3"></i>
+                <div><strong>No tienes grupos asignados en la gestión vigente.</strong> Pide al administrador que te asigne tus grupos en Materias para poder solicitar prácticas.</div>
             </div>
-            <span class="btn btn-sm rounded-pill text-white px-3" style="background:#fb8c00;">Revisar <i class="fas fa-arrow-right ml-1"></i></span>
-        </a>
-    }
+        }
 
-    <div class="row">
-        <!-- Próxima práctica -->
-        <div class="col-lg-7 mb-4">
+        @if (Model.Observed > 0)
+        {
+            <a asp-page="./Solicitudes" asp-route-tab="observadas" class="alert border-0 shadow-sm d-flex align-items-center mb-4 text-decoration-none" style="background:#fff4e5;">
+                <span class="dc-kpi__icon dc-soft-orange mr-3"><i class="fas fa-comment-dots"></i></span>
+                <div class="flex-grow-1 text-dark">
+                    <strong>Tienes @Model.Observed solicitud(es) observada(s).</strong>
+                    <div class="small text-muted">El revisor dejó comentarios: corrígelas y reenvíalas para que puedan aprobarse.</div>
+                </div>
+                <span class="btn btn-sm rounded-pill text-white px-3" style="background:#fb8c00;">Revisar <i class="fas fa-arrow-right ml-1"></i></span>
+            </a>
+        }
+
+        <!-- Indicadores -->
+        <section class="ph-kpis">
+            <a asp-page="./Solicitudes" asp-route-tab="revision" class="ph-kpi ph-tone-blue">
+                <span class="ph-kpi__icon"><i class="fas fa-hourglass-half"></i></span>
+                <span class="ph-kpi__body">
+                    <span class="ph-kpi__label">En revisión</span>
+                    <span class="ph-kpi__value">@Model.InReview</span>
+                </span>
+            </a>
+            <a asp-page="./Solicitudes" asp-route-tab="observadas" class="ph-kpi ph-tone-amber">
+                <span class="ph-kpi__icon"><i class="fas fa-comment-dots"></i></span>
+                <span class="ph-kpi__body">
+                    <span class="ph-kpi__label">Observadas</span>
+                    <span class="ph-kpi__value">@Model.Observed</span>
+                </span>
+            </a>
+            <a asp-page="./Calendario" class="ph-kpi ph-tone-green">
+                <span class="ph-kpi__icon"><i class="fas fa-check-circle"></i></span>
+                <span class="ph-kpi__body">
+                    <span class="ph-kpi__label">Aprobadas próximas</span>
+                    <span class="ph-kpi__value">@Model.Upcoming</span>
+                </span>
+            </a>
+            <a asp-page="./Solicitudes" asp-route-tab="realizadas" class="ph-kpi ph-tone-cyan">
+                <span class="ph-kpi__icon"><i class="fas fa-flag-checkered"></i></span>
+                <span class="ph-kpi__body">
+                    <span class="ph-kpi__label">Realizadas</span>
+                    <span class="ph-kpi__value">@Model.Done</span>
+                </span>
+            </a>
+        </section>
+
+        <!-- Pestañas -->
+        <div class="ph-tabs" role="tablist" aria-label="Secciones de Mi semana" data-ph-param="tab">
+            <a class="ph-tab" role="tab" id="ph-tab-resumen" data-ph-key="resumen" href="?tab=resumen"
+               aria-selected="@(tab == "resumen" ? "true" : "false")" tabindex="@(tab == "resumen" ? "0" : "-1")">
+                <i class="fas fa-chart-pie"></i><span>Resumen</span>
+            </a>
+            <a class="ph-tab" role="tab" id="ph-tab-semana" data-ph-key="semana" href="?tab=semana"
+               aria-selected="@(tab == "semana" ? "true" : "false")" tabindex="@(tab == "semana" ? "0" : "-1")">
+                <i class="far fa-calendar-alt"></i><span>Mi semana</span>
+            </a>
+            <a class="ph-tab" role="tab" id="ph-tab-solicitar" data-ph-key="solicitar" href="?tab=solicitar"
+               aria-selected="@(tab == "solicitar" ? "true" : "false")" tabindex="@(tab == "solicitar" ? "0" : "-1")">
+                <i class="fas fa-paper-plane"></i><span>Por solicitar</span><span class="ph-tab__count">@Model.Programmed.Count</span>
+            </a>
+            <a class="ph-tab" role="tab" id="ph-tab-novedades" data-ph-key="novedades" href="?tab=novedades"
+               aria-selected="@(tab == "novedades" ? "true" : "false")" tabindex="@(tab == "novedades" ? "0" : "-1")">
+                <i class="fas fa-bell"></i><span>Novedades</span><span class="ph-tab__count">@Model.News.Count</span>
+            </a>
+        </div>
+
+        <!-- Panel: Resumen -->
+        <div class="ph-panel" role="tabpanel" data-ph-key="resumen" aria-labelledby="ph-tab-resumen" hidden="@(tab == "resumen" ? null : "hidden")">
+
             @if (Model.Next != null)
             {
                 var n = Model.Next;
-                <div class="dc-hero p-4 h-100 shadow-sm">
-                    <div class="position-relative" style="z-index:1;">
-                        <div class="dc-hero__label mb-2"><i class="fas fa-bolt mr-1"></i>Tu próxima práctica</div>
-                        <div class="dc-hero__title mb-1">@n.Practice</div>
-                        <div class="mb-3" style="opacity:.9;">@n.Subject · Grupo @n.Group</div>
-                        <div class="mb-3">
-                            <span class="dc-chip"><i class="far fa-calendar"></i>@n.Date.ToString("dddd d 'de' MMMM", es)</span>
-                            <span class="dc-chip"><i class="far fa-clock"></i>@n.TimeText</span>
-                            <span class="dc-chip"><i class="fas fa-building"></i>@n.LabCode · @n.LabName</span>
-                            <span class="dc-chip"><i class="fas fa-box-open"></i>@n.ItemCount artículo(s)</span>
+                <div class="dc-hero ph-section ph-section--wide ph-tone-blue">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="fas fa-bolt"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="dc-hero__label d-block mb-1">Tu próxima práctica</span>
+                            <span class="ph-section__title">@n.Practice</span>
+                            <span class="ph-section__desc">@n.Subject · Grupo @n.Group</span>
                         </div>
-                        <div class="d-flex flex-wrap align-items-end justify-content-between">
-                            <div class="dc-countdown mb-2" id="countdown" data-start="@Model.NextStart!.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
-                                <div><b data-part="d">–</b><small>días</small></div>
-                                <div><b data-part="h">–</b><small>horas</small></div>
-                                <div><b data-part="m">–</b><small>min</small></div>
-                            </div>
-                            <div class="mb-2">
-                                <a asp-page="./Solicitud" asp-route-id="@n.Id" class="btn btn-light rounded-pill px-3 mr-1"><i class="fas fa-eye mr-1"></i>Ver detalle</a>
-                                <a asp-page="./Solicitud" asp-route-id="@n.Id" asp-page-handler="Ficha" class="btn btn-outline-light rounded-pill px-3" target="_blank"><i class="fas fa-file-pdf mr-1"></i>Ficha</a>
-                            </div>
+                    </div>
+                    <div>
+                        <span class="dc-chip"><i class="far fa-calendar"></i>@n.Date.ToString("dddd d 'de' MMMM", es)</span>
+                        <span class="dc-chip"><i class="far fa-clock"></i>@n.TimeText</span>
+                        <span class="dc-chip"><i class="fas fa-building"></i>@n.LabCode · @n.LabName</span>
+                        <span class="dc-chip"><i class="fas fa-box-open"></i>@n.ItemCount artículo(s)</span>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-end justify-content-between">
+                        <div class="dc-countdown mb-2" id="countdown" data-start="@Model.NextStart!.Value.ToString("yyyy-MM-ddTHH:mm:ss")">
+                            <div><b data-part="d">–</b><small>días</small></div>
+                            <div><b data-part="h">–</b><small>horas</small></div>
+                            <div><b data-part="m">–</b><small>min</small></div>
+                        </div>
+                        <div class="mb-2">
+                            <a asp-page="./Solicitud" asp-route-id="@n.Id" class="btn rounded-pill px-3 mr-1 text-white" style="background:#1e88e5;"><i class="fas fa-eye mr-1"></i>Ver detalle</a>
+                            <a asp-page="./Solicitud" asp-route-id="@n.Id" asp-page-handler="Ficha" class="btn rounded-pill px-3" style="border:1px solid #1e88e5;color:#1e88e5;background:#fff;" target="_blank" rel="noopener"><i class="fas fa-file-pdf mr-1"></i>Ficha</a>
                         </div>
                     </div>
                 </div>
             }
             else
             {
-                <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
-                    <div class="card-body dc-empty d-flex flex-column justify-content-center">
-                        <i class="far fa-calendar-plus" style="color:#7460ee;"></i>
+                <div class="ph-section ph-section--wide ph-tone-blue">
+                    <div class="dc-empty">
+                        <i class="far fa-calendar-plus" style="color:#1e88e5;"></i>
                         <h5 class="font-weight-bold text-dark">No tienes prácticas aprobadas próximas</h5>
                         <p class="mb-3">Solicita una práctica: el sistema te sugiere horarios libres y revisa el material por ti.</p>
                         @if (Model.Window.IsOpen && Model.GroupCount > 0)
                         {
-                            <div><a asp-page="./NuevaSolicitud" class="btn rounded-pill px-4 text-white" style="background:#7460ee;"><i class="fas fa-plus mr-1"></i>Solicitar práctica</a></div>
+                            <div><a asp-page="./NuevaSolicitud" class="btn rounded-pill px-4 text-white" style="background:#1e88e5;"><i class="fas fa-plus mr-1"></i>Solicitar práctica</a></div>
                         }
                     </div>
                 </div>
             }
-        </div>
 
-        <!-- Indicadores -->
-        <div class="col-lg-5 mb-4">
-            <div class="row h-100">
-                <div class="col-6 mb-3">
-                    <a asp-page="./Solicitudes" asp-route-tab="revision" class="dc-kpi h-100">
-                        <span class="dc-kpi__icon dc-soft-primary"><i class="fas fa-hourglass-half"></i></span>
-                        <div><div class="dc-kpi__value">@Model.InReview</div><div class="dc-kpi__label">En revisión</div></div>
-                    </a>
-                </div>
-                <div class="col-6 mb-3">
-                    <a asp-page="./Solicitudes" asp-route-tab="observadas" class="dc-kpi h-100">
-                        <span class="dc-kpi__icon dc-soft-orange"><i class="fas fa-comment-dots"></i></span>
-                        <div><div class="dc-kpi__value">@Model.Observed</div><div class="dc-kpi__label">Observadas</div></div>
-                    </a>
-                </div>
-                <div class="col-6 mb-3">
-                    <a asp-page="./Calendario" class="dc-kpi h-100">
-                        <span class="dc-kpi__icon dc-soft-success"><i class="fas fa-check-circle"></i></span>
-                        <div><div class="dc-kpi__value">@Model.Upcoming</div><div class="dc-kpi__label">Aprobadas próximas</div></div>
-                    </a>
-                </div>
-                <div class="col-6 mb-3">
-                    <a asp-page="./Solicitudes" asp-route-tab="realizadas" class="dc-kpi h-100">
-                        <span class="dc-kpi__icon dc-soft-info"><i class="fas fa-flag-checkered"></i></span>
-                        <div><div class="dc-kpi__value">@Model.Done</div><div class="dc-kpi__label">Realizadas</div></div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+            <div class="ph-sections ph-sections--3 mt-3">
 
-    @if (Model.Programmed.Count > 0)
-    {
-        <!-- Prácticas del cronograma por solicitar -->
-        <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
-            <div class="card-body">
-                <div class="d-flex flex-wrap align-items-center mb-3">
-                    <h5 class="font-weight-bold text-dark mb-0 mr-3"><i class="fas fa-calendar-plus mr-2" style="color:#7460ee;"></i>Prácticas programadas por solicitar</h5>
-                    <small class="text-muted">Según el cronograma de la gestión. Solicítalas con anticipación para asegurar laboratorio y material.</small>
-                </div>
-                <div class="list-group list-group-flush">
-                    @foreach (var p in Model.Programmed)
-                    {
-                        <div class="list-group-item px-0 d-flex flex-wrap align-items-center">
-                            <div class="mr-3 text-center" style="min-width:64px;">
-                                <div class="font-weight-bold text-dark">@p.Date.ToString("dd/MM")</div>
-                                <small class="text-muted text-capitalize">@p.Date.ToString("ddd", es)@(p.WeekNumber is int w ? $" · sem. {w}" : "")</small>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="font-weight-bold text-dark">@p.Practice</div>
-                                <small class="text-muted">@p.Subject · Grupo @p.Group</small>
-                            </div>
-                            @if (p.InWindow)
+                <!-- Mi semana -->
+                <a class="ph-section ph-tone-blue" data-ph-tab="semana" href="?tab=semana">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="far fa-calendar-alt"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="ph-section__title">Mi semana</span>
+                            <span class="ph-section__desc">@Model.WeekStart.ToString("d 'de' MMMM", es) al @Model.WeekStart.AddDays(5).ToString("d 'de' MMMM", es)</span>
+                        </div>
+                        <span class="ph-section__count">@Model.Week.Count</span>
+                    </div>
+                    <div class="ph-section__preview">
+                        <div class="ph-days">
+                            @for (var i = 0; i < 6; i++)
                             {
-                                <a asp-page="./NuevaSolicitud" asp-route-scheduleId="@p.ScheduleId" class="btn btn-sm text-white rounded-pill px-3" style="background:#7460ee;">
-                                    <i class="fas fa-paper-plane mr-1"></i>Solicitar
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="badge badge-pill badge-light border px-3 py-2" title="Aún fuera del plazo para solicitar">Se habilita más adelante</span>
+                                var day = Model.WeekStart.AddDays(i);
+                                <div class="ph-days__item @(day == today ? "is-current" : null)" style="--ph-h:@(weekCounts[i] * 100 / weekMax)%">
+                                    <span class="ph-days__value">@weekCounts[i]</span>
+                                    <span class="ph-days__track"><span class="ph-days__bar"></span></span>
+                                    <span class="ph-days__label">@day.ToString("ddd", es)</span>
+                                </div>
                             }
                         </div>
-                    }
-                </div>
-            </div>
-        </div>
-    }
+                    </div>
+                    <span class="ph-section__cta">Ver la semana completa <i class="fas fa-arrow-right"></i></span>
+                </a>
 
-    <!-- Semana -->
-    <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center mb-3">
-                <div>
-                    <h5 class="font-weight-bold text-dark mb-0"><i class="far fa-calendar-alt mr-2" style="color:#7460ee;"></i>Mi semana</h5>
-                    <small class="text-muted">@Model.WeekStart.ToString("d 'de' MMMM", es) al @Model.WeekStart.AddDays(5).ToString("d 'de' MMMM yyyy", es)</small>
-                </div>
-                <div class="ml-auto btn-group btn-group-sm mt-2 mt-md-0">
-                    <a asp-page="./Index" asp-route-week="@Model.WeekStart.AddDays(-7).ToString("yyyy-MM-dd")" class="btn btn-light border" title="Semana anterior"><i class="fas fa-chevron-left"></i></a>
-                    <a asp-page="./Index" class="btn btn-light border">Hoy</a>
-                    <a asp-page="./Index" asp-route-week="@Model.WeekStart.AddDays(7).ToString("yyyy-MM-dd")" class="btn btn-light border" title="Semana siguiente"><i class="fas fa-chevron-right"></i></a>
-                </div>
-            </div>
-            <div class="dc-week">
-                @for (var i = 0; i < 6; i++)
+                <!-- Por solicitar -->
+                <a class="ph-section ph-tone-amber" data-ph-tab="solicitar" href="?tab=solicitar">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="fas fa-paper-plane"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="ph-section__title">Por solicitar</span>
+                            <span class="ph-section__desc">Prácticas del cronograma que aún no pediste</span>
+                        </div>
+                        <span class="ph-section__count">@Model.Programmed.Count</span>
+                    </div>
+                    <div class="ph-section__preview">
+                        @if (Model.Programmed.Count == 0)
+                        {
+                            <div class="small text-muted">No te queda ninguna práctica del cronograma por solicitar.</div>
+                        }
+                        else
+                        {
+                            <ul class="ph-peek">
+                                @foreach (var p in Model.Programmed.Take(2))
+                                {
+                                    <li><span>@p.Date.ToString("dd/MM") · @p.Practice (Grupo @p.Group)</span></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <span class="ph-section__cta">Revisar la lista <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <!-- Novedades -->
+                <a class="ph-section ph-tone-red" data-ph-tab="novedades" href="?tab=novedades">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="fas fa-bell"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="ph-section__title">Novedades</span>
+                            <span class="ph-section__desc">Revisiones recientes de tus solicitudes</span>
+                        </div>
+                        <span class="ph-section__count">@Model.News.Count</span>
+                    </div>
+                    <div class="ph-section__preview">
+                        @if (Model.News.Count == 0)
+                        {
+                            <div class="small text-muted">Aún no hay revisiones de tus solicitudes.</div>
+                        }
+                        else
+                        {
+                            <ul class="ph-peek">
+                                @foreach (var news in Model.News.Take(2))
+                                {
+                                    <li><span>@L3Codes.Format(news.PlanningId, news.Code) · @news.Practice</span></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <span class="ph-section__cta">Ver novedades <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <!-- Mis solicitudes -->
+                <a asp-page="./Solicitudes" class="ph-section ph-tone-cyan">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="fas fa-inbox"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="ph-section__title">Mis solicitudes</span>
+                            <span class="ph-section__desc">Estado de todo lo que pediste</span>
+                        </div>
+                    </div>
+                    <div class="ph-section__preview">
+                        <ul class="ph-peek">
+                            <li><span><b>@Model.InReview</b> en revisión</span></li>
+                            <li><span><b>@Model.Observed</b> con observaciones</span></li>
+                        </ul>
+                    </div>
+                    <span class="ph-section__cta">Abrir la bandeja <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <!-- Mi calendario -->
+                <a asp-page="./Calendario" class="ph-section ph-tone-green">
+                    <div class="ph-section__head">
+                        <span class="ph-section__icon"><i class="far fa-calendar-check"></i></span>
+                        <div class="ph-section__heading">
+                            <span class="ph-section__title">Mi calendario</span>
+                            <span class="ph-section__desc">Todas tus prácticas por fecha</span>
+                        </div>
+                        <span class="ph-section__count">@Model.Upcoming</span>
+                    </div>
+                    <div class="ph-section__preview">
+                        <ul class="ph-peek">
+                            <li><span><b>@Model.Upcoming</b> prácticas aprobadas por realizar</span></li>
+                        </ul>
+                    </div>
+                    <span class="ph-section__cta">Ver el calendario <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <!-- Solicitar práctica -->
+                @if (Model.Window.IsOpen && Model.GroupCount > 0)
                 {
-                    var day = Model.WeekStart.AddDays(i);
-                    var items = Model.Week.Where(w => w.Date.Date == day).ToList();
-                    <div class="dc-day @(day == today ? "is-today" : null)">
-                        <div class="dc-day__head"><b>@day.ToString("ddd", es)</b><span>@day.Day</span></div>
-                        <div class="dc-day__body">
-                            @if (items.Count == 0)
-                            {
-                                <div class="dc-day__empty">Libre</div>
-                            }
-                            @foreach (var item in items)
-                            {
-                                <a asp-page="./Solicitud" asp-route-id="@item.Id" class="dc-event dc-event--@item.StatusCss" title="@item.StatusText">
-                                    <div class="dc-event__time">@item.TimeText</div>
-                                    <div class="text-truncate">@item.Practice</div>
-                                    <div class="text-muted text-truncate">@item.LabCode · Gr. @item.Group</div>
-                                    <span class="badge badge-pill badge-@item.StatusCss mt-1" style="font-size:.6rem;">@item.StatusText</span>
-                                </a>
-                            }
+                    <a asp-page="./NuevaSolicitud" class="ph-section ph-tone-green">
+                        <div class="ph-section__head">
+                            <span class="ph-section__icon"><i class="fas fa-plus-circle"></i></span>
+                            <div class="ph-section__heading">
+                                <span class="ph-section__title">Solicitar práctica</span>
+                                <span class="ph-section__desc">Ventana abierta @Model.Window.RangeText</span>
+                            </div>
+                        </div>
+                        <div class="ph-section__preview small text-muted">Elige una práctica del cronograma: el sistema te sugiere horarios libres y revisa el material por ti.</div>
+                        <span class="ph-section__cta">Nueva solicitud <i class="fas fa-arrow-right"></i></span>
+                    </a>
+                }
+                else
+                {
+                    <div class="ph-section ph-tone-gray">
+                        <div class="ph-section__head">
+                            <span class="ph-section__icon"><i class="fas fa-lock"></i></span>
+                            <div class="ph-section__heading">
+                                <span class="ph-section__title">Solicitar práctica</span>
+                                <span class="ph-section__desc">@(Model.Window.IsOpen ? "Sin grupos asignados en la gestión vigente." : Model.Window.ClosedReason)</span>
+                            </div>
+                        </div>
+                        <div class="ph-section__preview small text-muted">
+                            @(Model.Window.IsOpen
+                                ? "Pide al administrador que te asigne tus grupos en Materias para poder solicitar prácticas."
+                                : "Cuando se abra la ventana de solicitudes podrás iniciarlas aquí.")
                         </div>
                     </div>
                 }
             </div>
         </div>
-    </div>
 
-    <!-- Novedades -->
-    <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
-        <div class="card-body">
-            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-list-ul mr-2" style="color:#7460ee;"></i>Novedades de tus solicitudes</h5>
-            @if (Model.News.Count == 0)
-            {
-                <div class="text-muted small">Aún no hay revisiones. Cuando el revisor apruebe, observe o rechace una solicitud aparecerá aquí.</div>
-            }
-            else
-            {
-                <div class="list-group list-group-flush">
-                    @foreach (var news in Model.News)
-                    {
-                        var (icon, css, text) = news.Action switch
+        <!-- Panel: Mi semana -->
+        <div class="ph-panel" role="tabpanel" data-ph-key="semana" aria-labelledby="ph-tab-semana" hidden="@(tab == "semana" ? null : "hidden")">
+            <div class="ph-card mb-4">
+                <div class="ph-card__head">
+                    <div>
+                        <h5 class="ph-card__title"><i class="far fa-calendar-alt mr-2" style="color:#1e88e5;"></i>Mi semana</h5>
+                        <small class="text-muted">@Model.WeekStart.ToString("d 'de' MMMM", es) al @Model.WeekStart.AddDays(5).ToString("d 'de' MMMM yyyy", es)</small>
+                    </div>
+                    <div class="btn-group btn-group-sm mt-2 mt-md-0">
+                        <a asp-page="./Index" asp-route-week="@Model.WeekStart.AddDays(-7).ToString("yyyy-MM-dd")" asp-route-tab="semana" class="btn btn-light border" title="Semana anterior"><i class="fas fa-chevron-left"></i></a>
+                        <a asp-page="./Index" asp-route-tab="semana" class="btn btn-light border">Hoy</a>
+                        <a asp-page="./Index" asp-route-week="@Model.WeekStart.AddDays(7).ToString("yyyy-MM-dd")" asp-route-tab="semana" class="btn btn-light border" title="Semana siguiente"><i class="fas fa-chevron-right"></i></a>
+                    </div>
+                </div>
+                <div class="ph-card__body">
+                    <div class="dc-week">
+                        @for (var i = 0; i < 6; i++)
                         {
-                            PlanningReviewAction.Approved => ("fas fa-check-circle", "success", "fue aprobada"),
-                            PlanningReviewAction.ApprovedWithChanges => ("fas fa-clipboard-check", "success", "fue aprobada con cambios"),
-                            PlanningReviewAction.Observed => ("fas fa-comment-dots", "orange", "tiene observaciones"),
-                            PlanningReviewAction.Rejected => ("fas fa-times-circle", "danger", "fue rechazada"),
-                            _ => ("fas fa-info-circle", "secondary", "se actualizó")
-                        };
-                        <a asp-page="./Solicitud" asp-route-id="@news.PlanningId" class="list-group-item list-group-item-action d-flex align-items-start px-0">
-                            <span class="dc-kpi__icon dc-soft-@css" style="width:38px;height:38px;"><i class="@icon"></i></span>
-                            <div class="flex-grow-1" style="min-width:0;">
-                                <div class="text-dark"><strong>@L3Codes.Format(news.PlanningId, news.Code)</strong> · @news.Practice <span class="text-muted">@text</span></div>
-                                @if (!string.IsNullOrWhiteSpace(news.Comment))
-                                {
-                                    <div class="small text-muted text-truncate" style="max-width:720px;">“@news.Comment”</div>
-                                }
+                            var day = Model.WeekStart.AddDays(i);
+                            var items = Model.Week.Where(w => w.Date.Date == day).ToList();
+                            <div class="dc-day @(day == today ? "is-today" : null)">
+                                <div class="dc-day__head"><b>@day.ToString("ddd", es)</b><span>@day.Day</span></div>
+                                <div class="dc-day__body">
+                                    @if (items.Count == 0)
+                                    {
+                                        <div class="dc-day__empty">Libre</div>
+                                    }
+                                    @foreach (var item in items)
+                                    {
+                                        <a asp-page="./Solicitud" asp-route-id="@item.Id" class="dc-event dc-event--@item.StatusCss" title="@item.StatusText">
+                                            <div class="dc-event__time">@item.TimeText</div>
+                                            <div class="text-truncate">@item.Practice</div>
+                                            <div class="text-muted text-truncate">@item.LabCode · Gr. @item.Group</div>
+                                            <span class="badge badge-pill badge-@item.StatusCss mt-1" style="font-size:.6rem;">@item.StatusText</span>
+                                        </a>
+                                    }
+                                </div>
                             </div>
-                            <small class="text-muted ml-2 text-nowrap">@Proyecto_Laboratorios_Univalle.Helpers.BoliviaTime.ToLocal(news.Date).ToString("dd/MM HH:mm")</small>
-                        </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel: Por solicitar -->
+        <div class="ph-panel" role="tabpanel" data-ph-key="solicitar" aria-labelledby="ph-tab-solicitar" hidden="@(tab == "solicitar" ? null : "hidden")">
+            <div class="ph-card mb-4">
+                <div class="ph-card__head">
+                    <h5 class="ph-card__title"><i class="fas fa-paper-plane mr-2" style="color:#1e88e5;"></i>Prácticas programadas por solicitar</h5>
+                    <small class="text-muted">Según el cronograma de la gestión. Solicítalas con anticipación para asegurar laboratorio y material.</small>
+                </div>
+                <div class="ph-card__body">
+                    @if (Model.Programmed.Count == 0)
+                    {
+                        <div class="dc-empty">
+                            <i class="far fa-calendar-check" style="color:#1e88e5;"></i>
+                            <h5 class="font-weight-bold text-dark">No tienes prácticas pendientes de solicitar</h5>
+                            <p class="mb-0">Cuando el cronograma de la gestión programe nuevas prácticas aparecerán aquí para iniciarlas con un clic.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var p in Model.Programmed)
+                            {
+                                <div class="list-group-item px-0 d-flex flex-wrap align-items-center">
+                                    <div class="mr-3 text-center" style="min-width:64px;">
+                                        <div class="font-weight-bold text-dark">@p.Date.ToString("dd/MM")</div>
+                                        <small class="text-muted text-capitalize">@p.Date.ToString("ddd", es)@(p.WeekNumber is int w ? $" · sem. {w}" : "")</small>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="font-weight-bold text-dark">@p.Practice</div>
+                                        <small class="text-muted">@p.Subject · Grupo @p.Group</small>
+                                    </div>
+                                    @if (p.InWindow)
+                                    {
+                                        <a asp-page="./NuevaSolicitud" asp-route-scheduleId="@p.ScheduleId" class="btn btn-sm text-white rounded-pill px-3" style="background:#1e88e5;">
+                                            <i class="fas fa-paper-plane mr-1"></i>Solicitar
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-pill badge-light border px-3 py-2" title="Aún fuera del plazo para solicitar">Se habilita más adelante</span>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
-            }
+            </div>
+        </div>
+
+        <!-- Panel: Novedades -->
+        <div class="ph-panel" role="tabpanel" data-ph-key="novedades" aria-labelledby="ph-tab-novedades" hidden="@(tab == "novedades" ? null : "hidden")">
+            <div class="ph-card mb-4">
+                <div class="ph-card__head">
+                    <h5 class="ph-card__title"><i class="fas fa-list-ul mr-2" style="color:#1e88e5;"></i>Novedades de tus solicitudes</h5>
+                </div>
+                <div class="ph-card__body">
+                    @if (Model.News.Count == 0)
+                    {
+                        <div class="text-muted small">Aún no hay revisiones. Cuando el revisor apruebe, observe o rechace una solicitud aparecerá aquí.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var news in Model.News)
+                            {
+                                var (icon, css, text) = news.Action switch
+                                {
+                                    PlanningReviewAction.Approved => ("fas fa-check-circle", "success", "fue aprobada"),
+                                    PlanningReviewAction.ApprovedWithChanges => ("fas fa-clipboard-check", "success", "fue aprobada con cambios"),
+                                    PlanningReviewAction.Observed => ("fas fa-comment-dots", "orange", "tiene observaciones"),
+                                    PlanningReviewAction.Rejected => ("fas fa-times-circle", "danger", "fue rechazada"),
+                                    _ => ("fas fa-info-circle", "secondary", "se actualizó")
+                                };
+                                <a asp-page="./Solicitud" asp-route-id="@news.PlanningId" class="list-group-item list-group-item-action d-flex align-items-start px-0">
+                                    <span class="dc-kpi__icon dc-soft-@css" style="width:38px;height:38px;"><i class="@icon"></i></span>
+                                    <div class="flex-grow-1" style="min-width:0;">
+                                        <div class="text-dark"><strong>@L3Codes.Format(news.PlanningId, news.Code)</strong> · @news.Practice <span class="text-muted">@text</span></div>
+                                        @if (!string.IsNullOrWhiteSpace(news.Comment))
+                                        {
+                                            <div class="small text-muted text-truncate" style="max-width:720px;">“@news.Comment”</div>
+                                        }
+                                    </div>
+                                    <small class="text-muted ml-2 text-nowrap">@Proyecto_Laboratorios_Univalle.Helpers.BoliviaTime.ToLocal(news.Date).ToString("dd/MM HH:mm")</small>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="~/js/panel-tabs.js" asp-append-version="true"></script>
     <script>
         (function () {
             var box = document.getElementById('countdown');
