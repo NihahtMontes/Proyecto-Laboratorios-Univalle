@@ -139,6 +139,7 @@ builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityServi
 builder.Services.AddScoped<IConflictGridService, ConflictGridService>();
 builder.Services.AddScoped<IConflictResolutionService, ConflictResolutionService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.INotificationAlertService, Proyecto_Laboratorios_Univalle.Services.Notifications.NotificationAlertService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Inicio.IInicioPanelService, Proyecto_Laboratorios_Univalle.Services.Inicio.InicioPanelService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.IMaintenanceNotificationWriter, Proyecto_Laboratorios_Univalle.Services.Notifications.MaintenanceNotificationWriter>();
 builder.Services.AddScoped<IEquipmentStateHistoryService, EquipmentStateHistoryService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();

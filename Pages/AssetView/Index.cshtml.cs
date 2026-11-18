@@ -3,17 +3,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Services.Inicio;
+using Proyecto_Laboratorios_Univalle.Services.Notifications;
 using System.Globalization;
+using System.Text.Json;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 {
     /// <summary>
-    /// Inicio de la aplicación para Supervisores, Administradores y SuperAdmin:
-    /// saludo, atajos por rol, navegación del inventario e indicadores (Chart.js).
+    /// Inicio de la aplicación para Supervisores, Administradores y SuperAdmin: un solo panel de
+    /// control con KPIs, bandeja de pendientes, prácticas de la semana, gráficos e inventario.
     /// También responde en la ruta amiga «/Inicio» (AddPageRoute en Program.cs).
     /// </summary>
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
@@ -22,27 +26,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         private const string IndicadoresCacheKey = "inicio:indicadores";
         private static readonly TimeSpan IndicadoresCacheDuration = TimeSpan.FromMinutes(5);
 
+        private static readonly JsonSerializerOptions PanelJsonOptions = new(JsonSerializerDefaults.Web);
+
         private readonly ApplicationDbContext _context;
         private readonly IManagementContextService _managementContext;
         private readonly SidebarCountsService _sidebarCounts;
         private readonly ICurrentUserService _currentUser;
         private readonly IMemoryCache _cache;
 
+        // Opcionales para no romper el constructor que usan las pruebas existentes (InicioPageTests):
+        // DI siempre los inyecta porque están registrados en Program.cs.
+        private readonly IInicioPanelService? _inicioPanel;
+        private readonly INotificationAlertService? _notificationAlerts;
+        private readonly ILogger<IndexModel>? _logger;
+
         public IndexModel(
             ApplicationDbContext context,
             IManagementContextService managementContext,
             SidebarCountsService sidebarCounts,
             ICurrentUserService currentUser,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IInicioPanelService? inicioPanel = null,
+            INotificationAlertService? notificationAlerts = null,
+            ILogger<IndexModel>? logger = null)
         {
             _context = context;
             _managementContext = managementContext;
             _sidebarCounts = sidebarCounts;
             _currentUser = currentUser;
             _cache = cache;
+            _inicioPanel = inicioPanel;
+            _notificationAlerts = notificationAlerts;
+            _logger = logger;
         }
 
-        // ══════════════════════════ Pestaña Resumen ══════════════════════════
+        // ══════════════════════════ Cabecera y gestiones ══════════════════════════
 
         /// <summary>Saludo según la hora de Bolivia («Buenos días/tardes/noches»).</summary>
         public string Greeting { get; private set; } = "Buenos días";
@@ -70,7 +88,48 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int PreventivePlannedUnits { get; private set; }
         public int PreventiveCompletedUnits { get; private set; }
 
-        // ══════════════════════════ Pestaña Inventario ══════════════════════════
+        // ══════════════════════════ Panel: semana y bandeja ══════════════════════════
+
+        /// <summary>Prácticas de la semana (lunes a sábado) agrupadas por día.</summary>
+        public InicioWeekPanel? WeekPanel { get; private set; }
+
+        /// <summary>Serie de 8 semanas (5 anteriores, la actual y 2 siguientes) para las barras del Resumen.</summary>
+        public IReadOnlyList<InicioWeekPoint> WeeklySeries { get; private set; } = [];
+
+        /// <summary>Datos del cliente serializados con System.Text.Json (script application/json #ip-data).</summary>
+        public string PanelDataJson { get; private set; } = "{}";
+
+        /// <summary>Avisos de la bandeja (scope Dashboard), truncados a 60.</summary>
+        public IReadOnlyList<NotificationItem> FeedItems { get; private set; } = [];
+
+        /// <summary>Total por grupo de la bandeja (sin truncar).</summary>
+        public IReadOnlyDictionary<string, int> FeedGroupCounts { get; private set; } = new Dictionary<string, int>();
+
+        /// <summary>Total accionable de la bandeja: todos los grupos salvo «revisar-datos».</summary>
+        public int FeedActionableCount { get; private set; }
+
+        /// <summary>True si la bandeja no pudo calcularse: se muestra vacía con aviso, sin romper la página.</summary>
+        public bool FeedUnavailable { get; private set; }
+
+        /// <summary>
+        /// Grupos de la bandeja en el orden visual, con etiqueta, icono y tono.
+        /// «revisar-datos» se agrega a los feeds desde otro frente: aquí se declara como texto
+        /// para que la bandeja lo muestre (plegado) apenas empiece a llegar.
+        /// </summary>
+        public static readonly (string Key, string Label, string Icon, string Tone)[] FeedGroupOrder =
+        [
+            ("vencidos", "Vencidos", "fas fa-exclamation-triangle", "danger"),
+            ("hoy", "Para hoy", "mdi mdi-calendar-today", "warning"),
+            ("proximos", "Próximos", "mdi mdi-wrench", "info"),
+            ("preventivo", "Preventivo", "fas fa-calendar-check", "primary"),
+            ("planificacion", "Planificación", "fas fa-flask", "info"),
+            ("prestamos", "Préstamos", "fas fa-exchange-alt", "warning"),
+            ("adquisiciones", "Adquisiciones", "fas fa-shopping-cart", "success"),
+            ("otros", "Otros", "fas fa-bell", "secondary"),
+            ("revisar-datos", "Revisar datos", "fas fa-database", "secondary")
+        ];
+
+        // ══════════════════════════ Inventario ══════════════════════════
 
         public int TotalUnitsCount { get; set; }
         public int EquipmentUnitsCount { get; set; }
@@ -90,25 +149,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int ArticlesCount { get; set; }
         public int ArticleCategoriesCount { get; set; }
 
-        // ══════════════════════════ Pestañas ══════════════════════════
+        // ══════════════════════════ Pestañas (activeTab) ══════════════════════════
 
         [BindProperty(SupportsGet = true)]
         public string? ActiveTab { get; set; }
 
-        public bool ShowInventoryTab => IsTab("Inventario");
-        public bool ShowIndicatorsTab => IsTab("Indicadores");
+        private const string PanelResumen = "resumen";
 
-        private bool IsTab(string name) => string.Equals(ActiveTab, name, StringComparison.OrdinalIgnoreCase);
+        /// <summary>Panel activo ya normalizado: resumen|semana|bandeja|graficos|inventario.</summary>
+        public string ActivePanel { get; private set; } = PanelResumen;
+
+        /// <summary>
+        /// Normaliza <see cref="ActiveTab"/> sin distinguir mayúsculas: Inventario → inventario,
+        /// Indicadores → graficos (alias histórico) y cualquier valor desconocido → resumen.
+        /// </summary>
+        private void NormalizeActivePanel()
+        {
+            ActivePanel = (ActiveTab ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                "semana" => "semana",
+                "bandeja" => "bandeja",
+                "graficos" or "indicadores" => "graficos",
+                "inventario" => "inventario",
+                _ => PanelResumen
+            };
+        }
 
         public async Task OnGetAsync()
         {
+            NormalizeActivePanel();
             LoadGreeting();
             await LoadUserDisplayNameAsync();
 
             IsAdminMenu = User.IsInRole(AuthorizationHelper.RoleAdministrator)
                 || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
 
-            // Atajos del Resumen: contadores vivos pero livianos (CountAsync + AsNoTracking).
+            // Contadores vivos pero livianos (CountAsync + AsNoTracking).
             var (pendingRequests, _) = await _sidebarCounts.GetAsync(User);
             PendingTeacherRequests = pendingRequests;
 
@@ -142,6 +218,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             }
 
             await LoadInventoryCountsAsync();
+
+            var today = BoliviaTime.ToLocal(DateTime.UtcNow).Date;
+            await LoadWeekPanelAsync(today);
+            await LoadFeedAsync(today);
         }
 
         private void LoadGreeting()
@@ -176,6 +256,82 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                     }
                 }
             }
+        }
+
+        /// <summary>Semana de prácticas + serie de 8 semanas para el gráfico (nada de esto rompe la página).</summary>
+        private async Task LoadWeekPanelAsync(DateTime today)
+        {
+            if (_inicioPanel is null)
+            {
+                return;
+            }
+
+            try
+            {
+                WeekPanel = await _inicioPanel.GetWeekAsync(today);
+                var series = await _inicioPanel.GetWeeklySeriesAsync(today);
+                WeeklySeries = series;
+                PanelDataJson = JsonSerializer.Serialize(new
+                {
+                    indicadoresUrl = Url?.Page("/AssetView/Index", "Indicadores") ?? "/AssetView/Index?handler=Indicadores",
+                    weekly = series.Select(p => new { p.Label, p.Count, p.IsCurrent })
+                }, PanelJsonOptions);
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException || ex.InnerException is System.Data.Common.DbException
+                || ex is InvalidOperationException || ex is TimeoutException)
+            {
+                _logger?.LogWarning(ex, "No se pudo cargar el panel de la semana del Inicio.");
+                WeekPanel = null;
+                WeeklySeries = [];
+                PanelDataJson = "{}";
+            }
+        }
+
+        /// <summary>Bandeja de pendientes: si falla, se registra y se muestra vacía con aviso.</summary>
+        private async Task LoadFeedAsync(DateTime today)
+        {
+            if (_notificationAlerts is null || _currentUser.UserId is not int userId)
+            {
+                return; // Sin usuario (o sin servicio en pruebas): bandeja vacía.
+            }
+
+            try
+            {
+                var feed = await _notificationAlerts.GetFeedAsync(new NotificationQuery(
+                    userId,
+                    today,
+                    NotificationScopes.Dashboard,
+                    null,
+                    null,
+                    NotificationAudience.FromPrincipal(User),
+                    Take: 60));
+                FeedItems = feed.Items;
+                FeedGroupCounts = feed.GroupCounts;
+                FeedActionableCount = feed.GroupCounts
+                    .Where(kv => !string.Equals(kv.Key, "revisar-datos", StringComparison.Ordinal))
+                    .Sum(kv => kv.Value);
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException || ex.InnerException is System.Data.Common.DbException
+                || ex is InvalidOperationException || ex is TimeoutException)
+            {
+                _logger?.LogWarning(ex, "No se pudo cargar la bandeja de pendientes del Inicio.");
+                FeedItems = [];
+                FeedGroupCounts = new Dictionary<string, int>();
+                FeedActionableCount = 0;
+                FeedUnavailable = true;
+            }
+        }
+
+        /// <summary>Enlace «Resolver» del aviso: solo rutas locales del sitio (mismo criterio que el layout).</summary>
+        public static string? SafeFeedUrl(string? url)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                return null;
+            }
+            return url.StartsWith("/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal)
+                ? url
+                : null;
         }
 
         private async Task LoadInventoryCountsAsync()
@@ -234,11 +390,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 : (int)Math.Round(((decimal)(TotalUnitsCount - UnitsWithoutSpecificClassificationCount) / TotalUnitsCount) * 100m);
         }
 
-        // ══════════════════════════ Pestaña Indicadores ══════════════════════════
+        // ══════════════════════════ Handler de indicadores ══════════════════════════
 
         /// <summary>
-        /// Datos agregados de los gráficos de la pestaña Indicadores. Se carga solo al
-        /// abrir la pestaña (fetch) y se cachea 5 minutos para no castigar el inicio.
+        /// Datos agregados de los gráficos del panel. Se carga con fetch (dona del inventario y
+        /// «Más indicadores») y se cachea 5 minutos para no castigar el inicio.
         /// </summary>
         public async Task<JsonResult> OnGetIndicadoresAsync()
         {
