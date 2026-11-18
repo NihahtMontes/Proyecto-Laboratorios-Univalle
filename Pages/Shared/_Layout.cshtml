@@ -354,7 +354,7 @@
                                         return url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
                                     }
 
-                                    const groupOrder = ['vencidos', 'hoy', 'proximos', 'preventivo', 'planificacion', 'prestamos', 'adquisiciones', 'otros'];
+                                    const groupOrder = ['vencidos', 'hoy', 'proximos', 'preventivo', 'planificacion', 'prestamos', 'adquisiciones', 'otros', 'revisar-datos'];
                                     const groupConfig = {
                                         vencidos:      { label: 'Vencidos',            color: 'danger',    icon: 'fas fa-exclamation-triangle' },
                                         hoy:           { label: 'Para hoy',            color: 'warning',   icon: 'fas fa-calendar-day' },
@@ -363,7 +363,8 @@
                                         planificacion: { label: 'Planificación',       color: 'primary',   icon: 'fas fa-flask' },
                                         prestamos:     { label: 'Préstamos',           color: 'warning',   icon: 'fas fa-exchange-alt' },
                                         adquisiciones: { label: 'Adquisiciones',       color: 'success',   icon: 'fas fa-shopping-cart' },
-                                        otros:         { label: 'Otros',               color: 'secondary', icon: 'fas fa-bell' }
+                                        otros:         { label: 'Otros',               color: 'secondary', icon: 'fas fa-bell' },
+                                        'revisar-datos': { label: 'Revisar datos',     color: 'secondary', icon: 'fas fa-clipboard-check' }
                                     };
 
                                     function urgencyColor(urgency) {
@@ -483,8 +484,13 @@
                                         $list.empty();
 
                                         const snoozedKeys = snoozedKeysIn(items);
-                                        const snoozedCount = Object.keys(snoozedKeys).length;
-                                        updateBadge(Math.max(0, (totalCount || 0) - snoozedCount));
+                                        // El número de la campana cuenta solo lo accionable: «Revisar datos» (datos por
+                                        // confirmar) se ve en la lista, pero no suma como alarma.
+                                        const snoozedCount = (items || []).filter(function (i) {
+                                            return i.syntheticKey && snoozedKeys[i.syntheticKey] && i.group !== 'revisar-datos';
+                                        }).length;
+                                        const dataReviewCount = (groupCounts && groupCounts['revisar-datos']) || 0;
+                                        updateBadge(Math.max(0, (totalCount || 0) - dataReviewCount - snoozedCount));
 
                                         const filtered = getVisibleNotifications(items);
                                         if (filtered.length === 0) {
@@ -576,21 +582,29 @@
                                             const snoozedKeys = snoozedKeysIn(items);
                                             var snoozedCritical = 0;
                                             var snoozedOverdue = 0;
+                                            var preventiveDanger = 0;         // preventivos vencidos (urgencia danger): también cuentan como vencidos
+                                            var snoozedPreventiveDanger = 0;
                                             (items || []).forEach(function(item) {
-                                                if (!item.syntheticKey || !snoozedKeys[item.syntheticKey]) return;
-                                                if (item.urgency === 'danger' || item.urgency === 'warning') snoozedCritical++;
-                                                if (item.group === 'vencidos') snoozedOverdue++;
+                                                var isSnoozed = !!(item.syntheticKey && snoozedKeys[item.syntheticKey]);
+                                                if (isSnoozed && (item.urgency === 'danger' || item.urgency === 'warning')) snoozedCritical++;
+                                                if (isSnoozed && item.group === 'vencidos') snoozedOverdue++;
+                                                if (item.group === 'preventivo' && item.urgency === 'danger') {
+                                                    preventiveDanger++;
+                                                    if (isSnoozed) snoozedPreventiveDanger++;
+                                                }
                                             });
 
                                             const criticalCount = Math.max(0, ((data && data.criticalCount) || 0) - snoozedCritical);
                                             if (criticalCount <= 0) return;
 
-                                            const overdueCount = Math.max(0, ((groupCounts && groupCounts.vencidos) || 0) - snoozedOverdue);
+                                            // Vencidos: el grupo "vencidos" más los preventivos vencidos (danger).
+                                            // "revisar-datos" es urgencia secondary: nunca entra en criticalCount ni en esta alarma.
+                                            const overdueCount = Math.max(0, ((groupCounts && groupCounts.vencidos) || 0) + preventiveDanger - snoozedOverdue - snoozedPreventiveDanger);
                                             const restCount = Math.max(0, criticalCount - overdueCount);
 
                                             const parts = [];
                                             if (overdueCount > 0) parts.push(overdueCount + ' vencido(s)');
-                                            if (restCount > 0) parts.push(restCount + ' para hoy');
+                                            if (restCount > 0) parts.push(restCount + ' para atender');
                                             const summary = parts.length > 0 ? parts.join(' · ') : criticalCount + ' requiere(n) atención';
 
                                             const openBell = function() {

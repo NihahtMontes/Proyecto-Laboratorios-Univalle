@@ -806,6 +806,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 PlanningId = plan.Id, Action = PlanningReviewAction.Withdrawn, FromStatus = from, ToStatus = PlanningStatus.Cancelled,
                 Comment = Trim(reason, 1000), UserId = teacher.UserId, CreatedDate = DateTime.UtcNow
             });
+            // La solicitud salió de revisión: los avisos pendientes de los revisores quedan resueltos.
+            await ResolveRequestNotificationsAsync(plan.Id);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             return new TeacherOpResult(true, $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} retirada.", plan.Id);
@@ -990,6 +992,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
                     $"{L3Codes.Format(other.Id, other.Code)}: el ambiente se asignó a otra solicitud en ese horario; el revisor te indicará otro.",
                     "fas fa-exclamation-triangle text-warning");
 
+            // La solicitud salió de revisión: los avisos pendientes de los revisores quedan resueltos.
+            await ResolveRequestNotificationsAsync(plan.Id);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -1055,6 +1059,9 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 Comment = text, UserId = reviewerUserId, CreatedDate = DateTime.UtcNow
             });
             await NotifyTeacherAsync(plan, title, $"{L3Codes.Format(plan.Id, plan.Code)}: {hint}", icon);
+            // La solicitud salió de revisión: los avisos pendientes de los revisores quedan resueltos
+            // (al corregir y reenviar se genera un aviso nuevo de "Solicitud corregida").
+            await ResolveRequestNotificationsAsync(plan.Id);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             return new TeacherOpResult(true, action == PlanningReviewAction.Rejected
@@ -1434,6 +1441,24 @@ public sealed class TeacherRequestService : ITeacherRequestService
     }
 
     // ───────────────────────────── Avisos ─────────────────────────────
+
+    /// <summary>
+    /// Marca como leídos los avisos de revisión ("Nueva solicitud de práctica" / "Solicitud corregida") de TODOS
+    /// los revisores cuando la solicitud deja de estar en "Solicitada" (aprobar, observar, rechazar o retirar):
+    /// ya no piden acción. La comparación del id es exacta (id=12 no toca id=123). Se llama antes del SaveChanges
+    /// de cada transición para que la limpieza quede dentro de la misma transacción.
+    /// </summary>
+    private async Task ResolveRequestNotificationsAsync(int planningId)
+    {
+        var baseUrl = $"/LaboratoryOperations/Solicitudes/Revisar?id={planningId}";
+        // Coincidencia exacta del id: la URL completa o el mismo id seguido de otros parámetros.
+        var stale = await _context.Notifications
+            .AsTracking()
+            .Where(n => !n.IsRead && (n.ActionUrl == baseUrl || n.ActionUrl!.StartsWith(baseUrl + "&")))
+            .ToListAsync();
+        foreach (var notification in stale)
+            notification.IsRead = true;
+    }
 
     private async Task NotifyReviewersAsync(Planning planning, string teacherName, bool resubmitted)
     {
