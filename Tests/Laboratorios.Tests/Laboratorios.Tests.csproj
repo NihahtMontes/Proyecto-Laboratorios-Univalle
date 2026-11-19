@@ -24,6 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Framework compartido de ASP.NET Core (ya usado por la app): habilita IWebHostEnvironment
+         en las pruebas de ReportService sin agregar librerías externas. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

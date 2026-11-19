@@ -21,8 +21,19 @@ public class IndexModel : PageModel
     public PaginatedList<Person> PersonsList { get; set; } = new PaginatedList<Person>(new List<Person>(), 0, 1, 20);
     public PaginatedList<User> UserList { get; set; } = new PaginatedList<User>(new List<User>(), 0, 1, 20);
 
+    /// <summary>Página de la pestaña «Cuentas de Acceso» (paginación independiente por pestaña).</summary>
     [BindProperty(SupportsGet = true)]
     public int? PageIndex { get; set; }
+
+    /// <summary>Página de la pestaña «Directorio de Personal»: no comparte pageIndex para no perder la pestaña.</summary>
+    [BindProperty(SupportsGet = true)]
+    public int? StaffPageIndex { get; set; }
+
+    /// <summary>Pestaña activa al cargar (server-side, más fiable que el hash): «personal» abre el directorio.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Tab { get; set; }
+
+    public bool IsStaffTab => string.Equals(Tab, "personal", StringComparison.OrdinalIgnoreCase);
 
     [BindProperty(SupportsGet = true)]
     public string? SearchTerm { get; set; }
@@ -30,7 +41,7 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public GeneralStatus? StatusFilter { get; set; }
 
-    public async Task OnGetAsync(int? pageIndex)
+    public async Task OnGetAsync(int? pageIndex, int? staffPageIndex)
     {
         // 1. Load users for "Cuentas de Acceso" tab
         // El filtro «Eliminados» debe poder mostrar las cuentas dadas de baja (el filtro global las ocultaba).
@@ -61,16 +72,25 @@ public class IndexModel : PageModel
         if (!string.IsNullOrEmpty(SearchTerm))
         {
             var term = SearchTerm.Trim().ToLower();
-            userQuery = userQuery.Where(u => u.FirstName.ToLower().Contains(term) || 
-                                           u.LastName.ToLower().Contains(term) || 
+            userQuery = userQuery.Where(u => u.FirstName.ToLower().Contains(term) ||
+                                           u.LastName.ToLower().Contains(term) ||
                                            u.UserName!.ToLower().Contains(term) ||
                                            (u.IdentityCard != null && u.IdentityCard.Contains(term)));
 
-            personQuery = personQuery.Where(p => (p.Email != null && p.Email.Contains(term)) || 
-                                              p.Id.ToString() == term);
+            // Búsqueda del personal por nombre completo (Intern/Extern), C.I. (usuario vinculado), correo o id.
+            var internIds = _context.Set<Intern>().Where(i => i.Name.ToLower().Contains(term)).Select(i => i.Id);
+            var externIds = _context.Set<Extern>().Where(e => e.Name.ToLower().Contains(term)).Select(e => e.Id);
+            var ciPersonIds = _context.Users
+                .Where(u => u.PersonId != null && u.IdentityCard.Contains(term))
+                .Select(u => u.PersonId!.Value);
+            personQuery = personQuery.Where(p => (p.Email != null && p.Email.Contains(term)) ||
+                                              p.Id.ToString() == term ||
+                                              internIds.Contains(p.Id) ||
+                                              externIds.Contains(p.Id) ||
+                                              ciPersonIds.Contains(p.Id));
         }
 
         UserList = await PaginatedList<User>.CreateAsync(userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName), pageIndex ?? 1, 20);
-        PersonsList = await PaginatedList<Person>.CreateAsync(personQuery.OrderByDescending(p => p.Id), pageIndex ?? 1, 20);
+        PersonsList = await PaginatedList<Person>.CreateAsync(personQuery.OrderByDescending(p => p.Id), staffPageIndex ?? 1, 20);
     }
 }

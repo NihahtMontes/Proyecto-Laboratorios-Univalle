@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Salidas de equipos";
+    ViewData["Title"] = "L3 · Salidas";
     ViewData["Section"] = "Mantenimiento de equipos";
     ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
@@ -28,7 +28,7 @@
             <div class="card-body">
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Salidas de equipos</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">L3 · Salidas</h3>
                         <h6 class="card-subtitle text-muted ml-2">Préstamos y salidas por mantenimiento externo.</h6>
                     </div>
                     <div class="ml-auto mt-3">
@@ -217,31 +217,10 @@
                     </table>
                 </div>
 
-                @if (Model.Departures.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Departures.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Departures.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Departures.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
-                                </li>
-                            }
-                            @if (Model.Departures.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Departures, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["FilterType"] = Model.FilterType?.ToString(), ["FilterStatus"] = Model.FilterStatus?.ToString(), ["FilterLaboratoryId"] = Model.FilterLaboratoryId?.ToString() }, itemLabel: "salidas");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

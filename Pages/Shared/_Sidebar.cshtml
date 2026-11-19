@@ -1,7 +1,14 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
+@inject Proyecto_Laboratorios_Univalle.Services.SidebarCountsService SidebarCounts
 @{
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
+    var teacherOnly = TeacherAccess.IsTeacherOnly(User);
+    var isReviewer = !closureOnly && !teacherOnly && (User.IsInRole(AuthorizationHelper.RoleSupervisor)
+        || User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin));
+    // Contadores del menú: solicitudes por revisar (revisores) y observadas por corregir (docente).
+    // El servicio devuelve (0,0) si la base no responde: el menú nunca tumba la página (D-02).
+    var (pendingRequests, observedRequests) = await SidebarCounts.GetAsync(User);
     // Las páginas de administración (AdminRoles) no se muestran al Supervisor en el menú (H-021): antes terminaban en /Error.
     var isAdminMenu = User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
     var isSupervisor = !closureOnly && !isAdminMenu;
@@ -12,12 +19,56 @@
     var isMateriasActive = currentSidebarRoute.StartsWith("/Catalogs/Subjects", StringComparison.OrdinalIgnoreCase)
         || currentSidebarRoute.StartsWith("/Catalogs/CourseGroups", StringComparison.OrdinalIgnoreCase)
         || currentSidebarRoute.StartsWith("/Catalogs/StudentGroups", StringComparison.OrdinalIgnoreCase);
+    // Sección del menú que se abre sola: la que declara la página en ViewData["Section"].
+    var currentSection = ViewData["Section"] as string;
+    if (currentSection == "Gestiones") currentSection = "Mantenimiento de equipos";
 }
 <aside class="left-sidebar" data-sidebarbg="skin5">
     <div class="scroll-sidebar">
         <nav class="sidebar-nav">
-            <ul id="sidebarnav">
-                @if (!closureOnly)
+            <ul id="sidebarnav" data-current-section="@currentSection">
+                @if (teacherOnly)
+                {
+                    <li class="nav-small-cap">
+                        <i class="mdi mdi-dots-horizontal"></i>
+                        <span class="hide-menu">Portal docente</span>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-view-dashboard"></i>
+                            <span class="hide-menu">Mi semana</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/NuevaSolicitud" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-plus-circle-outline"></i>
+                            <span class="hide-menu">Solicitar práctica</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Solicitudes" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-inbox-arrow-up"></i>
+                            <span class="hide-menu">Mis solicitudes</span>
+                            @if (observedRequests > 0)
+                            {
+                                <span class="badge badge-pill badge-warning ml-auto" title="Observadas por corregir">@observedRequests</span>
+                            }
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Calendario" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-calendar-multiple"></i>
+                            <span class="hide-menu">Mi calendario</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Disponibilidad" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-magnify"></i>
+                            <span class="hide-menu">Consultar disponibilidad</span>
+                        </a>
+                    </li>
+                }
+                else if (!closureOnly)
                 {
                     <li class="nav-small-cap">
                         <i class="mdi mdi-dots-horizontal"></i>
@@ -25,160 +76,34 @@
                     </li>
 
                     <li class="sidebar-item">
-                        <a asp-page="/Index" class="sidebar-link waves-effect waves-dark">
+                        <a asp-page="/AssetView/Index" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-home-outline"></i>
                             <span class="hide-menu">Inicio</span>
                         </a>
                     </li>
 
-                    <li class="nav-small-cap">
-                        <i class="mdi mdi-dots-horizontal"></i>
-                        <span class="hide-menu">Mantenimiento de equipos</span>
-                    </li>
-
-                    @if (isAdminMenu)
-                    {
-                        <li class="sidebar-item">
-                            <a asp-page="/Managements/Index" asp-route-type="Preventive" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-calendar-range"></i>
-                                <span class="hide-menu">Gestiones</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Index" asp-route-ShowWizard="true" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-shield-outline"></i>
-                                <span class="hide-menu">Mantenimiento preventivo</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Managements/Index" asp-page-handler="CurrentCorrective" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-wrench"></i>
-                                <span class="hide-menu">Mantenimiento correctivo</span>
-                            </a>
-                        </li>
-                    }
-                    else if (isSupervisor)
-                    {
-                        @* El Supervisor no entra a Gestiones (AdminRoles): su acceso al correctivo es la solicitud de servicio técnico. *@
-                        <li class="sidebar-item">
-                            <a asp-page="/Requests/Index" asp-page-handler="NewRequest" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-wrench"></i>
-                                <span class="hide-menu">Mantenimiento correctivo</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="sidebar-item">
-                        <a asp-page="/Reports/Index" class="sidebar-link waves-effect waves-dark">
-                            <i class="mdi mdi-file-chart"></i>
-                            <span class="hide-menu">Reportes</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-item">
-                        <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
-                            <i class="mdi mdi-clipboard-text"></i>
-                            <span class="hide-menu">Registros</span>
-                        </a>
-                        <ul aria-expanded="false" class="collapse first-level">
-                            @if (isAdminMenu)
-                            {
-                                <li class="sidebar-item">
-                                    <a asp-page="/Verifications/Index" class="sidebar-link waves-effect waves-dark">
-                                        <i class="mdi mdi-checkbox-marked-circle-outline"></i>
-                                        <span class="hide-menu">Verificaciones de equipos</span>
-                                    </a>
-                                </li>
-                            }
-                            <li class="sidebar-item">
-                                <a asp-page="/Requests/Index" class="sidebar-link waves-effect waves-dark">
-                                    <i class="mdi mdi-message-text-outline"></i>
-                                    <span class="hide-menu">Solicitudes de servicio técnico</span>
-                                </a>
-                            </li>
-                            @if (isAdminMenu)
-                            {
-                                <li class="sidebar-item">
-                                    <a asp-page="/Maintenances/Index" class="sidebar-link waves-effect waves-dark">
-                                        <i class="mdi mdi-clipboard-outline"></i>
-                                        <span class="hide-menu">Registros de mantenimiento</span>
-                                    </a>
-                                </li>
-                                <li class="sidebar-item">
-                                    <a asp-page="/Departures/Index" class="sidebar-link waves-effect waves-dark">
-                                        <i class="mdi mdi-truck-delivery"></i>
-                                        <span class="hide-menu">Salidas de equipos</span>
-                                    </a>
-                                </li>
-                            }
-                            <li class="sidebar-item">
-                                <a asp-page="/Acquisitions/Index" class="sidebar-link waves-effect waves-dark">
-                                    <i class="mdi mdi-cart-outline"></i>
-                                    <span class="hide-menu">Solicitudes de compra</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <li class="nav-small-cap">
-                        <i class="mdi mdi-dots-horizontal"></i>
-                        <span class="hide-menu">Equipos e inventario</span>
-                    </li>
-
-                    @if (isAdminMenu)
-                    {
-                        <li class="sidebar-item">
-                            <a asp-page="/Equipment/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-cube-outline"></i>
-                                <span class="hide-menu">Equipos</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="sidebar-item">
-                        <a asp-page="/AssetView/Index" class="sidebar-link waves-effect waves-dark">
-                            <i class="mdi mdi-database"></i>
-                            <span class="hide-menu">Inventario general</span>
-                        </a>
-                    </li>
-
-                    @if (isAdminMenu)
-                    {
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/Articles/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-package-variant-closed"></i>
-                                <span class="hide-menu">Artículos</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/Stock/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-store"></i>
-                                <span class="hide-menu">Existencias</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/ArticleCategories/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-tag-multiple"></i>
-                                <span class="hide-menu">Categorías de artículo</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/MeasurementUnits/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-ruler"></i>
-                                <span class="hide-menu">Unidades de medida</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="nav-small-cap">
-                        <i class="mdi mdi-dots-horizontal"></i>
-                        <span class="hide-menu">Planificación académica</span>
+                    <li class="nav-small-cap sidebar-section">
+                        <button type="button" class="sidebar-section-toggle" aria-expanded="false" data-section="Planificación académica">
+                            <i class="mdi mdi-chevron-down sidebar-section-chevron" aria-hidden="true"></i>
+                            <span class="hide-menu">Planificación académica</span>
+                        </button>
                     </li>
 
                     <li class="sidebar-item">
                         <a asp-page="/LaboratoryOperations/Index" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-view-dashboard"></i>
                             <span class="hide-menu">Panel de planificación</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-item">
+                        <a asp-page="/LaboratoryOperations/Solicitudes/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-inbox-arrow-down"></i>
+                            <span class="hide-menu">Solicitudes de docentes</span>
+                            @if (pendingRequests > 0)
+                            {
+                                <span class="badge badge-pill badge-danger ml-auto" title="Por revisar">@pendingRequests</span>
+                            }
                         </a>
                     </li>
 
@@ -195,6 +120,16 @@
                             <span class="hide-menu">Grilla por laboratorio</span>
                         </a>
                     </li>
+
+                    @if (User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+                    {
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Importar" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-file-excel"></i>
+                                <span class="hide-menu">Cargar planificación (Excel)</span>
+                            </a>
+                        </li>
+                    }
 
                     <li class="sidebar-item">
                         <a asp-page="/LaboratoryOperations/CalendarioAcademico" class="sidebar-link waves-effect waves-dark">
@@ -241,11 +176,149 @@
                         </li>
                     }
 
+                    <li class="nav-small-cap sidebar-section">
+                        <button type="button" class="sidebar-section-toggle" aria-expanded="false" data-section="Mantenimiento de equipos">
+                            <i class="mdi mdi-chevron-down sidebar-section-chevron" aria-hidden="true"></i>
+                            <span class="hide-menu">Mantenimiento de equipos</span>
+                        </button>
+                    </li>
+
                     @if (isAdminMenu)
                     {
-                        <li class="nav-small-cap">
-                            <i class="mdi mdi-dots-horizontal"></i>
-                            <span class="hide-menu">Configuración</span>
+                        <li class="sidebar-item">
+                            <a asp-page="/Managements/Index" asp-route-type="Preventive" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-calendar-range"></i>
+                                <span class="hide-menu">Gestiones</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Managements/Index" asp-page-handler="CurrentPreventive" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-shield-outline"></i>
+                                <span class="hide-menu">Mantenimiento preventivo</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Managements/Index" asp-page-handler="CurrentCorrective" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-wrench"></i>
+                                <span class="hide-menu">Mantenimiento correctivo</span>
+                            </a>
+                        </li>
+                    }
+                    else if (isSupervisor)
+                    {
+                        @* El Supervisor no entra a Gestiones (AdminRoles): su acceso al correctivo es la solicitud de servicio técnico. *@
+                        <li class="sidebar-item">
+                            <a asp-page="/Requests/Index" asp-page-handler="NewRequest" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-wrench"></i>
+                                <span class="hide-menu">Mantenimiento correctivo</span>
+                            </a>
+                        </li>
+                    }
+
+                    <li class="sidebar-item">
+                        <a asp-page="/Reports/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-file-chart"></i>
+                            <span class="hide-menu">Reportes</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-item">
+                        <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                            <i class="mdi mdi-clipboard-text"></i>
+                            <span class="hide-menu">Registros</span>
+                        </a>
+                        <ul aria-expanded="false" class="collapse first-level">
+                            @if (isAdminMenu)
+                            {
+                                <li class="sidebar-item">
+                                    <a asp-page="/Verifications/Index" class="sidebar-link waves-effect waves-dark">
+                                        <i class="mdi mdi-checkbox-marked-circle-outline"></i>
+                                        <span class="hide-menu">L6 · Verificaciones</span>
+                                    </a>
+                                </li>
+                            }
+                            <li class="sidebar-item">
+                                <a asp-page="/Requests/Index" class="sidebar-link waves-effect waves-dark">
+                                    <i class="mdi mdi-message-text-outline"></i>
+                                    <span class="hide-menu">L7 · Servicio técnico</span>
+                                </a>
+                            </li>
+                            @if (isAdminMenu)
+                            {
+                                <li class="sidebar-item">
+                                    <a asp-page="/Maintenances/Index" class="sidebar-link waves-effect waves-dark">
+                                        <i class="mdi mdi-clipboard-outline"></i>
+                                        <span class="hide-menu">L8 · Kardex</span>
+                                    </a>
+                                </li>
+                                <li class="sidebar-item">
+                                    <a asp-page="/Departures/Index" class="sidebar-link waves-effect waves-dark">
+                                        <i class="mdi mdi-truck-delivery"></i>
+                                        <span class="hide-menu">L3 · Salidas</span>
+                                    </a>
+                                </li>
+                            }
+                            <li class="sidebar-item">
+                                <a asp-page="/Acquisitions/Index" class="sidebar-link waves-effect waves-dark">
+                                    <i class="mdi mdi-cart-outline"></i>
+                                    <span class="hide-menu">Adquisición</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-small-cap sidebar-section">
+                        <button type="button" class="sidebar-section-toggle" aria-expanded="false" data-section="Equipos e inventario">
+                            <i class="mdi mdi-chevron-down sidebar-section-chevron" aria-hidden="true"></i>
+                            <span class="hide-menu">Equipos e inventario</span>
+                        </button>
+                    </li>
+
+                    @if (isAdminMenu)
+                    {
+                        <li class="sidebar-item">
+                            <a asp-page="/Equipment/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-cube-outline"></i>
+                                <span class="hide-menu">Equipos</span>
+                            </a>
+                        </li>
+                    }
+
+                    @if (isAdminMenu)
+                    {
+                        <li class="sidebar-item">
+                            <a asp-page="/Catalogs/Articles/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-package-variant-closed"></i>
+                                <span class="hide-menu">Artículos</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Catalogs/Stock/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-store"></i>
+                                <span class="hide-menu">Existencias</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Catalogs/ArticleCategories/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-tag-multiple"></i>
+                                <span class="hide-menu">Categorías de artículo</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Catalogs/MeasurementUnits/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-ruler"></i>
+                                <span class="hide-menu">Unidades de medida</span>
+                            </a>
+                        </li>
+                    }
+
+                    @if (isAdminMenu)
+                    {
+                        <li class="nav-small-cap sidebar-section">
+                            <button type="button" class="sidebar-section-toggle" aria-expanded="false" data-section="Configuración">
+                                <i class="mdi mdi-chevron-down sidebar-section-chevron" aria-hidden="true"></i>
+                                <span class="hide-menu">Configuración</span>
+                            </button>
                         </li>
 
                         <li class="sidebar-item">
@@ -293,3 +366,5 @@
         </nav>
     </div>
 </aside>
+@* Va justo después del menú para plegar las secciones antes de que se pinte la página. *@
+<script src="~/js/sidebar-sections.js" asp-append-version="true"></script>

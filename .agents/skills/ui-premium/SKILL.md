@@ -21,6 +21,9 @@ Lee `context.md` y el `Pages/AGENTS.md` aplicable antes de editar.
 ## Forma de trabajo
 
 1. Inspecciona la vista, su PageModel y una pagina vecina que represente el patron vigente.
+   Antes de escribir HTML, CSS o JS, busca la practica moderna con la skill `modern-web-guidance`
+   (`npx -y modern-web-guidance@latest search "<capacidad en ingles>"` y luego `retrieve`). Aplica la
+   recomendacion dentro de las invariantes de arriba (Bootstrap 4, SweetAlert2 v7); ver `docs/WEB_MODERNA.md`.
 2. Separa el cambio visual de cualquier cambio de datos. Si hace falta modificar handlers, carga tambien `backend-methods` y coordina ownership.
 3. Reutiliza clases y componentes actuales; limita CSS o JavaScript global nuevo.
 4. Comprueba estados normal, vacio, error y confirmacion cuando apliquen.

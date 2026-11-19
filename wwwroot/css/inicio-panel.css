@@ -1,0 +1,924 @@
+/* ════════════════════════════════════════════════════════════════════
+   Inicio · Panel de control (InicioPanel)
+   Base común (KPIs claros, pestañas, tarjetas-sección): wwwroot/css/panel-home.css.
+   Aquí va solo lo propio de esta página: cabecera, tarjetas de contenido,
+   bandeja, tabla de la semana, gráficos e inventario.
+   Paleta: azul #1e88e5 · verde #16a34a · ámbar #f59e0b · rojo #e5484d · gris #64748b
+   ════════════════════════════════════════════════════════════════════ */
+
+.ip-panel {
+    --ip-blue: #1e88e5;
+    --ip-green: #16a34a;
+    --ip-amber: #f59e0b;
+    --ip-red: #e5484d;
+    --ip-gray: #64748b;
+    --ip-border: #e6ebf1;
+    --ip-text: #243044;
+    --ip-muted: #64748b;
+    --ip-radius: 12px;
+    --ip-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 22px rgba(15, 23, 42, .06);
+    color: var(--ip-text);
+}
+
+.ip-panel :focus-visible {
+    outline: 2px solid var(--ip-blue);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Línea de texto suelta dentro de una vista previa (ph-section__preview). */
+.ip-section__line {
+    display: block;
+    margin-bottom: .2rem;
+}
+
+/* ─── Cabecera ────────────────────────────────────────────────────── */
+
+.ip-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.ip-header__title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--ip-text);
+    margin: 0 0 .35rem;
+    letter-spacing: -.01em;
+}
+
+.ip-header__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    color: var(--ip-muted);
+    font-size: .9rem;
+}
+
+.ip-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: #fff;
+    border: 1px solid var(--ip-border);
+    border-radius: 999px;
+    padding: .3rem .75rem;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ip-text);
+}
+
+.ip-chip__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.ip-chip__dot--green { background: var(--ip-green); }
+.ip-chip__dot--amber { background: var(--ip-amber); }
+
+.ip-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+/* Botones: altura táctil >= 44px */
+.ip-btn-primary,
+.ip-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    min-height: 44px;
+    padding: .5rem 1.1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: .9rem;
+    border: 1px solid transparent;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
+}
+
+.ip-btn-primary {
+    background: var(--ip-blue);
+    color: #fff;
+}
+
+.ip-btn-primary:hover,
+.ip-btn-primary:focus {
+    background: #1976d2;
+    color: #fff;
+    text-decoration: none;
+}
+
+.ip-btn-secondary {
+    background: #fff;
+    border-color: var(--ip-border);
+    color: var(--ip-text);
+}
+
+.ip-btn-secondary:hover,
+.ip-btn-secondary:focus {
+    border-color: #c9d5e3;
+    background: #f6f9fc;
+    color: var(--ip-text);
+    text-decoration: none;
+}
+
+/* ─── Tarjetas blancas comunes ────────────────────────────────────── */
+
+.ip-card {
+    background: #fff;
+    border: 1px solid var(--ip-border);
+    border-radius: var(--ip-radius);
+    box-shadow: var(--ip-shadow);
+    display: flex;
+    flex-direction: column;
+}
+
+.ip-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: 1rem 1.25rem .75rem;
+    border-bottom: 1px solid var(--ip-border);
+}
+
+.ip-card__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ip-text);
+    margin: 0;
+}
+
+.ip-card__hint {
+    font-size: .8rem;
+    color: var(--ip-muted);
+}
+
+.ip-card__body {
+    padding: 1rem 1.25rem;
+}
+
+.ip-card__foot {
+    margin-top: auto;
+    padding: .8rem 1.25rem;
+    border-top: 1px solid var(--ip-border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    font-size: .82rem;
+}
+
+/* ─── Bandeja de pendientes ───────────────────────────────────────── */
+
+/* A ancho completo, sin altura forzada: la página crece con los avisos. */
+.ip-feed {
+    padding: .5rem .75rem .75rem;
+}
+
+.ip-feed__group {
+    margin-bottom: .9rem;
+}
+
+.ip-feed__group-head {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ip-muted);
+    padding: .45rem .25rem;
+}
+
+.ip-feed__count {
+    background: #eef2f7;
+    border-radius: 999px;
+    min-width: 24px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--ip-text);
+    padding: 0 7px;
+}
+
+.ip-feed__count--danger { background: #fdeaea; color: #b3273a; }
+.ip-feed__count--warning { background: #fdf3e0; color: #a16207; }
+
+/* Cada aviso es una fila: icono · texto (flex 1) · acciones a la derecha. */
+.ip-feed__item {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+    padding: .6rem .5rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+}
+
+.ip-feed__item + .ip-feed__item {
+    margin-top: .35rem;
+}
+
+.ip-feed__item:hover {
+    background: #f8fafc;
+    border-color: var(--ip-border);
+}
+
+.ip-feed__icon {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.ip-feed__icon--danger { background: #fdeaea; color: var(--ip-red); }
+.ip-feed__icon--warning { background: #fdf3e0; color: #b45309; }
+.ip-feed__icon--info { background: #e8f2fc; color: var(--ip-blue); }
+.ip-feed__icon--primary { background: #e8f2fc; color: #1565c0; }
+.ip-feed__icon--success { background: #e8f7ee; color: var(--ip-green); }
+.ip-feed__icon--secondary { background: #eef2f7; color: var(--ip-gray); }
+
+.ip-feed__main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ip-feed__title {
+    margin: 0;
+    font-size: .86rem;
+    font-weight: 700;
+    color: var(--ip-text);
+    overflow-wrap: anywhere;
+}
+
+.ip-feed__msg {
+    margin: .1rem 0 .15rem;
+    font-size: .8rem;
+    color: var(--ip-muted);
+    overflow-wrap: anywhere;
+}
+
+.ip-feed__time {
+    font-size: .72rem;
+    color: #93a1b4;
+}
+
+.ip-feed__actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-left: auto;
+    padding-top: .1rem;
+}
+
+.ip-feed__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+    min-height: 44px;
+    padding: .35rem .8rem;
+    border-radius: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+    border: 1px solid var(--ip-border);
+    background: #fff;
+    color: var(--ip-text);
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+a.ip-feed__action {
+    text-decoration: none;
+}
+
+/* Con mouse los botones son más compactos; en pantallas táctiles conservan 44px. */
+@media (pointer: fine) {
+    .ip-feed__action {
+        min-height: 32px;
+        padding: .25rem .75rem;
+    }
+}
+
+.ip-feed__action--resolve {
+    background: var(--ip-blue);
+    border-color: var(--ip-blue);
+    color: #fff;
+}
+
+.ip-feed__action--resolve:hover,
+.ip-feed__action--resolve:focus {
+    background: #1976d2;
+    color: #fff;
+}
+
+.ip-feed__action--ghost:hover,
+.ip-feed__action--ghost:focus {
+    background: #f2f6fa;
+    border-color: #c9d5e3;
+}
+
+/* «Revisar datos» plegado */
+.ip-feed__review {
+    border: 1px dashed var(--ip-border);
+    border-radius: 10px;
+    padding: 0 .5rem;
+}
+
+.ip-feed__review > summary {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 44px;
+    list-style: none;
+    cursor: pointer;
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ip-muted);
+}
+
+.ip-feed__review > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ip-feed__review > summary::after {
+    content: "\f107";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: .8rem;
+    margin-left: auto;
+    color: #93a1b4;
+}
+
+.ip-feed__review[open] > summary::after {
+    content: "\f106";
+}
+
+.ip-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--ip-muted);
+}
+
+.ip-empty i {
+    font-size: 1.9rem;
+    color: #9fb1c6;
+    display: block;
+    margin-bottom: .55rem;
+}
+
+.ip-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    font-size: .8rem;
+    color: #8a6116;
+    background: #fdf6e7;
+    border: 1px solid #f3e3bb;
+    border-radius: 10px;
+    padding: .6rem .8rem;
+}
+
+/* ─── Tabla de la semana (estilo monday) ──────────────────────────── */
+
+.ip-weekwrap {
+    overflow-x: clip;
+}
+
+.ip-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .84rem;
+}
+
+/* Anchos fijos: la columna Estado siempre entra y el texto largo se parte en líneas. */
+.ip-table thead th:nth-child(1) { width: 15%; }
+.ip-table thead th:nth-child(2) { width: 23%; }
+.ip-table thead th:nth-child(3) { width: 19%; }
+.ip-table thead th:nth-child(4) { width: 17%; }
+.ip-table thead th:nth-child(5) { width: 13%; }
+.ip-table thead th:nth-child(6) { width: 13%; }
+
+.ip-table thead th {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ip-muted);
+    text-align: left;
+    padding: .6rem .75rem;
+    border-bottom: 1px solid var(--ip-border);
+    white-space: nowrap;
+}
+
+.ip-day__head th {
+    padding: 0;
+    border-bottom: 1px solid var(--ip-border);
+    background: #fbfcfe;
+}
+
+.ip-day__toggle {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    width: 100%;
+    min-height: 46px;
+    padding: .55rem .75rem .55rem .9rem;
+    background: none;
+    border: 0;
+    border-left: 4px solid var(--ip-gray);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    color: var(--ip-text);
+    text-align: left;
+}
+
+.ip-day__toggle:hover {
+    background: #f3f7fb;
+}
+
+/* Un color por día: lunes a sábado */
+.ip-day--1 .ip-day__toggle { border-left-color: #1e88e5; }
+.ip-day--2 .ip-day__toggle { border-left-color: #16a34a; }
+.ip-day--3 .ip-day__toggle { border-left-color: #f59e0b; }
+.ip-day--4 .ip-day__toggle { border-left-color: #e5484d; }
+.ip-day--5 .ip-day__toggle { border-left-color: #0ea5e9; }
+.ip-day--6 .ip-day__toggle { border-left-color: #64748b; }
+
+.ip-day--today .ip-day__toggle {
+    background: #eef6fe;
+}
+
+.ip-day--today .ip-day__name {
+    color: #1565c0;
+}
+
+.ip-day__name {
+    font-size: .88rem;
+}
+
+.ip-day__count {
+    background: #eef2f7;
+    border-radius: 999px;
+    padding: .1rem .55rem;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--ip-gray);
+}
+
+.ip-day--today .ip-day__count {
+    background: #d7eafd;
+    color: #1565c0;
+}
+
+.ip-day__chevron {
+    margin-left: auto;
+    color: #93a1b4;
+    font-size: .8rem;
+    transition: transform .15s ease;
+}
+
+.ip-day__toggle[aria-expanded="false"] .ip-day__chevron {
+    transform: rotate(-90deg);
+}
+
+.ip-row td {
+    padding: .6rem .6rem;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: middle;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Borde de color del día solo en la primera celda (estilo monday). */
+.ip-row td:first-child {
+    border-left: 4px solid transparent;
+}
+
+.ip-day--1 .ip-row td:first-child { border-left-color: #e3f0fc; }
+.ip-day--2 .ip-row td:first-child { border-left-color: #e5f5ea; }
+.ip-day--3 .ip-row td:first-child { border-left-color: #fdf3dc; }
+.ip-day--4 .ip-row td:first-child { border-left-color: #fdeceb; }
+.ip-day--5 .ip-row td:first-child { border-left-color: #e0f5fd; }
+.ip-day--6 .ip-row td:first-child { border-left-color: #edf0f4; }
+
+.ip-day--today .ip-row td {
+    background: #f7fbff;
+}
+
+.ip-row[hidden] {
+    display: none;
+}
+
+.ip-row__time {
+    font-size: .78rem;
+    color: var(--ip-muted);
+}
+
+.ip-row__practice {
+    font-weight: 700;
+    color: #1565c0;
+}
+
+a.ip-row__practice:hover {
+    color: #0d47a1;
+    text-decoration: none;
+}
+
+.ip-row__num {
+    display: block;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--ip-muted);
+}
+
+.ip-row__sub {
+    display: block;
+    font-size: .76rem;
+    color: var(--ip-muted);
+    overflow-wrap: anywhere;
+}
+
+.ip-status {
+    white-space: nowrap;
+    font-size: .74rem;
+    font-weight: 700;
+    padding: .35rem .7rem;
+    border-radius: 999px;
+}
+
+/* Chips del pie: conteo por estado */
+.ip-weekchips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.ip-weekchips .badge {
+    font-size: .72rem;
+    padding: .35rem .6rem;
+    border-radius: 999px;
+}
+
+/* ─── Gráficos ────────────────────────────────────────────────────── */
+
+.ip-chartbox {
+    position: relative;
+    min-height: 260px;
+    padding: .5rem .25rem 0;
+}
+
+.ip-chartbox--small {
+    min-height: 230px;
+}
+
+.ip-legend {
+    list-style: none;
+    padding: 0;
+    margin: .6rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem .9rem;
+}
+
+.ip-legend li {
+    display: inline-flex;
+    align-items: center;
+    font-size: .78rem;
+    color: var(--ip-muted);
+}
+
+.ip-legend__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: .4rem;
+}
+
+.ip-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    min-height: 220px;
+    color: var(--ip-muted);
+}
+
+.ip-loading i {
+    font-size: 1.6rem;
+    color: var(--ip-blue);
+}
+
+.ip-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    min-height: 200px;
+    margin: 0 1.25rem;
+    border: 1px dashed #f0d6a8;
+    background: #fdfaf3;
+    border-radius: 10px;
+    color: #8a6116;
+    font-size: .85rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* ─── Mosaicos de inventario ──────────────────────────────────────── */
+
+.ip-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: .75rem;
+}
+
+.ip-tile {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    background: #fff;
+    border: 1px solid var(--ip-border);
+    border-radius: var(--ip-radius);
+    box-shadow: var(--ip-shadow);
+    padding: .9rem 1rem;
+    min-height: 96px;
+    color: var(--ip-text);
+    text-decoration: none;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+a.ip-tile:hover,
+a.ip-tile:focus {
+    transform: translateY(-2px);
+    border-color: #c9d5e3;
+    color: var(--ip-text);
+    text-decoration: none;
+    box-shadow: 0 4px 8px rgba(15, 23, 42, .05), 0 14px 28px rgba(15, 23, 42, .09);
+}
+
+.ip-tile--plain:hover,
+.ip-tile--plain:focus {
+    transform: none;
+    border-color: var(--ip-border);
+    box-shadow: var(--ip-shadow);
+}
+
+.ip-tile__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.ip-tile__icon--blue { background: #e8f2fc; color: #1565c0; }
+.ip-tile__icon--green { background: #e8f7ee; color: var(--ip-green); }
+.ip-tile__icon--amber { background: #fdf3dc; color: #b45309; }
+.ip-tile__icon--red { background: #fdecea; color: var(--ip-red); }
+.ip-tile__icon--cyan { background: #e0f5fd; color: #0369a1; }
+.ip-tile__icon--gray { background: #eef2f7; color: var(--ip-gray); }
+
+.ip-tile__value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ip-tile__label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ip-text);
+}
+
+.ip-tile__hint {
+    font-size: .72rem;
+    color: var(--ip-muted);
+}
+
+/* Calidad de clasificación (a ancho completo en su pestaña) */
+.ip-quality__card {
+    background: #fff;
+    border: 1px solid var(--ip-border);
+    border-radius: var(--ip-radius);
+    box-shadow: var(--ip-shadow);
+    padding: 1rem 1.1rem;
+}
+
+.ip-quality__pct {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ip-blue);
+    line-height: 1;
+}
+
+.ip-quality__track {
+    height: 8px;
+    border-radius: 999px;
+    background: #edf1f5;
+    overflow: hidden;
+    margin: .6rem 0 .4rem;
+}
+
+.ip-quality__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--ip-green), var(--ip-blue));
+}
+
+.ip-quality__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    font-size: .8rem;
+    color: var(--ip-muted);
+}
+
+.ip-quality__stats strong {
+    color: var(--ip-text);
+    font-size: .95rem;
+}
+
+/* ─── Filas del panel ─────────────────────────────────────────────── */
+
+/* Columnas de Bootstrap (en NiceAdmin «xl» empieza en 1600px: se usa «lg»). */
+.ip-row-grid > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.25rem;
+}
+
+.ip-row-grid > [class*="col-"] > .ip-card {
+    flex: 1 1 auto;
+}
+
+/* ─── Movimiento reducido ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .ip-panel *,
+    .ip-panel *::before,
+    .ip-panel *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    a.ip-tile:hover,
+    a.ip-tile:focus {
+        transform: none;
+    }
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 767.98px) {
+    .ip-header__title {
+        font-size: 1.35rem;
+    }
+
+    /* Las acciones del aviso pasan debajo del texto. */
+    .ip-feed__item {
+        flex-wrap: wrap;
+    }
+
+    .ip-feed__actions {
+        flex: 1 0 100%;
+        margin-left: 0;
+    }
+
+    /* La tabla de la semana se convierte en tarjetas apiladas (sin scroll horizontal). */
+    .ip-table,
+    .ip-table tbody,
+    .ip-table tr,
+    .ip-table td,
+    .ip-table th {
+        display: block;
+        width: 100%;
+    }
+
+    .ip-table thead {
+        display: none; /* Los rótulos pasan a cada celda vía data-label. */
+    }
+
+    .ip-day__head th {
+        border-bottom: 0;
+    }
+
+    .ip-row {
+        border: 1px solid var(--ip-border);
+        border-radius: 10px;
+        margin: .5rem .5rem 0;
+        padding: .25rem 0;
+        background: #fff;
+    }
+
+    .ip-row td {
+        border-left: 0;
+        border-bottom: 1px dashed #edf1f5;
+        padding: .4rem .85rem;
+    }
+
+    .ip-row td:last-child {
+        border-bottom: 0;
+    }
+
+    .ip-row td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #93a1b4;
+        margin-bottom: .1rem;
+    }
+}
+
+/* ─── Teléfono: cada práctica como tarjeta compacta ───────────────── */
+@media (max-width: 767.98px) {
+    .ip-table tr.ip-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: .5rem;
+        padding: .5rem 0;
+    }
+
+    .ip-table tr.ip-row[hidden] {
+        display: none;
+    }
+
+    .ip-table tr.ip-row td {
+        display: block;
+        border-bottom: 0;
+        padding: .1rem .85rem;
+    }
+
+    .ip-table tr.ip-row td[data-label]::before {
+        display: none;
+    }
+
+    /* Práctica y estado en la primera línea; luego hora, materia, laboratorio y docente. */
+    .ip-table tr.ip-row td:nth-child(2) { order: 1; grid-column: 1; }
+    .ip-table tr.ip-row td:nth-child(6) { order: 2; grid-column: 2; align-self: start; }
+    .ip-table tr.ip-row td:nth-child(1) { order: 3; grid-column: 1 / -1; }
+    .ip-table tr.ip-row td:nth-child(3) { order: 4; grid-column: 1 / -1; font-size: .8rem; }
+    .ip-table tr.ip-row td:nth-child(4) { order: 5; grid-column: 1 / -1; font-size: .8rem; color: var(--ip-muted); }
+    .ip-table tr.ip-row td:nth-child(5) { order: 6; grid-column: 1 / -1; font-size: .8rem; color: var(--ip-muted); }
+
+    .ip-table tr.ip-row td:nth-child(5)::before {
+        content: "Docente: ";
+        display: inline;
+        font-size: inherit;
+        font-weight: 600;
+        text-transform: none;
+        letter-spacing: 0;
+        color: inherit;
+    }
+
+    .ip-table tr.ip-row td:nth-child(3) .ip-row__sub {
+        display: inline;
+    }
+
+    .ip-table tr.ip-row td:nth-child(3) .ip-row__sub::before {
+        content: " · ";
+    }
+}
+
+/* Indicadores de la pestaña Gráficos: misma tarjeta blanca que el resto del panel. */
+.ip-indicator {
+    height: 100%;
+    padding: 1.25rem;
+    background: #fff;
+    border: 1px solid var(--ip-border);
+    border-radius: var(--ip-radius);
+    box-shadow: var(--ip-shadow);
+}

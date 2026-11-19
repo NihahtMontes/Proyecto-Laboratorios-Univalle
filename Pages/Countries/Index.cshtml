@@ -106,31 +106,10 @@
                     </table>
                 </div>
 
-                @if (Model.Countries.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Countries.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Countries.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Countries.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Countries.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                </li>
-                            }
-                            @if (Model.Countries.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Countries.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Countries, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString() }, itemLabel: "países");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

@@ -17,7 +17,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         /// <summary>Destino del botón «Ir al inicio»: el rol de cierre inicia en su pantalla del día.</summary>
         public string HomeUrl => PracticeClosureAccess.IsClosureOnly(User)
             ? PracticeClosureAccess.HomePage
-            : "/Index";
+            : TeacherAccess.IsTeacherOnly(User) ? TeacherAccess.HomePage : "/Index";
 
         public void OnGet()
         {

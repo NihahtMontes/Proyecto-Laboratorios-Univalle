@@ -1,0 +1,306 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Docente.NuevaSolicitudModel
+@using System.Text.Json
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@{
+    var editing = Model.EditingId.HasValue;
+    ViewData["Title"] = editing ? "Corregir solicitud" : "Solicitar práctica";
+    ViewData["Section"] = "Portal docente";
+    ViewData["HidePageTitle"] = true;
+    var config = new
+    {
+        baseUrl = Url.Page("./NuevaSolicitud"),
+        detailUrl = Url.Page("./Solicitud"),
+        minDate = Model.Window.MinDate.ToString("yyyy-MM-dd"),
+        maxDate = Model.Window.MaxDate.ToString("yyyy-MM-dd"),
+        groups = Model.Groups,
+        periods = Model.Periods,
+        labs = Model.Labs,
+        categories = Model.Categories.Select(c => new { id = c.Id, name = c.Name }),
+        editing
+    };
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">PORTAL DOCENTE</h4>
+            <h2 class="font-weight-bold text-dark mb-0">
+                @if (editing)
+                {
+                    <span>Corregir solicitud @L3Codes.Format(Model.EditingId!.Value, Model.EditingCode)</span>
+                }
+                else
+                {
+                    <span>Solicitar práctica</span>
+                }
+            </h2>
+            <div class="text-muted small">Cuatro pasos: qué práctica, cuándo y dónde, qué material y enviar. Revisamos choques y stock mientras completas.</div>
+        </div>
+        <div class="col-md-4 text-md-right mt-2 mt-md-0">
+            <a asp-page="./Index" class="btn btn-light border rounded-pill px-3"><i class="fas fa-arrow-left mr-1"></i>Volver</a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+
+    @if (!Model.Window.IsOpen)
+    {
+        <div class="card border-0 shadow-sm" style="border-radius:16px;">
+            <div class="card-body dc-empty">
+                <i class="fas fa-lock" style="color:#fb8c00;"></i>
+                <h4 class="font-weight-bold text-dark">Por ahora no se reciben solicitudes</h4>
+                <p>@Model.Window.ClosedReason</p>
+                <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">Ir a mi semana</a>
+            </div>
+        </div>
+    }
+    else if (Model.Groups.Count == 0)
+    {
+        <div class="card border-0 shadow-sm" style="border-radius:16px;">
+            <div class="card-body dc-empty">
+                <i class="fas fa-users" style="color:#fb8c00;"></i>
+                <h4 class="font-weight-bold text-dark">No tienes grupos asignados en @Model.Window.ManagementCode</h4>
+                <p>Pide al administrador que te asigne tus grupos (Materias → Grupos) para poder solicitar prácticas.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(Model.ObservationComment))
+        {
+            <div class="alert border-0 shadow-sm d-flex mb-3" style="background:#fff4e5;">
+                <i class="fas fa-comment-dots fa-lg mr-3 mt-1" style="color:#fb8c00;"></i>
+                <div>
+                    <strong>Observación del revisor</strong>
+                    <div style="white-space:pre-line;">@Model.ObservationComment</div>
+                </div>
+            </div>
+        }
+
+        <!-- Pasos -->
+        <div class="dc-stepper" id="stepper">
+            <div class="dc-step is-active" data-step="1"><span class="dc-step__dot">1</span><span class="dc-step__text">Práctica</span></div>
+            <div class="dc-step__bar" data-bar="1"></div>
+            <div class="dc-step" data-step="2"><span class="dc-step__dot">2</span><span class="dc-step__text">Horario y laboratorio</span></div>
+            <div class="dc-step__bar" data-bar="2"></div>
+            <div class="dc-step" data-step="3"><span class="dc-step__dot">3</span><span class="dc-step__text">Material</span></div>
+            <div class="dc-step__bar" data-bar="3"></div>
+            <div class="dc-step" data-step="4"><span class="dc-step__dot">4</span><span class="dc-step__text">Revisar y enviar</span></div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm" style="border-radius:16px;">
+                    <div class="card-body p-4">
+
+                        <!-- PASO 1 -->
+                        <section data-pane="1">
+                            <h5 class="font-weight-bold text-dark mb-1">¿Para qué grupo?</h5>
+                            <p class="text-muted small mb-3">Solo aparecen tus grupos de la gestión @Model.Window.ManagementCode.</p>
+                            <div class="row" id="groupList"></div>
+
+                            <div class="form-row align-items-end mt-2 mb-4" id="studentsRow" style="display:none;">
+                                <div class="col-sm-4">
+                                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="students">Estudiantes en la sesión</label>
+                                    <input type="number" min="1" max="500" class="form-control" id="students" placeholder="Ej: 24" />
+                                </div>
+                                <div class="col-sm-8 small text-muted">El kit de la práctica se ajusta a esta cantidad.</div>
+                            </div>
+
+                            <div id="practiceBlock" style="display:none;">
+                                <div class="d-flex align-items-center mb-2">
+                                    <h5 class="font-weight-bold text-dark mb-0">¿Qué práctica?</h5>
+                                    <div class="ml-auto" style="max-width:260px;">
+                                        <div class="input-group input-group-sm">
+                                            <div class="input-group-prepend"><span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span></div>
+                                            <input type="search" class="form-control" id="practiceSearch" placeholder="Buscar práctica…" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-3">Prácticas del catálogo de la materia (las crea el administrador con su kit de material). Puedes pedir la misma práctica las veces que necesites: cada solicitud es una sesión aparte.</p>
+                                <div class="row" id="practiceList" style="max-height:420px; overflow-y:auto;"></div>
+                            </div>
+                        </section>
+
+                        <!-- PASO 2 -->
+                        <section data-pane="2" style="display:none;">
+                            <div class="d-flex flex-wrap align-items-end mb-3">
+                                <div class="mr-3 mb-2">
+                                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="periodCount">Duración</label>
+                                    <select class="custom-select" id="periodCount">
+                                        @for (var i = 1; i <= 6; i++)
+                                        {
+                                            <option value="@i">@i periodo@(i > 1 ? "s" : "") (~@(i * 50) min)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <button type="button" class="btn rounded-pill px-4 text-white shadow-sm" style="background:#7460ee;" id="btnSuggest">
+                                        <i class="fas fa-magic mr-2"></i>Buscar horario libre
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="suggestions" class="row mb-2"></div>
+
+                            <div class="d-flex align-items-center my-3">
+                                <hr class="flex-grow-1" /><span class="mx-3 small text-muted text-uppercase font-weight-bold">o elige en la grilla</span><hr class="flex-grow-1" />
+                            </div>
+
+                            <div class="form-row align-items-end mb-2">
+                                <div class="col-md-5 mb-2">
+                                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="labSelect">Laboratorio</label>
+                                    <select class="custom-select" id="labSelect">
+                                        <option value="">-- Elegir laboratorio --</option>
+                                        @foreach (var lab in Model.Labs)
+                                        {
+                                            <option value="@lab.Id">@lab.Code · @lab.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="weekDate">Semana del</label>
+                                    <input type="date" class="form-control" id="weekDate" min="@Model.Window.MinDate.ToString("yyyy-MM-dd")" max="@Model.Window.MaxDate.ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="col-md-3 mb-2 text-md-right">
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-light border" id="weekPrev" title="Semana anterior"><i class="fas fa-chevron-left"></i></button>
+                                        <button type="button" class="btn btn-light border" id="weekNext" title="Semana siguiente"><i class="fas fa-chevron-right"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="weekGrid" class="table-responsive">
+                                <div class="text-muted small py-3 text-center">Elige un laboratorio para ver su semana.</div>
+                            </div>
+                            <div class="dc-legend mt-2">
+                                <span><i style="background:#f1f5f9;"></i>Libre</span>
+                                <span><i style="background:#fde2e7;"></i>Ocupado</span>
+                                <span><i style="background:#ffe9cc;"></i>Limpieza entre prácticas</span>
+                                <span><i style="background:#e6e1fd;"></i>Otra solicitud en revisión</span>
+                                <span><i style="background:#e8f8f4;"></i>Tus prácticas</span>
+                                <span><i style="background:#7460ee;"></i>Tu selección</span>
+                            </div>
+                            <div id="slotIssues" class="mt-3"></div>
+                        </section>
+
+                        <!-- PASO 3 -->
+                        <section data-pane="3" style="display:none;">
+                            <div class="d-flex flex-wrap align-items-center mb-2">
+                                <div>
+                                    <h5 class="font-weight-bold text-dark mb-0">Material para la práctica</h5>
+                                    <small class="text-muted" id="kitHint">Ajusta cantidades; el semáforo indica si alcanza en tu horario.</small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-light border rounded-pill ml-auto mt-2 mt-md-0" id="btnReloadKit">
+                                    <i class="fas fa-redo mr-1"></i>Volver a cargar el kit
+                                </button>
+                            </div>
+                            <div class="small text-muted mb-2 p-2 rounded bg-light">
+                                <strong>Stock</strong>: total registrado en Existencias (todos los ambientes).
+                                <strong>Libre en tu horario</strong>: stock menos lo que usan otras prácticas aprobadas a la misma hora (el material vuelve al terminar cada práctica).
+                                <strong>—</strong>: el artículo aún no tiene existencia cargada; puedes pedirlo y el revisor confirmará si hay.
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-2">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Artículo</th>
+                                            <th class="text-center" title="Cantidad total registrada en Existencias, sumando todos los ambientes">Stock <i class="far fa-question-circle text-muted"></i></th>
+                                            <th class="text-center" title="Stock menos lo que usan otras prácticas aprobadas en el mismo horario">Libre en tu horario <i class="far fa-question-circle text-muted"></i></th>
+                                            <th class="text-center" title="Lo que pides para tu práctica">Cantidad</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="linesBody"></tbody>
+                                </table>
+                            </div>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="small font-weight-bold text-uppercase text-muted mb-2"><i class="fas fa-plus-circle mr-1"></i>Agregar artículo</div>
+                                <div class="form-row">
+                                    <div class="col-md-7 mb-2"><input type="search" class="form-control" id="articleTerm" placeholder="Nombre o código (ej: bowl, cuchillo)…" /></div>
+                                    <div class="col-md-5 mb-2">
+                                        <select class="custom-select" id="articleCategory">
+                                            <option value="">Todas las categorías</option>
+                                            @foreach (var c in Model.Categories)
+                                            {
+                                                <option value="@c.Id">@c.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="articleResults" class="list-group" style="max-height:240px; overflow-y:auto;"></div>
+                            </div>
+                        </section>
+
+                        <!-- PASO 4 -->
+                        <section data-pane="4" style="display:none;">
+                            <h5 class="font-weight-bold text-dark mb-3">Revisa tu solicitud</h5>
+                            <div id="reviewSummary"></div>
+                            <div id="reviewWarnings" class="mt-3"></div>
+                            <div class="form-group mt-3">
+                                <label class="small font-weight-bold text-uppercase text-muted" for="observations">Indicaciones para el laboratorio (opcional)</label>
+                                <textarea class="form-control" id="observations" rows="3" maxlength="1000" placeholder="Ej: necesito las mesas armadas en U, llegaré 10 min antes…"></textarea>
+                            </div>
+                            @if (editing)
+                            {
+                                <div class="form-group">
+                                    <label class="small font-weight-bold text-uppercase text-muted" for="note">¿Qué corregiste? (para el revisor)</label>
+                                    <textarea class="form-control" id="note" rows="2" maxlength="1000" placeholder="Ej: cambié al laboratorio H-03 y reduje los bowls."></textarea>
+                                </div>
+                            }
+                        </section>
+
+                        <hr />
+                        <div class="d-flex align-items-center">
+                            <button type="button" class="btn btn-light border rounded-pill px-4" id="btnPrev" style="visibility:hidden;"><i class="fas fa-arrow-left mr-1"></i>Atrás</button>
+                            <div class="ml-auto">
+                                <button type="button" class="btn rounded-pill px-4 text-white" style="background:#7460ee;" id="btnNext">Siguiente<i class="fas fa-arrow-right ml-2"></i></button>
+                                <button type="button" class="btn btn-success rounded-pill px-4" id="btnSubmit" style="display:none;"><i class="fas fa-paper-plane mr-2"></i>@(editing ? "Reenviar a revisión" : "Enviar solicitud")</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen en vivo -->
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm dc-sticky" style="border-radius:16px;">
+                    <div class="card-body">
+                        <div class="small font-weight-bold text-uppercase mb-3" style="color:#7460ee;"><i class="fas fa-clipboard-list mr-1"></i>Tu solicitud</div>
+                        <div id="sideSummary"></div>
+                        <div class="mt-3 pt-3 border-top small text-muted">
+                            <i class="far fa-clock mr-1"></i>Plazo: @Model.Window.RangeText.<br />
+                            <i class="fas fa-info-circle mr-1"></i>Una solicitud en revisión no reserva el laboratorio: se reserva al aprobarse.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" id="submitForm">
+            <input type="hidden" name="PlanningId" id="f_planningId" />
+            <input type="hidden" name="Input.CourseGroupId" id="f_group" />
+            <input type="hidden" name="Input.PracticeId" id="f_practice" />
+            <input type="hidden" name="Input.StudentCount" id="f_students" />
+            <input type="hidden" name="Input.Date" id="f_date" />
+            <input type="hidden" name="Input.StartPeriodId" id="f_start" />
+            <input type="hidden" name="Input.PeriodCount" id="f_count" />
+            <input type="hidden" name="Input.LaboratoryId" id="f_lab" />
+            <input type="hidden" name="Input.Observations" id="f_obs" />
+            <input type="hidden" name="LinesJson" id="f_lines" />
+            <input type="hidden" name="Note" id="f_note" />
+        </form>
+
+        <script type="application/json" id="wizardConfig">@Html.Raw(JsonSerializer.Serialize(config, jsonOptions))</script>
+        <script type="application/json" id="wizardState">@Html.Raw(Model.InitialStateJson)</script>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/docente-solicitud.js" asp-append-version="true"></script>
+}

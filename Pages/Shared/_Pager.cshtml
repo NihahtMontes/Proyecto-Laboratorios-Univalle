@@ -1,0 +1,115 @@
+@model Proyecto_Laboratorios_Univalle.Helpers.PagerModel
+@*
+    Paginador compartido de listados (Helpers/PagerModel.cs).
+    - Izquierda: «Mostrando a–b de N {ItemLabel}» (solo si hay registros).
+    - Derecha: primera/última página, ventana ±2, «…» en los saltos, Anterior/Siguiente.
+    - No dibuja la paginación cuando TotalPages <= 1.
+    - Los enlaces conservan los filtros vigentes (RouteValues + PageParam) y el fragment de pestaña.
+*@
+<link rel="stylesheet" href="~/css/pager.css" asp-append-version="true" />
+
+@{
+    // Ruta completa de un enlace de página: filtros vigentes (sin nulls) + parámetro de página.
+    Dictionary<string, string> RouteDict(int page)
+    {
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in Model.RouteValues)
+        {
+            if (value != null)
+            {
+                dict[key] = value;
+            }
+        }
+        dict[Model.PageParam] = page.ToString();
+        return dict;
+    }
+
+    var startPage = Math.Max(1, Model.PageIndex - 2);
+    var endPage = Math.Min(Model.TotalPages, Model.PageIndex + 2);
+}
+
+@if (Model.TotalCount > 0)
+{
+    <div class="pg-wrapper">
+        <div class="pg-info text-muted" aria-live="polite">
+            Mostrando <strong>@Model.FirstItemIndex&ndash;@Model.LastItemIndex</strong> de <strong>@Model.TotalCount</strong> @Model.ItemLabel
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Paginación de @Model.ItemLabel" class="pg-nav">
+                <ul class="pagination pg-pagination mb-0">
+                    <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                        @if (Model.HasPreviousPage)
+                        {
+                            <a class="page-link pg-link" asp-all-route-data="RouteDict(Model.PageIndex - 1)" asp-fragment="@Model.Fragment" aria-label="Página anterior" rel="prev">
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline ml-1">Anterior</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-link pg-link" aria-disabled="true" tabindex="-1">
+                                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                                <span class="d-none d-sm-inline ml-1">Anterior</span>
+                            </span>
+                        }
+                    </li>
+
+                    @if (startPage > 1)
+                    {
+                        <li class="page-item d-none d-sm-inline-block">
+                            <a class="page-link pg-link" asp-all-route-data="RouteDict(1)" asp-fragment="@Model.Fragment" aria-label="Página 1">1</a>
+                        </li>
+                        @if (startPage > 2)
+                        {
+                            <li class="page-item disabled pg-gap d-none d-sm-inline-block" aria-hidden="true"><span class="page-link pg-link">&hellip;</span></li>
+                        }
+                    }
+
+                    @for (var pageNumber = startPage; pageNumber <= endPage; pageNumber++)
+                    {
+                        if (pageNumber == Model.PageIndex)
+                        {
+                            <li class="page-item active" aria-current="page"><span class="page-link pg-link">@pageNumber</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item">
+                                <a class="page-link pg-link" asp-all-route-data="RouteDict(pageNumber)" asp-fragment="@Model.Fragment" aria-label="Página @pageNumber">@pageNumber</a>
+                            </li>
+                        }
+                    }
+
+                    @if (endPage < Model.TotalPages)
+                    {
+                        @if (endPage < Model.TotalPages - 1)
+                        {
+                            <li class="page-item disabled pg-gap d-none d-sm-inline-block" aria-hidden="true"><span class="page-link pg-link">&hellip;</span></li>
+                        }
+                        <li class="page-item d-none d-sm-inline-block">
+                            <a class="page-link pg-link" asp-all-route-data="RouteDict(Model.TotalPages)" asp-fragment="@Model.Fragment" aria-label="Última página (@Model.TotalPages)">@Model.TotalPages</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                        @if (Model.HasNextPage)
+                        {
+                            <a class="page-link pg-link" asp-all-route-data="RouteDict(Model.PageIndex + 1)" asp-fragment="@Model.Fragment" aria-label="Página siguiente" rel="next">
+                                <span class="d-none d-sm-inline mr-1">Siguiente</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-link pg-link" aria-disabled="true" tabindex="-1">
+                                <span class="d-none d-sm-inline mr-1">Siguiente</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </span>
+                        }
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+}

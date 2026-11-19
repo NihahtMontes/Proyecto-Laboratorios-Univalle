@@ -3,7 +3,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.Drawing;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -43,10 +42,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
             using var package = new ExcelPackage(new FileInfo(templatePath));
             var worksheet = package.Workbook.Worksheets[0];
 
-            // LIMPIEZA SEGURA (sin Merge=false - causa crash 0xffffffff)
+            // LIMPIEZA SEGURA (sin Merge=false - causa crash 0xffffffff): asignar .Value = null
+            // no lanza excepciones en EPPlus, ni siquiera en celdas dentro de rangos combinados.
             for (int r = 15; r <= 50; r++)
                 for (int c = 1; c <= 6; c++)
-                    try { worksheet.Cells[r, c].Value = null; } catch { }
+                    worksheet.Cells[r, c].Value = null;
 
             // HEADER
             worksheet.Cells["B8"].Value = unit.EquipmentName?.ToUpper();

@@ -47,8 +47,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             if (exception != null)
             {
                 _logger.LogError(exception, "Error global capturado en {Module} para entidad {EntityId}. TraceId: {TraceId}", Module, EntityId, RequestId);
-                Message = "Ocurrió un error inesperado al abrir esta pantalla.";
+                Message = IsDatabaseUnavailable(exception)
+                    ? "No se pudo conectar con la base de datos. Intente nuevamente en unos minutos; si el problema continúa, contacte al administrador."
+                    : "Ocurrió un error inesperado al abrir esta pantalla.";
             }
+        }
+
+        /// <summary>True si la excepción (o alguna interna) es de conexión con la base de datos (DbException, p. ej. SqlException).</summary>
+        private static bool IsDatabaseUnavailable(Exception? exception)
+        {
+            for (var ex = exception; ex != null; ex = ex.InnerException)
+                if (ex is System.Data.Common.DbException) return true;
+            return false;
         }
 
         private static string ResolveListText(string module)

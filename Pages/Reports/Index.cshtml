@@ -65,12 +65,12 @@
                                 <option value="missing">Sin reportes</option>
                                 @if (!Model.IsCorrective)
                                 {
-                                    <option value="l6">Con verificación</option>
+                                    <option value="l6">L6 · Verificaciones</option>
                                 }
-                                <option value="l7">Con solicitud de servicio técnico</option>
-                                <option value="l8">Con registro de mantenimiento</option>
-                                <option value="l3">Con salida de equipos</option>
-                                <option value="l12">Con solicitud de compra</option>
+                                <option value="l7">L7 · Servicio técnico</option>
+                                <option value="l8">L8 · Kardex</option>
+                                <option value="l3">L3 · Salidas</option>
+                                <option value="l12">Adquisición</option>
                             </select>
                             <select asp-for="SelectedLabId"
                                     asp-items="Model.LaboratoriesList"
@@ -104,11 +104,11 @@
                         <div class="mt-2 mt-md-0">
                             @if (!Model.IsCorrective)
                             {
-                                <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded font-weight-bold px-3 mr-1 shadow-sm">
-                                    <i class="fas fa-file-excel mr-1"></i> Verificaciones (consolidado)
+                                <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded font-weight-bold px-3 mr-1 shadow-sm js-report-download" title="Descargar el consolidado de verificaciones L-6 (Excel)">
+                                    <i class="fas fa-file-excel mr-1"></i> L6 · Verificaciones (consolidado)
                                 </a>
                             }
-                            <a href="/api/reports/download/l48?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold px-3 shadow-sm">
+                            <a href="/api/reports/download/l48?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold px-3 shadow-sm js-report-download" title="Descargar el cronograma de mantenimiento (Excel)">
                                 <i class="fas fa-project-diagram mr-1"></i> Cronograma de mantenimiento
                             </a>
                         </div>
@@ -125,13 +125,22 @@
                                 <th class="text-center">Reportes oficiales</th>
                             </tr>
                         </thead>
-                        <tbody>
+                         <tbody>
                             @if (!Model.SelectedLabId.HasValue)
                             {
                                 <tr>
                                     <td colspan="4" class="text-center py-5 text-muted">
                                         <i class="fas fa-filter fa-3x mb-3 d-block opacity-2"></i>
-                                        Selecciona un laboratorio para listar sus reportes oficiales.
+                                        Seleccione un laboratorio para listar sus reportes oficiales.
+                                    </td>
+                                </tr>
+                            }
+                            else if (Model.TotalUnitsInLab == 0)
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        El laboratorio <strong>@labLabel</strong> no tiene equipos asignados en la gestión @Model.SelectedManagement?.Code.
                                     </td>
                                 </tr>
                             }
@@ -139,8 +148,12 @@
                             {
                                 <tr>
                                     <td colspan="4" class="text-center py-5 text-muted">
-                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron equipos con los filtros actuales.
+                                        <i class="fas fa-search-minus fa-3x mb-3 d-block opacity-2"></i>
+                                        Ningún equipo del laboratorio cumple los filtros aplicados.
+                                        <br />
+                                        <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" class="btn btn-link btn-sm text-info mt-2 font-weight-bold">
+                                            <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                        </a>
                                     </td>
                                 </tr>
                             }
@@ -189,32 +202,32 @@
                                                 <div class="btn-group flex-wrap justify-content-center">
                                                     @if (!Model.IsCorrective && status.HasL6)
                                                     {
-                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId&unitId=@unit.Id" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1 js-report-download" title="Descargar la verificación de este equipo (Excel)">
-                                                            <i class="fas fa-file-excel mr-1"></i> Verificación
+                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId&unitId=@unit.Id" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1 js-report-download" title="Descargar la verificación L-6 de este equipo (Excel)">
+                                                            <i class="fas fa-file-excel mr-1"></i> L6 · Verificación
                                                         </a>
                                                     }
                                                     @if (status.HasL7)
                                                     {
-                                                        <a href="/api/reports/download/l7?requestId=@status.RequestId&managementId=@Model.ManagementId" class="btn btn-sm btn-outline-info btn-rounded mr-1 mb-1" title="Descargar la solicitud de servicio técnico (Excel)">
-                                                            <i class="fas fa-file-signature mr-1"></i> Solicitud
+                                                        <a href="/api/reports/download/l7?requestId=@status.RequestId&managementId=@Model.ManagementId" class="btn btn-sm btn-outline-info btn-rounded mr-1 mb-1 js-report-download" title="Descargar la solicitud de servicio técnico L-7 (Excel)">
+                                                            <i class="fas fa-file-signature mr-1"></i> L7 · Servicio técnico
                                                         </a>
                                                     }
                                                     @if (status.HasL8)
                                                     {
-                                                        <a href="/api/reports/download/l8?managementPlanId=@status.PlanId" class="btn btn-sm btn-outline-warning btn-rounded mr-1 mb-1" title="Descargar el registro de mantenimiento (Excel)">
-                                                            <i class="fas fa-wrench mr-1"></i> Mantenimiento
+                                                        <a href="/api/reports/download/l8?managementPlanId=@status.PlanId" class="btn btn-sm btn-outline-warning btn-rounded mr-1 mb-1 js-report-download" title="Descargar el registro de mantenimiento L-8 (Excel)">
+                                                            <i class="fas fa-wrench mr-1"></i> L8 · Kardex
                                                         </a>
                                                     }
                                                     @if (status.HasL3)
                                                     {
-                                                        <a href="/api/reports/download/l3?departureId=@status.DepartureId" class="btn btn-sm btn-outline-primary btn-rounded mr-1 mb-1" title="Descargar la salida de equipos (Excel)">
-                                                            <i class="fas fa-sign-out-alt mr-1"></i> Salida
+                                                        <a href="/api/reports/download/l3?departureId=@status.DepartureId" class="btn btn-sm btn-outline-primary btn-rounded mr-1 mb-1 js-report-download" title="Descargar la salida de equipos L-3 (Excel)">
+                                                            <i class="fas fa-sign-out-alt mr-1"></i> L3 · Salida
                                                         </a>
                                                     }
                                                     @if (status.HasAdquisicion)
                                                     {
-                                                        <a href="/api/reports/download/adquisicion?requestId=@status.AcquisitionRequestId" class="btn btn-sm btn-outline-dark btn-rounded mr-1 mb-1" title="Descargar la solicitud de compra (Excel)">
-                                                            <i class="fas fa-shopping-cart mr-1"></i> Compra
+                                                        <a href="/api/reports/download/adquisicion?requestId=@status.AcquisitionRequestId" class="btn btn-sm btn-outline-dark btn-rounded mr-1 mb-1 js-report-download" title="Descargar la solicitud de compra (Excel)">
+                                                            <i class="fas fa-shopping-cart mr-1"></i> Adquisición
                                                         </a>
                                                     }
                                                 </div>
@@ -257,59 +270,75 @@
         .btn-group.flex-wrap {
             gap: 0;
         }
+
+        /* Accesibilidad: con movimiento reducido, el spinner queda estático (solo indica espera). */
+        @@media (prefers-reduced-motion: reduce) {
+            .fa-spin {
+                -webkit-animation: none;
+                animation: none;
+            }
+        }
     </style>
 }
 
-@section Scripts {
-    <script>
-        // Descarga por equipo: si el servidor rechaza el reporte, se informa con SweetAlert en vez de navegar a una página de texto.
-        $(document).on('click', '.js-report-download', function (event) {
-            event.preventDefault();
-            var $link = $(this);
-            if ($link.hasClass('disabled')) return;
+ @section Scripts {
+     <script>
+         // Descarga de reportes (tabla y consolidados): al pulsar, el botón muestra "Generando…"
+         // deshabilitado hasta que llega el archivo; si el servidor rechaza (no 200), se informa
+         // con SweetAlert en lugar de navegar a una página de texto.
+         $(document).on('click', '.js-report-download', function (event) {
+             event.preventDefault();
+             var $link = $(this);
+             if ($link.hasClass('disabled')) return;
 
-            var originalHtml = $link.html();
-            $link.addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> Verificación');
+             var originalHtml = $link.html();
+             $link.addClass('disabled')
+                  .attr('aria-disabled', 'true')
+                  .attr('aria-busy', 'true')
+                  .html('<i class="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i> Generando…');
 
-            fetch($link.attr('href'), { credentials: 'same-origin' })
-                .then(function (response) {
-                    if (!response.ok) {
-                        return response.text().then(function (message) {
-                            throw new Error((message || '').replace(/^"|"$/g, '') || 'No se pudo generar el reporte.');
-                        });
-                    }
+             fetch($link.attr('href'), { credentials: 'same-origin' })
+                 .then(function (response) {
+                     if (!response.ok) {
+                         return response.text().then(function (message) {
+                             throw new Error((message || '').replace(/^"|"$/g, '') || 'No se pudo generar el reporte.');
+                         });
+                     }
 
-                    var contentType = response.headers.get('Content-Type') || '';
-                    if (contentType.indexOf('spreadsheetml') === -1) {
-                        throw new Error('La sesión expiró o no tiene permisos para descargar. Recargue la página e intente nuevamente.');
-                    }
+                     var contentType = response.headers.get('Content-Type') || '';
+                     if (contentType.indexOf('spreadsheetml') === -1) {
+                         throw new Error('La sesión expiró o no tiene permisos para descargar. Recargue la página e intente nuevamente.');
+                     }
 
-                    var disposition = response.headers.get('Content-Disposition') || '';
-                    var encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
-                    var plain = /filename="?([^";]+)"?/i.exec(disposition);
-                    var fileName = encoded ? decodeURIComponent(encoded[1]) : (plain ? plain[1] : 'Reporte_L6.xlsx');
+                     var disposition = response.headers.get('Content-Disposition') || '';
+                     var encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+                     var plain = /filename="?([^";]+)"?/i.exec(disposition);
+                     var fileName = encoded ? decodeURIComponent(encoded[1]) : (plain ? plain[1] : 'Reporte.xlsx');
 
-                    return response.blob().then(function (blob) {
-                        var url = URL.createObjectURL(blob);
-                        var anchor = document.createElement('a');
-                        anchor.href = url;
-                        anchor.download = fileName;
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        anchor.remove();
-                        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-                    });
-                })
-                .catch(function (error) {
-                    Swal.fire({
-                        type: 'error',
-                        title: 'No se pudo descargar',
-                        text: error.message
-                    });
-                })
-                .then(function () {
-                    $link.removeClass('disabled').html(originalHtml);
-                });
-        });
-    </script>
-}
+                     return response.blob().then(function (blob) {
+                         var url = URL.createObjectURL(blob);
+                         var anchor = document.createElement('a');
+                         anchor.href = url;
+                         anchor.download = fileName;
+                         document.body.appendChild(anchor);
+                         anchor.click();
+                         anchor.remove();
+                         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                     });
+                 })
+                 .catch(function (error) {
+                     Swal.fire({
+                         type: 'error',
+                         title: 'No se pudo descargar',
+                         text: error.message
+                     });
+                 })
+                 .then(function () {
+                     $link.removeClass('disabled')
+                          .removeAttr('aria-disabled')
+                          .removeAttr('aria-busy')
+                          .html(originalHtml);
+                 });
+         });
+     </script>
+ }

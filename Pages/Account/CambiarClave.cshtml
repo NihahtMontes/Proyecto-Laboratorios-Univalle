@@ -1,0 +1,69 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Account.CambiarClaveModel
+@{
+    ViewData["Title"] = "Cambiar contraseña";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <span class="rounded-circle bg-light-info text-info d-inline-flex align-items-center justify-content-center mr-3" style="width:56px;height:56px;">
+                        <i class="fas fa-key fa-lg"></i>
+                    </span>
+                    <div>
+                        <small class="text-muted text-uppercase font-weight-bold">Seguridad de la cuenta</small>
+                        <h3 class="font-weight-bold text-dark mb-0">Cambiar contraseña</h3>
+                    </div>
+                </div>
+
+                @if (Model.IsMandatory)
+                {
+                    <div class="alert alert-warning d-flex align-items-start">
+                        <i class="fas fa-shield-alt mr-2 mt-1"></i>
+                        <div>
+                            <strong>Primer ingreso.</strong> Tu contraseña fue generada por el sistema: crea una propia para continuar.
+                        </div>
+                    </div>
+                }
+
+                <form method="post" autocomplete="off">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+                    <div class="form-group">
+                        <label asp-for="Input.CurrentPassword" class="small font-weight-bold text-uppercase text-muted"></label>
+                        <input asp-for="Input.CurrentPassword" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Input.CurrentPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.NewPassword" class="small font-weight-bold text-uppercase text-muted"></label>
+                        <input asp-for="Input.NewPassword" class="form-control" autocomplete="new-password" />
+                        <small class="form-text text-muted">Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo.</small>
+                        <span asp-validation-for="Input.NewPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.ConfirmPassword" class="small font-weight-bold text-uppercase text-muted"></label>
+                        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        @if (Model.IsMandatory)
+                        {
+                            <button type="submit" form="logoutForm" class="btn btn-link text-muted small p-0"><i class="fas fa-sign-out-alt mr-1"></i>Cerrar sesión</button>
+                        }
+                        else
+                        {
+                            <a asp-page="./Profile" class="btn btn-light">Cancelar</a>
+                        }
+                        <button type="submit" class="btn btn-info px-4"><i class="fas fa-save mr-1"></i> Guardar contraseña</button>
+                    </div>
+                </form>
+                <form method="post" asp-page="/Logout" id="logoutForm"></form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

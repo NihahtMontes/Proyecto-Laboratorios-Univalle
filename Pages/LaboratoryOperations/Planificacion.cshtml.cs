@@ -553,6 +553,8 @@ public class PlanificacionModel : PageModel
             if (newSchedule) _context.PracticeSchedules.Add(schedule);
 
             planning.PracticeSchedule = schedule;
+            // Número propio de esta sesión (la programación puede ser compartida por otras sesiones del grupo).
+            planning.StudentCount = Input.StudentCount ?? planning.StudentCount;
             if (isNew) _context.Plannings.Add(planning);
 
             await _context.SaveChangesAsync();
@@ -1088,7 +1090,7 @@ public class PlanificacionModel : PageModel
             SubjectId = planning.SubjectId ?? 0,
             PracticeId = planning.PracticeSchedule?.PracticeId ?? 0,
             GroupName = planning.GroupName ?? string.Empty,
-            StudentCount = planning.PracticeSchedule?.StudentCount,
+            StudentCount = planning.StudentCount ?? planning.PracticeSchedule?.StudentCount,
             ScalingFactor = planning.PracticeSchedule?.ScalingFactor,
             IsDemonstrative = planning.PracticeSchedule?.IsDemonstrative ?? false,
             Date = planning.ScheduledDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

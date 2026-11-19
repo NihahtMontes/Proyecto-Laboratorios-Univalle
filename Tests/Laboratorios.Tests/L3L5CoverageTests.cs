@@ -116,7 +116,7 @@ public class L3L5CoverageTests
 
         var stock = await db.Context.ArticleStocks.AsNoTracking()
             .SingleAsync(s => s.LaboratoryId == TestDb.EconomatoId && s.ArticleId == ArticleId);
-        Assert.Equal(17m, stock.AvailableQuantity);   // 20 − 10 entregado + 7 devuelto
+        Assert.Equal(20m, stock.AvailableQuantity);   // stock por horario: entregar/devolver no cambia la existencia (el L-5 se sembró con SaveChanges síncrono, sin el descuento de SaveChangesAsync)
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class L3L5CoverageTests
 
         var stock = await db.Context.ArticleStocks.AsNoTracking()
             .SingleAsync(s => s.LaboratoryId == TestDb.EconomatoId && s.ArticleId == ArticleId);
-        Assert.Equal(16m, stock.AvailableQuantity);   // 20 − 10 entregado + 6 devuelto
+        Assert.Equal(20m, stock.AvailableQuantity);   // stock por horario: entregar y devolver no cambian la existencia
     }
 
     [Theory]

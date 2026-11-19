@@ -102,7 +102,7 @@ public sealed class SlotValidationService : ISlotValidationService
                 p.AcademicWeekId,
                 p.StartPeriodId,
                 p.PeriodCount,
-                ScheduleStudents = p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null,
+                ScheduleStudents = p.StudentCount ?? (p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null),
                 GroupStudents = p.CourseGroup != null ? p.CourseGroup.StudentCount : null
             })
             .FirstOrDefaultAsync(ct);
@@ -110,6 +110,14 @@ public sealed class SlotValidationService : ISlotValidationService
         if (origin == null)
         {
             issues.Add(Block(Codes.OriginNotFound, "La planificación de origen no existe o fue eliminada."));
+            return Result();
+        }
+
+        // Solicitudes de docentes sin aprobar: se resuelven en la bandeja (aprobar/observar/rechazar), no se mueven.
+        if (origin.Status is PlanningStatus.Requested or PlanningStatus.Observed or PlanningStatus.Rejected)
+        {
+            issues.Add(Block(Codes.OriginNotMovable,
+                $"Es una solicitud de docente ({PlanningStatus.Label(origin.Status)}): revísala en Solicitudes de docentes; el docente elige otro horario si se observa."));
             return Result();
         }
 

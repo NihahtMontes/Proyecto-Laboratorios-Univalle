@@ -119,7 +119,10 @@ public class GrillaModel : PageModel
     /// <summary>Reposición de día en curso mostrada sin planificación elegida (?recoveryId= sin reponer).</summary>
     public RecoveryOverviewInfo? RecoveryOverview { get; private set; }
 
-    public sealed record RecoveryOverviewInfo(int Id, DateTime Date, string Reason, int Recovered, int Pending)
+    /// <summary>Reposición a la que pertenece el bloque que se está reponiendo (solo en modo reposición).</summary>
+    public RecoveryOverviewInfo? ActiveRecovery { get; private set; }
+
+    public sealed record RecoveryOverviewInfo(int Id, DateTime Date, string Reason, int Recovered, int Pending, string? Category = null)
     {
         public int Total => Recovered + Pending;
     }
@@ -234,6 +237,13 @@ public class GrillaModel : PageModel
             {
                 // Afectados del día suspendido: alimentan la bandeja lateral y el marcador de ambientes con pendientes.
                 RecoveryPending = await LoadRecoveryPendingAsync(origin.ManagementId, origin.Date.Date);
+                var active = await _context.DayRecoveries.AsNoTracking()
+                    .Where(r => r.Id == RecoveryId)
+                    .Select(r => new { r.Id, r.Date, r.Reason, r.ReasonCategory, Recovered = r.Reschedulings.Count })
+                    .FirstOrDefaultAsync();
+                if (active != null)
+                    ActiveRecovery = new RecoveryOverviewInfo(active.Id, active.Date.Date, active.Reason, active.Recovered,
+                        RecoveryPending.Count, active.ReasonCategory);
             }
             PreviousReason = TempData["RescheduleReason"] as string;
         }
@@ -242,7 +252,7 @@ public class GrillaModel : PageModel
             // Modo reposición general: ?recoveryId= sin reponer muestra los afectados del día para elegir a cuál saltar.
             var recovery = await _context.DayRecoveries.AsNoTracking()
                 .Where(r => r.Id == RecoveryId && r.Status == Models.Enums.DayRecoveryStatus.InProgress)
-                .Select(r => new { r.Id, r.ManagementId, r.Date, r.Reason })
+                .Select(r => new { r.Id, r.ManagementId, r.Date, r.Reason, r.ReasonCategory })
                 .FirstOrDefaultAsync();
             if (recovery == null)
             {
@@ -253,7 +263,7 @@ public class GrillaModel : PageModel
             RecoveryPending = await LoadRecoveryPendingAsync(recovery.ManagementId, recovery.Date.Date);
             var recovered = await _context.Reschedulings.AsNoTracking()
                 .CountAsync(x => x.DayRecoveryId == recovery.Id);
-            RecoveryOverview = new RecoveryOverviewInfo(recovery.Id, recovery.Date.Date, recovery.Reason, recovered, RecoveryPending.Count);
+            RecoveryOverview = new RecoveryOverviewInfo(recovery.Id, recovery.Date.Date, recovery.Reason, recovered, RecoveryPending.Count, recovery.ReasonCategory);
         }
 
         Grid = await _grid.BuildAsync(ManagementId, LaboratoryId, Week, Date, EffectiveTwoWeeks);
@@ -467,6 +477,8 @@ public class GrillaModel : PageModel
             return (null, "El bloque ya no está pendiente de esta reposición de día.");
         if (!isRecovery && !GridRelocation.IsReschedulableStatus(p.Status))
             return (null, $"{L3Codes.Format(p.Id, p.Code)} está en estado \"{PlanningStatus.Label(p.Status)}\" y no se puede reprogramar.");
+        if (!isRecovery && await ReschedulingService.HasDeliveredMaterialAsync(_context, p.Id))
+            return (null, $"{L3Codes.Format(p.Id, p.Code)}: {ReschedulingService.MaterialDeliveredMessage}");
         if (p.StartPeriodId is not int startPeriodId || p.StartOrder is not int startOrder || p.PeriodCount is not int count)
             return (null, $"{L3Codes.Format(p.Id, p.Code)} no tiene periodos asignados: complete su horario antes de reprogramarla.");
         if (p.ManagementStatus is not (Models.Enums.ManagementStatus.Active or Models.Enums.ManagementStatus.Inactive))

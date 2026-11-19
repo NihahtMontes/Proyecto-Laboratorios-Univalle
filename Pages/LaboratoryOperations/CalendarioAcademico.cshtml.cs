@@ -132,13 +132,13 @@ public class CalendarioAcademicoModel : PageModel
     }
 
     /// <summary>Suspende un día con sesiones, crea una reposición y conserva el estado de cada origen.</summary>
-    public async Task<IActionResult> OnPostRecoverDayAsync(int dayId, string? reason, int managementId)
+    public async Task<IActionResult> OnPostRecoverDayAsync(int dayId, string? reason, string? category, int managementId)
     {
         if (!AuthorizationHelper.ManagementRoles
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Any(User.IsInRole))
             return Forbid();
-        var result = await _recoveries.SuspendAsync(dayId, reason);
+        var result = await _recoveries.SuspendAsync(dayId, reason, category);
         if (result.Ok)
         {
             TempData.Success(result.Message);

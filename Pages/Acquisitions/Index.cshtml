@@ -2,7 +2,7 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Solicitudes de compra";
+    ViewData["Title"] = "Adquisición";
     ViewData["Section"] = "Mantenimiento de equipos";
     ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
@@ -27,7 +27,7 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de compra</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Adquisición</h3>
                         <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                 </div>
@@ -113,7 +113,17 @@
                                 <tr>
                                     <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
                                         <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2 text-primary"></i>
-                                        No se encontraron solicitudes de adquisición registradas.
+                                        @if (hasActiveFilters)
+                                        {
+                                            <span>No hay solicitudes con estos filtros.</span><br />
+                                            <a asp-page="./Index" class="btn btn-link font-weight-bold">
+                                                <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span>Aún no hay solicitudes de adquisición. Se crean desde el paso de Adquisición del asistente o con el botón Nueva.</span>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -188,31 +198,10 @@
                     </table>
                 </div>
 
-                @if (Model.Requests.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Requests.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Requests.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Requests.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
-                                </li>
-                            }
-                            @if (Model.Requests.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Requests, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString(), ["PriorityFilter"] = Model.PriorityFilter?.ToString(), ["FilterLaboratoryId"] = Model.FilterLaboratoryId?.ToString() }, itemLabel: "solicitudes");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

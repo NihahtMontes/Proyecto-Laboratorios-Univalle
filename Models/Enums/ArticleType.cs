@@ -9,6 +9,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         Equipment = 1,
 
         [Display(Name = "Utensilio")]
-        Utensil = 2
+        Utensil = 2,
+
+        /// <summary>Insumo que se consume en la práctica: descuenta existencia al entregar y no se devuelve.</summary>
+        [Display(Name = "Consumible")]
+        Consumable = 3
     }
 }

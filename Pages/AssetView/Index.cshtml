@@ -1,703 +1,722 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.AssetView.IndexModel
-
+@using System.Globalization
 @{
-    ViewData["Title"] = "Ver Inventario";
-    // /Catalogs/Stock y /EquipmentUnits son solo para Administrator/SuperAdmin: el Supervisor ve la tarjeta sin enlace.
+    ViewData["Title"] = "Inicio";
+    // /EquipmentUnits, /Catalogs/Stock y /Catalogs/Articles son solo para Administrator/SuperAdmin.
     var canOpenAdminLists = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin");
-    var adminLinkStyle = canOpenAdminLists ? "" : "pointer-events:none;cursor:default;";
+    var esBo = CultureInfo.GetCultureInfo("es-BO");
+
+    var weekPanel = Model.WeekPanel;
+    var weekTotal = weekPanel?.Days.Sum(d => d.Practices.Count) ?? 0;
+    var feedItemsByGroup = Model.FeedItems.GroupBy(i => i.Group).ToDictionary(g => g.Key, g => g.ToList());
+    var visibleFeedItems = feedItemsByGroup.Sum(g => g.Value.Count);
+    var pendientesTotal = Model.FeedActionableCount + Model.PendingTeacherRequests + Model.CorrectivePendingRequests;
+    // Primeros avisos accionables para la vista previa del Resumen.
+    var peekItems = Model.FeedItems
+        .Where(i => !string.Equals(i.Group, "revisar-datos", StringComparison.Ordinal))
+        .Take(2)
+        .ToList();
+
+    // Pestañas: el servidor renderiza la activa (sin parpadeo) y panel-tabs.js toma el control después.
+    var active = Model.ActivePanel;
+    string TabSelected(string key) => active == key ? "true" : "false";
+    string TabIndex(string key) => active == key ? "0" : "-1";
+    string? PanelHidden(string key) => active == key ? null : "hidden";
+
+    // Barras del Resumen: alturas relativas al máximo de cada serie (0–100 %).
+    var maxPerDay = weekPanel?.Days.Max(d => d.Practices.Count) ?? 0;
+    var weeklySeries = Model.WeeklySeries;
+    var maxPerWeek = weeklySeries.Count == 0 ? 0 : weeklySeries.Max(p => p.Count);
+    var currentWeekCount = weeklySeries.FirstOrDefault(p => p.IsCurrent)?.Count;
+    int BarHeight(int count, int max) => max <= 0 ? 0 : (int)Math.Round(count * 100.0 / max);
+
+    // Anillo de avance del preventivo (ph-ring, base panel-home.css).
+    var preventivePercent = Model.PreventivePlannedUnits == 0 ? 0
+        : (int)Math.Round(Model.PreventiveCompletedUnits * 100m / Model.PreventivePlannedUnits);
+
+    // Clave estable del aviso para sincronizar la bandeja con la vista previa del Resumen.
+    static string FeedKey(string? syntheticKey, int id) => string.IsNullOrEmpty(syntheticKey) ? "n:" + id : "s:" + syntheticKey;
 }
 
 @section Styles {
-    <style>
-        .asset-metric-tile {
-            min-height: 134px;
-            border-radius: 8px;
-            color: #fff;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
-            overflow: hidden;
-            position: relative;
-        }
-
-        .asset-metric-tile:after {
-            content: "";
-            width: 96px;
-            height: 96px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .14);
-            position: absolute;
-            right: -24px;
-            top: -24px;
-        }
-
-        .asset-metric-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .18);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .asset-metric-value {
-            font-size: 2rem;
-            line-height: 1;
-            letter-spacing: 0;
-        }
-
-        .asset-chart-panel {
-            background: #fff;
-            border: 1px solid #edf1f5;
-            border-radius: 8px;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
-            min-height: 100%;
-        }
-
-        .asset-chart-header {
-            min-height: 58px;
-        }
-
-        .asset-chart-body {
-            min-height: 250px;
-        }
-
-        .asset-chart-body.asset-chart-body-sm {
-            min-height: 220px;
-        }
-
-        .asset-empty-state {
-            min-height: 210px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #8d97ad;
-            background: #f8fafc;
-            border: 1px dashed #d9e2ef;
-            border-radius: 8px;
-        }
-
-        .asset-empty-state i {
-            font-size: 2rem;
-            display: block;
-            margin-bottom: .65rem;
-            color: #b8c2d6;
-        }
-
-        .asset-quality-track {
-            height: 12px;
-            border-radius: 999px;
-            background: #edf1f5;
-            overflow: hidden;
-        }
-
-        .asset-quality-fill {
-            height: 100%;
-            border-radius: inherit;
-            background: linear-gradient(90deg, #00c292, #03a9f3);
-        }
-
-        .asset-bg-blue { background: linear-gradient(135deg, #2962ff, #36a3ff); }
-        .asset-bg-green { background: linear-gradient(135deg, #00c292, #48d65b); }
-        .asset-bg-amber { background: linear-gradient(135deg, #ffb22b, #ff8f00); }
-        .asset-bg-purple { background: linear-gradient(135deg, #7460ee, #a163f7); }
-        .asset-bg-red { background: linear-gradient(135deg, #f62d51, #ff6b6b); }
-        .asset-bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7); }
-        .asset-bg-teal { background: linear-gradient(135deg, #00838f, #26c6da); }
-        .asset-bg-slate { background: linear-gradient(135deg, #6c757d, #95a5a6); }
-
-        .asset-nav-card {
-            min-height: 172px;
-            border-radius: 8px;
-            color: #fff;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
-            overflow: hidden;
-            position: relative;
-            transition: transform .18s ease, box-shadow .18s ease;
-        }
-
-        .asset-nav-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 16px 30px rgba(15, 23, 42, .16);
-        }
-
-        .asset-nav-card:after {
-            content: "";
-            width: 112px;
-            height: 112px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .16);
-            position: absolute;
-            right: -24px;
-            top: -24px;
-        }
-
-        .asset-nav-card.bg-primary { background: linear-gradient(135deg, #2962ff, #36a3ff) !important; }
-        .asset-nav-card.bg-success { background: linear-gradient(135deg, #00c292, #48d65b) !important; }
-        .asset-nav-card.bg-warning { background: linear-gradient(135deg, #ffb22b, #ff8f00) !important; }
-        .asset-nav-card.bg-danger { background: linear-gradient(135deg, #f62d51, #ff6b6b) !important; }
-        .asset-nav-card.bg-info,
-        .asset-nav-card.bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7) !important; }
-        .asset-nav-card.bg-secondary { background: linear-gradient(135deg, #6c757d, #95a5a6) !important; }
-
-        .asset-nav-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .18);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .asset-nav-title {
-            font-size: 1.1rem;
-            line-height: 1.25;
-            letter-spacing: 0;
-        }
-
-        .asset-nav-value {
-            font-size: 2rem;
-            line-height: 1;
-            letter-spacing: 0;
-        }
-
-        .c3-tooltip {
-            box-shadow: 0 8px 18px rgba(15, 23, 42, .15);
-            border: 0;
-        }
-    </style>
+    <link href="~/css/panel-home.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/inicio-panel.css" rel="stylesheet" asp-append-version="true">
 }
 
-<div class="row">
-    <div class="col-12">
-        <div class="card shadow-sm border-0">
-            <ul class="nav nav-tabs customtab px-4 pt-3 border-0" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link @(Model.ShowInventoryTab ? "" : "active") font-weight-bold" data-toggle="tab" href="#metricas" role="tab">
-                        <span class="hidden-xs-down"><i class="fas fa-chart-pie mr-2"></i> Metricas</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link @(Model.ShowInventoryTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#inventario" role="tab">
-                        <span class="hidden-xs-down"><i class="fas fa-boxes mr-2"></i> Inventario</span>
-                    </a>
-                </li>
-            </ul>
+<div class="ip-panel ph-home">
+    <script type="application/json" id="ip-data">@Html.Raw(Model.PanelDataJson)</script>
 
-            <div class="tab-content border-top">
-                <div class="tab-pane @(Model.ShowInventoryTab ? "" : "active")" id="metricas" role="tabpanel">
-                    <div class="card-body">
-                        <div class="d-md-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                            <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Metricas de Activos</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Indicadores vivos para revisar cobertura, clasificacion y estado del inventario.</h6>
-                            </div>
-                            <div class="text-muted small mt-2 mt-md-0">
-                                <i class="fas fa-database mr-1"></i> Unidades vigentes: <strong>@Model.TotalUnitsCount</strong>
-                            </div>
-                        </div>
+    @* ══════════════════════════ Cabecera ══════════════════════════ *@
+    <header class="ip-header">
+        <div>
+            <h2 class="ip-header__title">@Model.Greeting, @Model.UserDisplayName</h2>
+            <div class="ip-header__meta">
+                <span><i class="far fa-calendar mr-1" aria-hidden="true"></i>@Model.TodayText</span>
+                @if (Model.HasPreventive && !string.IsNullOrEmpty(Model.PreventiveCode))
+                {
+                    <span class="ip-chip"><span class="ip-chip__dot ip-chip__dot--green" aria-hidden="true"></span>Preventivo @Model.PreventiveCode</span>
+                }
+                @if (Model.HasCorrective && !string.IsNullOrEmpty(Model.CorrectiveCode))
+                {
+                    <span class="ip-chip"><span class="ip-chip__dot ip-chip__dot--amber" aria-hidden="true"></span>Correctivo @Model.CorrectiveCode</span>
+                }
+            </div>
+        </div>
+        <div class="ip-header__actions">
+            <a asp-page="/Requests/Index" asp-page-handler="NewRequest" class="ip-btn-primary">
+                <i class="fas fa-bolt" aria-hidden="true"></i> Reportar una falla
+            </a>
+            <a asp-page="/Reports/Index" class="ip-btn-secondary">
+                <i class="fas fa-file-alt" aria-hidden="true"></i> Reportes
+            </a>
+        </div>
+    </header>
 
-                        <div class="row">
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-blue p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-cubes"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.TotalUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Total activos</div>
-                                    <small>Unidades fisicas: patrimonio por N.º de inventario</small>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <a asp-page="/Catalogs/Stock/Index" class="text-decoration-none" title="Ver existencias de articulos consumibles" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
-                                    <div class="asset-metric-tile asset-bg-teal p-3">
-                                        <div class="asset-metric-icon mb-3"><i class="fas fa-boxes"></i></div>
-                                        <div class="asset-metric-value font-weight-bold">@Model.StockRecordsCount</div>
-                                        <div class="font-weight-bold mt-2">Existencias</div>
-                                        <small>Registros de stock de articulos consumibles</small>
-                                        <small class="d-block">Consumibles por stock en @Model.StockLaboratoriesCount ambiente(s)</small>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-purple p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-microscope"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.EquipmentUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Equipos</div>
-                                    <small>Clasificados como equipo</small>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-green p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-utensils"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.UtensilUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Utensilios</div>
-                                    <small>Materiales y menaje</small>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-amber p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-layer-group"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.OtherUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Otros</div>
-                                    <small>Fuera de equipo/utensilio</small>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
+    @* ══════════════════════════ Indicadores ══════════════════════════ *@
+    <section class="ph-kpis" aria-label="Indicadores del día">
+        @if (Model.IsAdminMenu)
+        {
+            <a class="ph-kpi ph-tone-blue" asp-page="/Managements/Index" asp-page-handler="CurrentPreventive" title="Abrir el panel de la gestión preventiva activa">
+                @if (Model.HasPreventive)
+                {
+                    <span class="ph-ring" style="--ph-value:@preventivePercent" role="img" aria-label="Avance del preventivo: @preventivePercent por ciento"><span>@preventivePercent %</span></span>
+                }
+                else
+                {
+                    <span class="ph-kpi__icon"><i class="fas fa-shield-alt" aria-hidden="true"></i></span>
+                }
+                <span class="ph-kpi__body">
+                    <span class="ph-kpi__label">Avance del preventivo</span>
+                    @if (Model.HasPreventive)
+                    {
+                        <span class="ph-kpi__detail">@Model.PreventiveCompletedUnits de @Model.PreventivePlannedUnits equipos</span>
+                    }
+                    else
+                    {
+                        <span class="ph-kpi__value">—</span>
+                        <span class="ph-kpi__detail">Sin gestión activa</span>
+                    }
+                </span>
+            </a>
+        }
+        <a class="ph-kpi ph-tone-green" data-ph-tab="semana" href="?activeTab=semana" title="Ver las prácticas de la semana">
+            <span class="ph-kpi__icon"><i class="far fa-calendar-check" aria-hidden="true"></i></span>
+            <span class="ph-kpi__body">
+                <span class="ph-kpi__label">Prácticas de hoy</span>
+                @if (weekPanel != null)
+                {
+                    <span class="ph-kpi__value">@weekPanel.TodayCount</span>
+                    <span class="ph-kpi__detail">@weekTotal esta semana</span>
+                }
+                else
+                {
+                    <span class="ph-kpi__value">—</span>
+                    <span class="ph-kpi__detail">Sin datos ahora</span>
+                }
+            </span>
+        </a>
+        <a class="ph-kpi ph-tone-amber" data-ph-tab="bandeja" href="?activeTab=bandeja" title="Ir a la bandeja de pendientes">
+            <span class="ph-kpi__icon"><i class="fas fa-bell" aria-hidden="true"></i></span>
+            <span class="ph-kpi__body">
+                <span class="ph-kpi__label">Pendientes por atender</span>
+                <span class="ph-kpi__value" id="ip-kpi-pendientes">@pendientesTotal</span>
+                <span class="ph-kpi__detail">@Model.FeedActionableCount avisos · @Model.PendingTeacherRequests solicitudes de docentes · @Model.CorrectivePendingRequests servicio técnico</span>
+            </span>
+        </a>
+        <a class="ph-kpi ph-tone-cyan" data-ph-tab="inventario" href="?activeTab=inventario" title="Ir al inventario">
+            <span class="ph-kpi__icon"><i class="fas fa-boxes" aria-hidden="true"></i></span>
+            <span class="ph-kpi__body">
+                <span class="ph-kpi__label">Inventario</span>
+                <span class="ph-kpi__value">@Model.TotalUnitsCount</span>
+                <span class="ph-kpi__detail">
+                    unidades vigentes
+                    <span class="ph-meter" aria-hidden="true"><span style="width:@Model.ClassificationQualityPercent%;"></span></span>
+                    Calidad de clasificación @Model.ClassificationQualityPercent %
+                </span>
+            </span>
+        </a>
+    </section>
+
+    @* ══════════════════════════ Pestañas ══════════════════════════ *@
+    <div class="ph-tabs" role="tablist" aria-label="Secciones del inicio" data-ph-param="activeTab">
+        <a class="ph-tab" role="tab" id="ph-tab-resumen" data-ph-key="resumen" href="?activeTab=resumen"
+           aria-selected="@TabSelected("resumen")" tabindex="@TabIndex("resumen")">
+            <i class="fas fa-th-large" aria-hidden="true"></i> Resumen
+        </a>
+        <a class="ph-tab" role="tab" id="ph-tab-semana" data-ph-key="semana" href="?activeTab=semana"
+           aria-selected="@TabSelected("semana")" tabindex="@TabIndex("semana")">
+            <i class="far fa-calendar-check" aria-hidden="true"></i> Prácticas <span class="ph-tab__count">@weekTotal</span>
+        </a>
+        <a class="ph-tab" role="tab" id="ph-tab-bandeja" data-ph-key="bandeja" href="?activeTab=bandeja"
+           aria-selected="@TabSelected("bandeja")" tabindex="@TabIndex("bandeja")">
+            <i class="fas fa-inbox" aria-hidden="true"></i> Bandeja
+            <span class="ph-tab__count @(Model.FeedActionableCount > 0 ? "ph-tab__count--alert" : null)" id="ip-tab-bandeja-count">@Model.FeedActionableCount</span>
+        </a>
+        <a class="ph-tab" role="tab" id="ph-tab-graficos" data-ph-key="graficos" data-ph-alias="indicadores" href="?activeTab=graficos"
+           aria-selected="@TabSelected("graficos")" tabindex="@TabIndex("graficos")">
+            <i class="fas fa-chart-bar" aria-hidden="true"></i> Gráficos
+        </a>
+        <a class="ph-tab" role="tab" id="ph-tab-inventario" data-ph-key="inventario" href="?activeTab=inventario"
+           aria-selected="@TabSelected("inventario")" tabindex="@TabIndex("inventario")">
+            <i class="fas fa-boxes" aria-hidden="true"></i> Inventario
+        </a>
+    </div>
+
+    @* ══════════════════════════ Panel: Resumen ══════════════════════════ *@
+    <div class="ph-panel" role="tabpanel" data-ph-key="resumen" aria-labelledby="ph-tab-resumen" @PanelHidden("resumen")>
+        <div class="ph-sections">
+            <a class="ph-section ph-tone-green" data-ph-tab="semana" href="?activeTab=semana">
+                <span class="ph-section__head">
+                    <span class="ph-section__icon"><i class="far fa-calendar-check" aria-hidden="true"></i></span>
+                    <span class="ph-section__heading">
+                        <span class="ph-section__title">Prácticas de la semana</span>
+                        <span class="ph-section__desc">@(weekPanel != null
+                            ? $"Del {weekPanel.Monday.ToString("dd MMM", esBo)} al {weekPanel.Saturday.ToString("dd MMM", esBo)}"
+                            : "Lunes a sábado")</span>
+                    </span>
+                    <span class="ph-section__count">@weekTotal</span>
+                </span>
+                <span class="ph-section__preview">
+                    @if (weekPanel != null)
+                    {
+                        <span class="ph-days">
+                            @foreach (var day in weekPanel.Days)
+                            {
+                                <span class="ph-days__item @(day.IsToday ? "is-current" : null)" style="--ph-h:@BarHeight(day.Practices.Count, maxPerDay)%">
+                                    <span class="ph-days__value">@day.Practices.Count</span>
+                                    <span class="ph-days__track"><span class="ph-days__bar"></span></span>
+                                    <span class="ph-days__label">@day.DayName.Substring(0, 3)</span>
+                                </span>
+                            }
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="ip-note">
+                            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                            <span>No se pudo cargar la semana en este momento.</span>
+                        </span>
+                    }
+                </span>
+                <span class="ph-section__cta">Ver prácticas <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+            </a>
+
+            <a class="ph-section ph-tone-amber" data-ph-tab="bandeja" href="?activeTab=bandeja">
+                <span class="ph-section__head">
+                    <span class="ph-section__icon"><i class="fas fa-bell" aria-hidden="true"></i></span>
+                    <span class="ph-section__heading">
+                        <span class="ph-section__title">Bandeja de pendientes</span>
+                        <span class="ph-section__desc">Vencidos, de hoy y próximos</span>
+                    </span>
+                    <span class="ph-section__count" id="ip-resumen-bandeja-count">@Model.FeedActionableCount</span>
+                </span>
+                <span class="ph-section__preview">
+                    <span class="ph-section__desc ip-section__line"><span id="ip-resumen-bandeja-total">@Model.FeedActionableCount</span> por atender</span>
+                    @if (peekItems.Count > 0)
+                    {
+                        <ul class="ph-peek" id="ip-resumen-peek">
+                            @foreach (var item in peekItems)
+                            {
+                                <li data-feed-key="@FeedKey(item.SyntheticKey, item.Id)"><span>@item.Title</span></li>
+                            }
+                        </ul>
+                    }
+                    <span class="ph-section__desc ip-section__line" id="ip-resumen-peek-empty" hidden="@(peekItems.Count > 0 ? "hidden" : null)">Todo al día</span>
+                </span>
+                <span class="ph-section__cta">Ver bandeja <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+            </a>
+
+            <a class="ph-section ph-tone-blue" data-ph-tab="graficos" href="?activeTab=graficos">
+                <span class="ph-section__head">
+                    <span class="ph-section__icon"><i class="fas fa-chart-bar" aria-hidden="true"></i></span>
+                    <span class="ph-section__heading">
+                        <span class="ph-section__title">Gráficos</span>
+                        <span class="ph-section__desc">Prácticas por semana y composición del inventario</span>
+                    </span>
+                    <span class="ph-section__count">@(currentWeekCount?.ToString() ?? "—")</span>
+                </span>
+                <span class="ph-section__preview">
+                    @if (weeklySeries.Count > 0)
+                    {
+                        <span class="ph-days">
+                            @foreach (var point in weeklySeries)
+                            {
+                                <span class="ph-days__item @(point.IsCurrent ? "is-current" : null)" style="--ph-h:@BarHeight(point.Count, maxPerWeek)%">
+                                    <span class="ph-days__value">@point.Count</span>
+                                    <span class="ph-days__track"><span class="ph-days__bar"></span></span>
+                                    <span class="ph-days__label">@point.Start.ToString("dd/MM", esBo)</span>
+                                </span>
+                            }
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="ip-note">
+                            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                            <span>No se pudo cargar la serie semanal en este momento.</span>
+                        </span>
+                    }
+                </span>
+                <span class="ph-section__cta">Ver gráficos <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+            </a>
+
+            <a class="ph-section ph-tone-cyan" data-ph-tab="inventario" href="?activeTab=inventario">
+                <span class="ph-section__head">
+                    <span class="ph-section__icon"><i class="fas fa-boxes" aria-hidden="true"></i></span>
+                    <span class="ph-section__heading">
+                        <span class="ph-section__title">Inventario</span>
+                        <span class="ph-section__desc">Unidades vigentes del laboratorio</span>
+                    </span>
+                    <span class="ph-section__count">@Model.TotalUnitsCount</span>
+                </span>
+                <span class="ph-section__preview">
+                    <span class="ph-section__desc ip-section__line">@Model.EquipmentUnitsCount equipos · @Model.UtensilUnitsCount utensilios · @Model.EnvironmentsCount ambientes</span>
+                    <span class="ph-meter" role="img" aria-label="Calidad de clasificación: @Model.ClassificationQualityPercent por ciento">
+                        <span style="width:@Model.ClassificationQualityPercent%;"></span>
+                    </span>
+                    <span class="ph-section__desc ip-section__line">Calidad de clasificación @Model.ClassificationQualityPercent %</span>
+                </span>
+                <span class="ph-section__cta">Ver inventario <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+            </a>
+        </div>
+    </div>
+
+    @* ══════════════════════════ Panel: Prácticas (semana) ══════════════════════════ *@
+    <div class="ph-panel" role="tabpanel" data-ph-key="semana" aria-labelledby="ph-tab-semana" @PanelHidden("semana")>
+        <article class="ip-card" aria-labelledby="ip-semana-title">
+            <div class="ip-card__head">
+                <h3 class="ip-card__title" id="ip-semana-title">Prácticas de esta semana</h3>
+                @if (weekPanel != null)
+                {
+                    <span class="ip-card__hint">
+                        Del @weekPanel.Monday.ToString("dd MMM", esBo) al @weekPanel.Saturday.ToString("dd MMM", esBo) · @weekTotal práctica(s)
+                    </span>
+                }
+            </div>
+            <div class="ip-card__body ip-weekwrap">
+                @if (weekPanel == null)
+                {
+                    <div class="ip-note">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <span>No se pudo cargar la semana en este momento.</span>
+                    </div>
+                }
+                else if (weekTotal == 0)
+                {
+                    <div class="ip-empty">
+                        <i class="far fa-calendar" aria-hidden="true"></i>
+                        <strong>Sin prácticas esta semana</strong>
+                        <div>Cuando se aprueben solicitudes, aparecerán aquí agrupadas por día.</div>
+                    </div>
+                }
+                else
+                {
+                    <table class="ip-table">
+                        <caption class="sr-only">Prácticas de la semana del @weekPanel.Monday.ToString("dd/MM/yyyy", esBo) al @weekPanel.Saturday.ToString("dd/MM/yyyy", esBo), agrupadas por día.</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Hora</th>
+                                <th scope="col">Práctica</th>
+                                <th scope="col">Materia · grupo</th>
+                                <th scope="col">Laboratorio</th>
+                                <th scope="col">Docente</th>
+                                <th scope="col">Estado</th>
+                            </tr>
+                        </thead>
+                        @foreach (var day in weekPanel.Days)
+                        {
+                            <tbody class="ip-day ip-day--@day.Weekday @(day.IsToday ? "ip-day--today" : string.Empty)" id="ip-day-@day.Weekday">
+                                <tr class="ip-day__head">
+                                    <th colspan="6" scope="colgroup">
+                                        <button type="button" class="ip-day__toggle" aria-expanded="@(day.IsPast ? "false" : "true")" aria-controls="ip-day-@day.Weekday">
+                                            <span class="ip-day__name">@day.HeaderText</span>
+                                            <span class="ip-day__count">@day.Practices.Count</span>
+                                            <i class="fas fa-chevron-down ip-day__chevron" aria-hidden="true"></i>
+                                        </button>
+                                    </th>
+                                </tr>
+                                @foreach (var practice in day.Practices)
                                 {
-                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
-                                        <div class="asset-metric-tile asset-bg-amber p-3">
-                                            <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
-                                            <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutSpecificClassificationCount</div>
-                                            <div class="font-weight-bold mt-2">Por clasificar</div>
-                                            <small>Pendientes: @Model.PendingClassificationUnitsCount · Heredadas: @Model.LegacyInferredUnitsCount</small>
-                                        </div>
-                                    </a>
+                                    <tr class="ip-row" hidden="@(day.IsPast ? "hidden" : null)">
+                                        <td data-label="Hora"><span class="ip-row__time">@practice.TimeText</span></td>
+                                        <td data-label="Práctica">
+                                            <a class="ip-row__practice" href="@practice.NextUrl">@practice.PracticeName</a>
+                                            @if (!string.IsNullOrEmpty(practice.PracticeNumber))
+                                            {
+                                                <span class="ip-row__num">Práctica @practice.PracticeNumber</span>
+                                            }
+                                        </td>
+                                        <td data-label="Materia · grupo">
+                                            @practice.SubjectName
+                                            <span class="ip-row__sub">Grupo @practice.GroupLabel</span>
+                                        </td>
+                                        <td data-label="Laboratorio">@practice.LaboratoryName</td>
+                                        <td data-label="Docente">@practice.TeacherName</td>
+                                        <td data-label="Estado">
+                                            <span class="badge ip-status badge-@practice.StatusCss @(practice.StatusCss == "light" ? "border text-dark" : string.Empty)">@practice.StatusLabel</span>
+                                        </td>
+                                    </tr>
                                 }
-                                else
+                            </tbody>
+                        }
+                    </table>
+                }
+            </div>
+            <div class="ip-card__foot">
+                <div class="ip-weekchips">
+                    @if (weekPanel != null)
+                    {
+                        foreach (var status in weekPanel.StatusCounts)
+                        {
+                            <span class="badge badge-@status.Css @(status.Css == "light" ? "border text-dark" : string.Empty)">@status.Label @status.Count</span>
+                        }
+                    }
+                </div>
+                <a asp-page="/LaboratoryOperations/Planificaciones">Ver todas las planificaciones <i class="fas fa-arrow-right ml-1" aria-hidden="true"></i></a>
+            </div>
+        </article>
+    </div>
+
+    @* ══════════════════════════ Panel: Bandeja ══════════════════════════ *@
+    <div class="ph-panel" role="tabpanel" data-ph-key="bandeja" aria-labelledby="ph-tab-bandeja" @PanelHidden("bandeja")>
+        <article class="ip-card" id="bandeja" aria-labelledby="bandeja-title">
+            <div class="ip-card__head">
+                <h3 class="ip-card__title" id="bandeja-title">Bandeja de pendientes</h3>
+                <span class="ip-card__hint"><span id="ip-feed-total">@Model.FeedActionableCount</span> por atender</span>
+            </div>
+            <div class="ip-card__body p-0">
+                @if (Model.FeedUnavailable)
+                {
+                    <div class="ip-note mx-3 mt-3">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <span>No se pudieron cargar los avisos en este momento. Vuelve a intentar en unos minutos.</span>
+                    </div>
+                }
+                <div class="ip-feed" id="ip-feed">
+                    @foreach (var (groupKey, groupLabel, groupIcon, groupTone) in IndexModel.FeedGroupOrder)
+                    {
+                        if (!feedItemsByGroup.TryGetValue(groupKey, out var items) || items.Count == 0)
+                        {
+                            continue;
+                        }
+                        Model.FeedGroupCounts.TryGetValue(groupKey, out var groupCount);
+                        var displayCount = groupCount > 0 ? groupCount : items.Count;
+                        var countTone = groupKey == "vencidos" ? "ip-feed__count--danger"
+                            : groupKey == "hoy" ? "ip-feed__count--warning"
+                            : string.Empty;
+
+                        if (groupKey == "revisar-datos")
+                        {
+                            <details class="ip-feed__group ip-feed__review" data-ip-group="@groupKey">
+                                <summary>
+                                    <i class="@groupIcon" aria-hidden="true"></i>
+                                    @groupLabel
+                                    <span class="ip-feed__count" data-ip-count="@groupKey">@displayCount</span>
+                                </summary>
+                                @foreach (var item in items)
                                 {
-                                    <div class="asset-metric-tile asset-bg-slate p-3">
-                                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
-                                        <div class="asset-metric-value font-weight-bold">0</div>
-                                        <div class="font-weight-bold mt-2">Por clasificar</div>
-                                        <small>Al dia: sin pendientes</small>
+                                    var safeUrl = IndexModel.SafeFeedUrl(item.Url);
+                                    var icon = string.IsNullOrEmpty(item.Icon) ? groupIcon : item.Icon;
+                                    <div class="ip-feed__item" data-synthetic-key="@item.SyntheticKey" data-notification-id="@item.Id" data-feed-key="@FeedKey(item.SyntheticKey, item.Id)">
+                                        <span class="ip-feed__icon ip-feed__icon--@groupTone"><i class="@icon" aria-hidden="true"></i></span>
+                                        <div class="ip-feed__main">
+                                            <p class="ip-feed__title">@item.Title</p>
+                                            <p class="ip-feed__msg">@item.Message</p>
+                                            <span class="ip-feed__time"><i class="far fa-clock mr-1" aria-hidden="true"></i>@item.Time</span>
+                                        </div>
+                                        <div class="ip-feed__actions">
+                                            @if (safeUrl != null)
+                                            {
+                                                <a class="ip-feed__action ip-feed__action--resolve" href="@safeUrl">Resolver</a>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.SyntheticKey))
+                                            {
+                                                <button type="button" class="ip-feed__action ip-feed__action--ghost js-ip-snooze">Posponer</button>
+                                            }
+                                            @if (item.IsPersisted)
+                                            {
+                                                <button type="button" class="ip-feed__action ip-feed__action--ghost js-ip-done">Listo</button>
+                                            }
+                                        </div>
                                     </div>
                                 }
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-cyan p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-door-open"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.EnvironmentsWithUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Ambientes</div>
-                                    <small>Con inventario asignado</small>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-                                <div class="asset-metric-tile asset-bg-red p-3">
-                                    <div class="asset-metric-icon mb-3"><i class="fas fa-exclamation-triangle"></i></div>
-                                    <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutEnvironmentCount</div>
-                                    <div class="font-weight-bold mt-2">Sin ambiente</div>
-                                    <small>Requieren ubicacion</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-2">
-                            <div class="col-xl-4 col-lg-5 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Distribucion por recurso</h4>
-                                        <small class="text-muted">Equipos, utensilios y otros registrados.</small>
-                                    </div>
-                                    <div id="donut-chart" class="asset-chart-body"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-7 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Calidad de clasificacion</h4>
-                                        <small class="text-muted">Mide cuanto inventario ya tiene una clasificacion especifica.</small>
-                                    </div>
-                                    <div class="pt-3">
-                                        <div class="d-flex align-items-end justify-content-between mb-2">
-                                            <div>
-                                                <h2 class="font-weight-bold text-info mb-0">@Model.ClassificationQualityPercent%</h2>
-                                                <span class="text-muted">Clasificado correctamente</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <h4 class="font-weight-bold text-warning mb-0">@Model.UnitsWithoutSpecificClassificationCount</h4>
-                                                <span class="text-muted small">Pendientes de clasificar</span>
-                                            </div>
+                            </details>
+                        }
+                        else
+                        {
+                            <section class="ip-feed__group" data-ip-group="@groupKey" aria-label="@groupLabel">
+                                <h4 class="ip-feed__group-head">
+                                    <i class="@groupIcon" aria-hidden="true"></i>
+                                    @groupLabel
+                                    <span class="ip-feed__count @countTone" data-ip-count="@groupKey">@displayCount</span>
+                                </h4>
+                                @foreach (var item in items)
+                                {
+                                    var safeUrl = IndexModel.SafeFeedUrl(item.Url);
+                                    var icon = string.IsNullOrEmpty(item.Icon) ? groupIcon : item.Icon;
+                                    <div class="ip-feed__item" data-synthetic-key="@item.SyntheticKey" data-notification-id="@item.Id" data-feed-key="@FeedKey(item.SyntheticKey, item.Id)">
+                                        <span class="ip-feed__icon ip-feed__icon--@groupTone"><i class="@icon" aria-hidden="true"></i></span>
+                                        <div class="ip-feed__main">
+                                            <p class="ip-feed__title">@item.Title</p>
+                                            <p class="ip-feed__msg">@item.Message</p>
+                                            <span class="ip-feed__time"><i class="far fa-clock mr-1" aria-hidden="true"></i>@item.Time</span>
                                         </div>
-                                        <div class="asset-quality-track mb-4">
-                                            <div class="asset-quality-fill" style="width: @Model.ClassificationQualityPercent%;"></div>
-                                        </div>
-                                        <div class="row text-center">
-                                            <div class="col-6 border-right">
-                                                <h4 class="font-weight-bold mb-0">@Model.UnitsWithoutSerialCount</h4>
-                                                <small class="text-muted d-block">Sin serie</small>
-                                                <small class="text-muted">Se identifican por N.º de inventario</small>
-                                            </div>
-                                            <div class="col-6">
-                                                <h4 class="font-weight-bold mb-0">@Model.UnitsWithoutEnvironmentCount</h4>
-                                                <small class="text-muted">Sin ambiente</small>
-                                            </div>
+                                        <div class="ip-feed__actions">
+                                            @if (safeUrl != null)
+                                            {
+                                                <a class="ip-feed__action ip-feed__action--resolve" href="@safeUrl">Resolver</a>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.SyntheticKey))
+                                            {
+                                                <button type="button" class="ip-feed__action ip-feed__action--ghost js-ip-snooze">Posponer</button>
+                                            }
+                                            @if (item.IsPersisted)
+                                            {
+                                                <button type="button" class="ip-feed__action ip-feed__action--ghost js-ip-done">Listo</button>
+                                            }
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-12 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Estado operativo</h4>
-                                        <small class="text-muted">Situacion actual de las unidades fisicas.</small>
-                                    </div>
-                                    <div id="status-chart" class="asset-chart-body"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Equipos por clasificacion</h4>
-                                        <small class="text-muted">Subclasificacion tecnica de los equipos.</small>
-                                    </div>
-                                    <div id="bar-chart-equipment" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Utensilios por tipo</h4>
-                                        <small class="text-muted">Materiales, menaje y utensilios clasificados.</small>
-                                    </div>
-                                    <div id="bar-chart-utensil" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-4 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Otros por clasificacion</h4>
-                                        <small class="text-muted">Activos fuera de equipos y utensilios.</small>
-                                    </div>
-                                    <div id="bar-chart-other" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-6 col-lg-6 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Condicion fisica</h4>
-                                        <small class="text-muted">Distribucion segun inspeccion fisica registrada.</small>
-                                    </div>
-                                    <div id="condition-chart" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                            <div class="col-xl-6 col-lg-12 mb-4">
-                                <div class="asset-chart-panel p-4 h-100">
-                                    <div class="asset-chart-header">
-                                        <h4 class="card-title mb-1">Top ambientes por inventario</h4>
-                                        <small class="text-muted">Ambientes con mayor carga de unidades vigentes.</small>
-                                    </div>
-                                    <div id="environment-chart" class="asset-chart-body asset-chart-body-sm"></div>
-                                </div>
-                            </div>
-                        </div>
+                                }
+                            </section>
+                        }
+                    }
+                    <div class="ip-empty" id="ip-feed-empty" hidden="@(visibleFeedItems > 0 ? "hidden" : null)">
+                        <i class="far fa-check-circle" aria-hidden="true"></i>
+                        <strong>Todo al día</strong>
+                        <div>No tienes avisos pendientes.</div>
                     </div>
                 </div>
+            </div>
+            <div class="ip-card__foot">
+                <span class="text-muted">Incluye vencidos, de hoy y próximos.</span>
+                <a asp-page="/Notifications">Ver todas las notificaciones <i class="fas fa-arrow-right ml-1" aria-hidden="true"></i></a>
+            </div>
+        </article>
+    </div>
 
-                <div class="tab-pane @(Model.ShowInventoryTab ? "active" : "")" id="inventario" role="tabpanel">
-                    <div class="card-body">
-                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
-                            <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por Tipo de Recurso</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Navegacion en cascada para consultar unidades fisicas vigentes.</h6>
-                            </div>
+    @* ══════════════════════════ Panel: Gráficos ══════════════════════════ *@
+    <div class="ph-panel" role="tabpanel" data-ph-key="graficos" aria-labelledby="ph-tab-graficos" @PanelHidden("graficos")>
+        <div class="row ip-row-grid">
+            <div class="col-lg-8">
+                <article class="ip-card" aria-labelledby="ip-weekly-title">
+                    <div class="ip-card__head">
+                        <h3 class="ip-card__title" id="ip-weekly-title">Prácticas por semana</h3>
+                        <span class="ip-card__hint">Cinco semanas atrás, la actual y dos por venir</span>
+                    </div>
+                    <div class="ip-card__body">
+                        <div class="ip-chartbox" data-ip-box="weekly">
+                            <canvas id="ip-chart-weekly" role="img" aria-label="Cantidad de prácticas por semana: cinco semanas anteriores, la actual resaltada y dos siguientes"></canvas>
                         </div>
-
-                        <div class="row">
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <a asp-page="./EquipmentClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
-                                    <div class="asset-nav-card bg-primary h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-microscope"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Equipos</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">@Model.EquipmentUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas clasificadas como equipos.</p>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <a asp-page="./UtensilClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
-                                    <div class="asset-nav-card bg-success h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-utensils"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Utensilios</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">@Model.UtensilUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas clasificadas como utensilios.</p>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <a asp-page="./OtherUnits" asp-route-activeTab="Inventario" class="text-decoration-none">
-                                    <div class="asset-nav-card bg-warning h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-layer-group"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Otros</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">@Model.OtherUnitsCount</div>
-                                        <p class="mb-0 font-weight-bold">Unidades fisicas fuera de equipos y utensilios.</p>
-                                    </div>
-                                </a>
-                            </div>
-
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
-                                {
-                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
-                                        <div class="asset-nav-card bg-warning h-100 p-4">
-                                            <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
-                                            <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
-                                            <div class="asset-nav-value font-weight-bold mb-2">@Model.UnitsWithoutSpecificClassificationCount</div>
-                                            <p class="mb-0 font-weight-bold">Unidades fisicas pendientes de clasificacion.</p>
-                                        </div>
-                                    </a>
-                                }
-                                else
-                                {
-                                    <div class="asset-nav-card bg-secondary h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">0</div>
-                                        <p class="mb-0 font-weight-bold">Clasificacion al dia: sin pendientes.</p>
-                                    </div>
-                                }
-                            </div>
+                        <div class="alert alert-warning d-none mt-3 mb-0" role="alert" data-chart-fallback>
+                            El gráfico semanal necesita Chart.js, que no se pudo cargar.
                         </div>
+                    </div>
+                </article>
+            </div>
 
-                        <div class="d-md-flex align-items-center mt-4 mb-4 pb-3 border-bottom">
-                            <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por ambientes</h3>
-                                <h6 class="card-subtitle text-muted ml-2">Consulta las unidades fisicas vigentes agrupadas por ambiente registrado.</h6>
-                            </div>
+            <div class="col-lg-4">
+                <article class="ip-card" data-ip-chart="category" aria-labelledby="ip-category-title">
+                    <div class="ip-card__head">
+                        <h3 class="ip-card__title" id="ip-category-title">¿Cómo se compone el inventario?</h3>
+                    </div>
+                    <div class="ip-card__body">
+                        <div data-ip-state="loading" class="ip-loading">
+                            <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+                            <span>Cargando indicadores…</span>
                         </div>
+                        <div data-ip-state="error" class="ip-error d-none">
+                            <span>No se pudieron cargar los indicadores.</span>
+                            <button type="button" class="ip-feed__action ip-feed__action--ghost" data-ip-retry>Reintentar</button>
+                        </div>
+                        <div data-ip-state="content" class="d-none">
+                            <div class="ip-chartbox ip-chartbox--small" data-ip-box="category">
+                                <canvas id="ip-chart-category" role="img" aria-label="Distribución del inventario por tipo de recurso"></canvas>
+                            </div>
+                            <ul class="ip-legend" data-ip-legend="category"></ul>
+                            <p class="ip-card__hint mt-2 mb-0" id="ip-category-meta"></p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <a asp-page="./Environments" class="text-decoration-none">
-                                    <div class="asset-nav-card bg-info h-100 p-4">
-                                        <div class="asset-nav-icon mb-3"><i class="fas fa-door-open"></i></div>
-                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Ambientes</h4>
-                                        <div class="asset-nav-value font-weight-bold mb-2">@Model.EnvironmentsCount</div>
-                                        <p class="mb-0 font-weight-bold">Ambientes activos registrados en el sistema.</p>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
+        <div id="indicadores-loading" class="ip-loading">
+            <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+            <span>Cargando indicadores…</span>
+        </div>
+        <div id="indicadores-error" class="ip-error d-none" role="alert">
+            <span>No se pudieron cargar los indicadores.</span>
+            <button type="button" class="ip-feed__action ip-feed__action--ghost" id="indicadores-retry">Reintentar</button>
+        </div>
+        <div id="indicadores-content" class="d-none">
+            <div class="row pt-2">
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="status"></h4>
+                    <small class="text-muted" data-ip-conclusion="status"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="status">
+                        <canvas id="indicadores-chart-status" role="img" aria-label="Estado operativo de las unidades físicas"></canvas>
+                    </div>
+                    <ul class="ip-legend" data-ip-legend="status"></ul>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="equipment"></h4>
+                    <small class="text-muted" data-ip-conclusion="equipment"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="equipment">
+                        <canvas id="indicadores-chart-equipment" role="img" aria-label="Equipos por clasificación técnica"></canvas>
+                    </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="utensil"></h4>
+                    <small class="text-muted" data-ip-conclusion="utensil"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="utensil">
+                        <canvas id="indicadores-chart-utensil" role="img" aria-label="Utensilios por tipo"></canvas>
+                    </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="other"></h4>
+                    <small class="text-muted" data-ip-conclusion="other"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="other">
+                        <canvas id="indicadores-chart-other" role="img" aria-label="Otros activos por clasificación"></canvas>
+                    </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="condition"></h4>
+                    <small class="text-muted" data-ip-conclusion="condition"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="condition">
+                        <canvas id="indicadores-chart-condition" role="img" aria-label="Condición física del inventario"></canvas>
+                    </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="ip-indicator">
+                    <h4 class="ip-card__title mb-1" data-ip-title="environment"></h4>
+                    <small class="text-muted" data-ip-conclusion="environment"></small>
+                    <div class="ip-chartbox ip-chartbox--small pt-2" data-ip-box="environment">
+                        <canvas id="indicadores-chart-environment" role="img" aria-label="Ambientes con mayor cantidad de unidades"></canvas>
+                    </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    @* ══════════════════════════ Panel: Inventario ══════════════════════════ *@
+    <div class="ph-panel" role="tabpanel" data-ph-key="inventario" aria-labelledby="ph-tab-inventario" @PanelHidden("inventario")>
+        <section id="inventario" aria-labelledby="inventario-title">
+            <div class="d-flex flex-wrap align-items-end justify-content-between mb-3">
+                <div>
+                    <h2 class="h3 font-weight-bold text-dark mb-1" id="inventario-title">Inventario</h2>
+                    <span class="text-muted small"><i class="fas fa-database mr-1" aria-hidden="true"></i> Unidades vigentes: <strong>@Model.TotalUnitsCount</strong></span>
+                </div>
+            </div>
+
+            <div class="ip-tiles mb-3">
+                <a class="ip-tile" asp-page="./EquipmentClassifications" asp-route-activeTab="Inventario" title="Ver equipos">
+                    <span class="ip-tile__icon ip-tile__icon--blue"><i class="mdi mdi-microscope" aria-hidden="true"></i></span>
+                    <span class="ip-tile__value">@Model.EquipmentUnitsCount</span>
+                    <span class="ip-tile__label">Equipos</span>
+                    <span class="ip-tile__hint">Unidades clasificadas como equipo</span>
+                </a>
+                <a class="ip-tile" asp-page="./UtensilClassifications" asp-route-activeTab="Inventario" title="Ver utensilios">
+                    <span class="ip-tile__icon ip-tile__icon--green"><i class="fas fa-utensils" aria-hidden="true"></i></span>
+                    <span class="ip-tile__value">@Model.UtensilUnitsCount</span>
+                    <span class="ip-tile__label">Utensilios</span>
+                    <span class="ip-tile__hint">Con N.º de inventario</span>
+                </a>
+                <a class="ip-tile" asp-page="./OtherUnits" asp-route-activeTab="Inventario" title="Ver otros activos">
+                    <span class="ip-tile__icon ip-tile__icon--amber"><i class="mdi mdi-layers" aria-hidden="true"></i></span>
+                    <span class="ip-tile__value">@Model.OtherUnitsCount</span>
+                    <span class="ip-tile__label">Otros</span>
+                    <span class="ip-tile__hint">Fuera de equipo/utensilio</span>
+                </a>
+                <a class="ip-tile" asp-page="./Environments" title="Ver ambientes">
+                    <span class="ip-tile__icon ip-tile__icon--cyan"><i class="mdi mdi-home-modern" aria-hidden="true"></i></span>
+                    <span class="ip-tile__value">@Model.EnvironmentsCount</span>
+                    <span class="ip-tile__label">Ambientes</span>
+                    <span class="ip-tile__hint">@Model.EnvironmentsWithUnitsCount con inventario asignado</span>
+                </a>
+                @if (canOpenAdminLists)
+                {
+                    <a class="ip-tile" asp-page="/EquipmentUnits/Index" title="Ver todas las unidades físicas">
+                        <span class="ip-tile__icon ip-tile__icon--red"><i class="fas fa-clipboard-list" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.UnitsWithoutSpecificClassificationCount</span>
+                        <span class="ip-tile__label">Por clasificar</span>
+                        <span class="ip-tile__hint">@Model.PendingClassificationUnitsCount pendientes · @Model.LegacyInferredUnitsCount heredadas</span>
+                    </a>
+                    <a class="ip-tile" asp-page="/Catalogs/Stock/Index" title="Ver existencias">
+                        <span class="ip-tile__icon ip-tile__icon--green"><i class="fas fa-boxes" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.StockRecordsCount</span>
+                        <span class="ip-tile__label">Existencias</span>
+                        <span class="ip-tile__hint">Stock en @Model.StockLaboratoriesCount ambiente(s)</span>
+                    </a>
+                    <a class="ip-tile" asp-page="/Catalogs/Articles/Index" title="Ver el catálogo de artículos">
+                        <span class="ip-tile__icon ip-tile__icon--blue"><i class="mdi mdi-blender" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.ArticlesCount.ToString("N0", esBo)</span>
+                        <span class="ip-tile__label">Artículos</span>
+                        <span class="ip-tile__hint">En @Model.ArticleCategoriesCount categoría(s)</span>
+                    </a>
+                }
+                else
+                {
+                    <div class="ip-tile ip-tile--plain">
+                        <span class="ip-tile__icon ip-tile__icon--red"><i class="fas fa-clipboard-list" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.UnitsWithoutSpecificClassificationCount</span>
+                        <span class="ip-tile__label">Por clasificar</span>
+                        <span class="ip-tile__hint">Solo administración</span>
+                    </div>
+                    <div class="ip-tile ip-tile--plain">
+                        <span class="ip-tile__icon ip-tile__icon--green"><i class="fas fa-boxes" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.StockRecordsCount</span>
+                        <span class="ip-tile__label">Existencias</span>
+                        <span class="ip-tile__hint">Solo administración</span>
+                    </div>
+                    <div class="ip-tile ip-tile--plain">
+                        <span class="ip-tile__icon ip-tile__icon--blue"><i class="mdi mdi-blender" aria-hidden="true"></i></span>
+                        <span class="ip-tile__value">@Model.ArticlesCount.ToString("N0", esBo)</span>
+                        <span class="ip-tile__label">Artículos</span>
+                        <span class="ip-tile__hint">Solo administración</span>
+                    </div>
+                }
+            </div>
+
+            <div class="ip-quality__card mb-3">
+                <h3 class="ip-card__title mb-2">Calidad de clasificación</h3>
+                <span class="text-muted small">Cuánto inventario ya tiene una clasificación específica.</span>
+                <div class="d-flex align-items-end justify-content-between mt-3">
+                    <div>
+                        <span class="ip-quality__pct">@Model.ClassificationQualityPercent %</span>
+                        <span class="d-block text-muted small">Clasificado correctamente</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="d-block font-weight-bold" style="font-size:1.2rem;">@Model.UnitsWithoutSpecificClassificationCount</span>
+                        <span class="text-muted small">Pendientes de clasificar</span>
+                    </div>
+                </div>
+                <div class="ip-quality__track" role="img" aria-label="Calidad de clasificación: @Model.ClassificationQualityPercent por ciento">
+                    <span class="ip-quality__fill" style="width:@Model.ClassificationQualityPercent%;"></span>
+                </div>
+                <div class="ip-quality__stats">
+                    <span><strong>@Model.UnitsWithoutSerialCount</strong> sin serie</span>
+                    <span><strong>@Model.UnitsWithoutEnvironmentCount</strong> sin ambiente</span>
+                </div>
+            </div>
+        </section>
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        $(function () {
-            var categoryData = @Html.Raw(Model.CategoryDataJson);
-            var equipmentData = @Html.Raw(Model.EquipmentSubClassJson);
-            var utensilData = @Html.Raw(Model.UtensilSubClassJson);
-            var otherData = @Html.Raw(Model.OtherSubClassJson);
-            var statusData = @Html.Raw(Model.StatusDataJson);
-            var conditionData = @Html.Raw(Model.ConditionDataJson);
-            var environmentData = @Html.Raw(Model.EnvironmentDataJson);
-            var totalUnits = @Model.TotalUnitsCount;
-            var pendingClassificationUnits = @Model.UnitsWithoutSpecificClassificationCount;
-            var charts = [];
-
-            function hasDonutData(columns) {
-                return Array.isArray(columns) && columns.length > 0;
-            }
-
-            function hasBarData(payload) {
-                return payload && Array.isArray(payload.columns) && payload.columns.length > 0 &&
-                    Array.isArray(payload.categories) && payload.categories.length > 0;
-            }
-
-            function showEmpty(selector, icon, title, text) {
-                $(selector).html(
-                    '<div class="asset-empty-state">' +
-                    '<div><i class="' + icon + '"></i>' +
-                    '<h6 class="font-weight-bold mb-1">' + title + '</h6>' +
-                    '<div class="small">' + text + '</div></div>' +
-                    '</div>');
-            }
-
-            function renderDonut(selector, columns, title, colors, emptyIcon, emptyTitle, emptyText) {
-                if (!window.c3) {
-                    showEmpty(selector, "fas fa-chart-pie", "Graficos no disponibles", "No se pudo cargar C3.");
-                    return;
-                }
-
-                if (!hasDonutData(columns)) {
-                    showEmpty(selector, emptyIcon, emptyTitle, emptyText);
-                    return;
-                }
-
-                var chart = c3.generate({
-                    bindto: selector,
-                    size: { height: 250 },
-                    color: { pattern: colors },
-                    data: {
-                        columns: columns,
-                        type: "donut"
-                    },
-                    donut: {
-                        title: title,
-                        width: 28,
-                        label: {
-                            format: function (value, ratio) {
-                                return ratio >= 0.08 ? d3.format(".0%")(ratio) : "";
-                            }
-                        }
-                    },
-                    legend: {
-                        position: "bottom"
-                    },
-                    tooltip: {
-                        format: {
-                            value: function (value) {
-                                return value + " unidades";
-                            }
-                        }
-                    }
-                });
-                charts.push(chart);
-            }
-
-            function renderBar(selector, payload, color, emptyIcon, emptyTitle, emptyText, leftPadding) {
-                if (!window.c3) {
-                    showEmpty(selector, "fas fa-chart-bar", "Graficos no disponibles", "No se pudo cargar C3.");
-                    return;
-                }
-
-                if (!hasBarData(payload)) {
-                    showEmpty(selector, emptyIcon, emptyTitle, emptyText);
-                    return;
-                }
-
-                var height = Math.max(220, Math.min(360, payload.categories.length * 34 + 80));
-                var chart = c3.generate({
-                    bindto: selector,
-                    size: { height: height },
-                    padding: {
-                        left: leftPadding || 120,
-                        right: 20
-                    },
-                    color: { pattern: [color] },
-                    data: {
-                        columns: payload.columns,
-                        type: "bar",
-                        labels: false
-                    },
-                    axis: {
-                        rotated: true,
-                        x: {
-                            type: "category",
-                            categories: payload.categories,
-                            tick: {
-                                multiline: false,
-                                culling: false
-                            }
-                        },
-                        y: {
-                            min: 0,
-                            padding: { bottom: 0 },
-                            tick: {
-                                format: d3.format("d")
-                            }
-                        }
-                    },
-                    bar: {
-                        width: { ratio: 0.55 }
-                    },
-                    grid: {
-                        y: { show: true }
-                    },
-                    legend: {
-                        show: false
-                    },
-                    tooltip: {
-                        format: {
-                            title: function (index) {
-                                return payload.categories[index] || "";
-                            },
-                            value: function (value) {
-                                return value + " unidades";
-                            }
-                        }
-                    }
-                });
-                charts.push(chart);
-            }
-
-            var donutEmptyTitle = "Sin inventario vigente";
-            var donutEmptyText = "No hay unidades fisicas para graficar.";
-            if (totalUnits > 0 && pendingClassificationUnits > 0 && !hasDonutData(categoryData)) {
-                donutEmptyTitle = "Nada clasificado aun";
-                donutEmptyText = "Hay " + pendingClassificationUnits + " unidades por clasificar.";
-            }
-
-            renderDonut(
-                "#donut-chart",
-                categoryData,
-                "Activos",
-                ["#7460ee", "#00c292", "#ffb22b"],
-                "fas fa-box-open",
-                donutEmptyTitle,
-                donutEmptyText);
-
-            renderDonut(
-                "#status-chart",
-                statusData,
-                "Estado",
-                ["#00c292", "#ffb22b", "#f62d51", "#03a9f3", "#7460ee", "#8d97ad"],
-                "fas fa-heartbeat",
-                "Sin estados registrados",
-                "No hay unidades con estado operativo.");
-
-            renderBar(
-                "#bar-chart-equipment",
-                equipmentData,
-                "#2962ff",
-                "fas fa-microscope",
-                "Sin equipos clasificados",
-                "Cuando existan equipos, se mostraran por clasificacion tecnica.",
-                150);
-
-            renderBar(
-                "#bar-chart-utensil",
-                utensilData,
-                "#00c292",
-                "fas fa-utensils",
-                "Sin utensilios clasificados",
-                "Actualmente no hay unidades registradas como utensilios.",
-                150);
-
-            renderBar(
-                "#bar-chart-other",
-                otherData,
-                "#ffb22b",
-                "fas fa-layer-group",
-                "Sin otros activos",
-                "Actualmente no hay unidades fuera de equipos y utensilios.",
-                150);
-
-            renderBar(
-                "#condition-chart",
-                conditionData,
-                "#f62d51",
-                "fas fa-clipboard-check",
-                "Sin condicion fisica",
-                "No hay condicion registrada para graficar.",
-                150);
-
-            renderBar(
-                "#environment-chart",
-                environmentData,
-                "#03a9f3",
-                "fas fa-door-open",
-                "Sin ambientes con inventario",
-                "Asigna unidades a ambientes para ver la distribucion.",
-                230);
-
-            $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
-                charts.forEach(function (chart) {
-                    chart.flush();
-                });
-            });
-        });
-    </script>
+    <!-- Chart.js 3.9.1 (misma URL de CDN que ya usaba la página) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="~/js/panel-tabs.js" asp-append-version="true"></script>
+    <script src="~/js/inicio-panel.js" asp-append-version="true"></script>
 }

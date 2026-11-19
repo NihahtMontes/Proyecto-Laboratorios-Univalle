@@ -9,11 +9,19 @@ File: js
 // ============================================================== 
 $(function() {
     "use strict";
-     var url = window.location + "";
+        var url = window.location + "";
         var path = url.replace(window.location.protocol + "//" + window.location.host + "/", "");
         var element = $('ul#sidebarnav a').filter(function() {
             return this.href === url || this.href === path;// || url.href.indexOf(this.href) === 0;
         });
+        // Inicio (/AssetView/Index y su ruta amiga /Inicio): resalta la entrada Inicio también
+        // en las subpáginas de inventario, donde no hay coincidencia exacta de URL.
+        if (element.length === 0) {
+            var pathOnly = path.split("?")[0];
+            if (pathOnly === "Inicio" || pathOnly.indexOf("Inicio/") === 0 || pathOnly.indexOf("AssetView") === 0) {
+                element = $('ul#sidebarnav a[href$="/AssetView/Index"]').first();
+            }
+        }
         element.parentsUntil(".sidebar-nav").each(function (index)
         {
             if($(this).is("li") && $(this).children("a").length !== 0)

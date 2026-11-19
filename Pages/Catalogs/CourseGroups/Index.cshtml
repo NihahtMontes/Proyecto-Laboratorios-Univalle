@@ -222,49 +222,10 @@
                     </table>
                 </div>
 
-                @if (Model.CourseGroups!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.CourseGroups.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.CourseGroups.PageIndex - 1)"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-ManagementFilter="@Model.ManagementFilter"
-                                       asp-route-SubjectFilter="@Model.SubjectFilter"
-                                       asp-route-TeacherFilter="@Model.TeacherFilter"
-                                       asp-route-SemesterFilter="@Model.SemesterFilter"
-                                       asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.CourseGroups.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.CourseGroups.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-ManagementFilter="@Model.ManagementFilter"
-                                       asp-route-SubjectFilter="@Model.SubjectFilter"
-                                       asp-route-TeacherFilter="@Model.TeacherFilter"
-                                       asp-route-SemesterFilter="@Model.SemesterFilter"
-                                       asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                </li>
-                            }
-                            @if (Model.CourseGroups.HasNextPage)
-                            {
-                                <li class="page-item">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.CourseGroups.PageIndex + 1)"
-                                           asp-route-SearchTerm="@Model.SearchTerm"
-                                           asp-route-ManagementFilter="@Model.ManagementFilter"
-                                           asp-route-SubjectFilter="@Model.SubjectFilter"
-                                           asp-route-TeacherFilter="@Model.TeacherFilter"
-                                           asp-route-SemesterFilter="@Model.SemesterFilter"
-                                           asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.CourseGroups, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["ManagementFilter"] = Model.ManagementFilter?.ToString(), ["SubjectFilter"] = Model.SubjectFilter?.ToString(), ["TeacherFilter"] = Model.TeacherFilter?.ToString(), ["SemesterFilter"] = Model.SemesterFilter?.ToString(), ["StatusFilter"] = Model.StatusFilter?.ToString() }, itemLabel: "grupos");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

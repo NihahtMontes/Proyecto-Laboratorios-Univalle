@@ -19,6 +19,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Artículo / Consumible")]
         public int? ArticleId { get; set; }
 
+        /// <summary>Origen de este ítem cuando la salida sale de varios laboratorios (asignaciones); nulo = origen de la salida.</summary>
+        [Display(Name = "Origen")]
+        public int? OriginLaboratoryId { get; set; }
+        public virtual Laboratory? OriginLaboratory { get; set; }
+
         [StringLength(200)]
         [Display(Name = "Producto")]
         public string? ProductName { get; set; }

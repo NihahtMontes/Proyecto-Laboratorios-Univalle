@@ -3,7 +3,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.Drawing;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -11,9 +10,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
     {
         public async Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable = "Sistema", DateTime? sessionDate = null, int? unitId = null)
         {
-            // L-6 GENERADO DESDE CERO (SIN TEMPLATE)
-            // Worksheets.Add(sourceSheet.Name, sourceSheet) copia estilos XML del template
-            // L6V2.xlsx que corrompen el paquete. GetAsByteArray() crashea (0xffffffff).
+            // L-6 SOBRE LA PLANTILLA wwwroot/templates/L6V2.xlsx (se abre y se limpia/reescribe).
+            // No se copian hojas con Worksheets.Add(nombre, hoja): duplicar el XML de estilos de
+            // L6V2.xlsx corrompe el paquete y GetAsByteArray() crashea (0xffffffff).
+
 
             var labName = await _context.Laboratories
                 .AsNoTracking()
@@ -62,6 +62,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         Brand = p.EquipmentUnit.Equipment != null ? p.EquipmentUnit.Equipment.Brand : "",
                         p.EquipmentUnit.InventoryNumber
                     })
+                    // Un mismo equipo puede tener dos planes en la gestión (p. ej. preventivo
+                    // reprogramado); el consolidado L-6 lista cada equipo una sola vez.
+                    .Distinct()
                     .ToListAsync();
 
             if (unitId.HasValue && equipmentData.Count == 0)
@@ -134,7 +137,22 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     var text = ws.Cells[r, c].Text?.ToUpper()?.Trim() ?? "";
 
                     if (text == "LABORATORIO" || text == "LABORATORIO:")
-                        ws.Cells[r, c + 2].Value = labName?.ToUpper();
+                    {
+                        // Nombre completo en una línea («AULA DEMOSTRATIVA H-102»): en la plantilla la celda
+                        // del valor (C7) es angosta y solo se veía la primera palabra. Se combina con la celda
+                        // libre de al lado (D7), como ya hace la plantilla con el responsable (C8:F8), y solo
+                        // si un nombre muy largo aún no entra se reduce la letra.
+                        var valueCell = ws.Cells[r, c + 2];
+                        valueCell.Value = labName?.ToUpper();
+                        var neighbor = ws.Cells[r, c + 3];
+                        if (!valueCell.Merge && !neighbor.Merge && string.IsNullOrEmpty(neighbor.Text))
+                        {
+                            ws.Cells[r, c + 2, r, c + 3].Merge = true;
+                        }
+                        valueCell.Style.WrapText = false;
+                        valueCell.Style.ShrinkToFit = true;
+                        valueCell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+                    }
                         
                     if (text == "RESPONSABLE" || text == "RESPONSABLE:")
                         ws.Cells[r, c + 2].Value = responsable?.ToUpper();
@@ -220,20 +238,28 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 ws.Cells[row, colEstado].Value = condition.ToUpper();
                 ws.Cells[row, colEstado].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 if (condition.ToUpper() == "MALO" || condition.ToUpper() == "BAJA")
-                    ws.Cells[row, colEstado].Style.Font.Color.SetColor(System.Drawing.Color.Red);
+                    ws.Cells[row, colEstado].Style.Font.Color.SetColor(255, 255, 0, 0);
 
                 ws.Cells[row, colMarca].Value = eq.Brand?.ToUpper() ?? "S/M";
                 ws.Cells[row, colMarca].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 ws.Cells[row, colObs].Value = observationsText.ToUpper();
 
-                var rowBg = alternate ? System.Drawing.Color.FromArgb(242, 246, 252) : System.Drawing.Color.White;
+                // Sin System.Drawing.Color (regla de reportes): los colores se fijan con
+                // SetColor(alfa, r, g, b) y el relleno con PatternType + BackgroundColor.
+                var celdaFondo = ws.Cells[row, 1, row, 6].Style;
+                celdaFondo.Fill.PatternType = ExcelFillStyle.Solid;
+                celdaFondo.Fill.BackgroundColor.SetColor(255, alternate ? 242 : 255, alternate ? 246 : 255, alternate ? 252 : 255);
                 for (int c = 1; c <= 6; c++)
                 {
-                    ws.Cells[row, c].Style.Fill.SetBackground(rowBg);
-                    ws.Cells[row, c].Style.Border.BorderAround(ExcelBorderStyle.Thin, System.Drawing.Color.FromArgb(180, 180, 180));
-                    ws.Cells[row, c].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-                    ws.Cells[row, c].Style.WrapText = true;
+                    var estilo = ws.Cells[row, c].Style;
+                    estilo.Border.BorderAround(ExcelBorderStyle.Thin);
+                    estilo.Border.Top.Color.SetColor(255, 180, 180, 180);
+                    estilo.Border.Bottom.Color.SetColor(255, 180, 180, 180);
+                    estilo.Border.Left.Color.SetColor(255, 180, 180, 180);
+                    estilo.Border.Right.Color.SetColor(255, 180, 180, 180);
+                    estilo.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    estilo.WrapText = true;
                 }
 
                 // Auto height based on text length

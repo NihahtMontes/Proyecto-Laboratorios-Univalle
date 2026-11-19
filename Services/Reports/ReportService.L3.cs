@@ -3,7 +3,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.Drawing;
 using System.Globalization;
 
 namespace Proyecto_Laboratorios_Univalle.Services
@@ -66,6 +65,14 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             using var package = new ExcelPackage(new FileInfo(templatePath));
             var worksheet = package.Workbook.Worksheets[0];
+
+            // La plantilla L3.xlsx trae 5 copias del formulario ("FORM L-3.3 (5)"…"(1)") con datos
+            // de ejemplo; el vale solo usa la primera. Se eliminan las demás del archivo generado
+            // para que no se descarguen hojas con datos ajenos.
+            while (package.Workbook.Worksheets.Count > 1)
+            {
+                package.Workbook.Worksheets.Delete(package.Workbook.Worksheets[^1]);
+            }
 
             // Cabecera académica del vale (plantilla L3.xlsx): las etiquetas de la columna A llevan su valor en B
             // (CARRERA B8 … CODIGO ASIGNATURA B14) y las de C (DIA, HORARIO, LABORATORIO) en D5..D7.

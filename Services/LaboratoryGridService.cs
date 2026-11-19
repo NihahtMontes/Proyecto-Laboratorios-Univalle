@@ -237,7 +237,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
         // Planificaciones de todos los laboratorios en el rango (permite elegir el laboratorio por defecto
         // y contar planificaciones por ambiente sin consultas adicionales).
         var plannings = await _context.Plannings.AsNoTracking()
-            .Where(p => p.ManagementId == management.Id && !p.IsDeleted && p.Status != PlanningStatus.Cancelled
+            .Where(p => p.ManagementId == management.Id && !p.IsDeleted && p.Status != PlanningStatus.Cancelled && p.Status != PlanningStatus.Rejected
                 && p.ScheduledDate >= from && p.ScheduledDate < to
                 && (p.LaboratoryId != null || p.AllLaboratories))
             .OrderBy(p => p.ScheduledDate)

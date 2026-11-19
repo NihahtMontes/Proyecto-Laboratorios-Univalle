@@ -1,0 +1,72 @@
+/* Secciones plegables del menú lateral (Pages/Shared/_Sidebar.cshtml + js/sidebar-sections.js).
+   El título de cada sección es un botón que muestra u oculta los enlaces que le siguen. */
+
+.sidebar-nav ul .nav-small-cap.sidebar-section {
+    padding: 0;
+    opacity: 1;
+}
+
+.sidebar-section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    inline-size: 100%;
+    padding: 12px 15px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    opacity: 0.55;
+    font: inherit;
+    font-size: 12px;
+    line-height: 30px;
+    text-align: start;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.sidebar-section-toggle:hover,
+.sidebar-section-toggle:focus-visible,
+.sidebar-section-toggle[aria-expanded="true"] {
+    opacity: 0.9;
+}
+
+.sidebar-section-toggle:focus {
+    outline: none;
+}
+
+.sidebar-section-toggle:focus-visible {
+    outline: 2px solid #137eff;
+    outline-offset: -2px;
+}
+
+/* La flecha va justo antes del nombre: apunta a la derecha cerrada y hacia abajo abierta. */
+.sidebar-nav ul .nav-small-cap .sidebar-section-chevron {
+    margin: 0 4px 0 0;
+    font-size: 16px;
+    rotate: -90deg;
+}
+
+.sidebar-nav ul .nav-small-cap .sidebar-section-toggle[aria-expanded="true"] .sidebar-section-chevron {
+    rotate: 0deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .sidebar-nav ul .nav-small-cap .sidebar-section-chevron {
+        transition: rotate 0.2s;
+    }
+}
+
+/* Enlaces de una sección plegada: se ocultan solo cuando el menú se ve completo.
+   En el menú mini (solo íconos) se muestran todos, porque ahí no hay títulos para abrirlos;
+   al pasar el mouse el menú se expande y vuelve a respetar el plegado. */
+#main-wrapper:not([data-sidebartype="mini-sidebar"]) .sidebar-section-item--hidden,
+#main-wrapper[data-sidebartype="mini-sidebar"] .left-sidebar:hover .sidebar-section-item--hidden,
+#main-wrapper.show-sidebar .sidebar-section-item--hidden {
+    display: none;
+}
+
+/* Sección sin enlaces visibles para el rol actual: no se muestra el título. */
+.sidebar-nav ul .nav-small-cap.sidebar-section--empty {
+    display: none;
+}

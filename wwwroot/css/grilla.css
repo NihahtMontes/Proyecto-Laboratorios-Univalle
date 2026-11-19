@@ -246,6 +246,10 @@
 .gr-block--secondary { border-left-color: #6c757d; background: #f2f3f4; }
 .gr-block--light { border-left-color: #b8b8c2; background: #f8f8fa; }
 .gr-block--danger { border-left-color: #f62d51; background: #fdecef; }
+/* Solicitudes docentes en revisión: se dibujan atenuadas (no ocupan) para avisar del interés en el horario. */
+.gr-block--primary { border-left-color: #7460ee; background: #f3f1fe; }
+.gr-block--orange { border-left-color: #fb8c00; background: #fff4e5; }
+.gr-block--dark { border-left-color: #343a40; background: #f1f1f1; }
 
 /* No ocupantes (reprogramada, pendiente de reposición, repuesta): atenuados */
 .gr-block--inactive { opacity: .6; border-style: dashed; border-left-style: solid; }
@@ -722,3 +726,27 @@ body.gr-carrying, body.gr-carrying * { cursor: move !important; }
     .gr-grid--hovering .gr-block:not(.gr-block--related),
     .gr-grid--conflicts .gr-block:not(.gr-block--has-conflict) { opacity: 1; }
 }
+
+/* Reprogramar (azul) frente a reponer (naranja): que nunca se confundan */
+.gr-rs-band__title { font-size: 15px; color: #1f2937; }
+.gr-rs-band__eyebrow { font-size: 11px; }
+.gr-rs-band--move { background: linear-gradient(135deg, #e8f1fe, #dbe9fd); border-left-color: #1e6fd9; }
+.gr-rs-band--move .gr-rs-band__icon, .gr-rs-band--move .gr-rs-band__eyebrow { color: #1e6fd9; }
+.gr-rs-band--recovery { background: linear-gradient(135deg, #fff4e0, #ffe9c7); border-left-color: #e8890c; }
+.gr-rs-band--recovery .gr-rs-band__icon, .gr-rs-band--recovery .gr-rs-band__eyebrow { color: #c26d00; }
+.gr-rs-accent { color: #1e6fd9; }
+.gr-rs-band--recovery ~ * .gr-rs-accent { color: #c26d00; }
+.gr-rs-band--move ~ * .gr-rs-panel { border-top-color: #1e6fd9 !important; }
+.gr-rs-band--recovery ~ * .gr-rs-panel { border-top-color: #e8890c !important; }
+.gr-rs-band--move ~ * .gr-rs-submit { background: #1e6fd9; }
+.gr-rs-band--move ~ * .gr-rs-submit:hover, .gr-rs-band--move ~ * .gr-rs-submit:focus { background: #1658ae; }
+.gr-rs-band--recovery ~ * .gr-rs-submit { background: #e8890c; }
+.gr-rs-band--recovery ~ * .gr-rs-submit:hover, .gr-rs-band--recovery ~ * .gr-rs-submit:focus { background: #c26d00; }
+
+/* Resumen antes -> después junto al motivo */
+.gr-rs-summary { margin-bottom: 10px; font-size: 12px; line-height: 1.35; }
+.gr-rs-summary__row { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 8px; border: 1px solid #e5e7eb; }
+.gr-rs-summary__row--before { background: #f8f9fa; color: #6b7280; }
+.gr-rs-summary__row--after { background: #eaf7ee; border-color: #b7e1c3; color: #1f2937; }
+.gr-rs-summary__tag { flex: 0 0 58px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; padding-top: 2px; }
+.gr-rs-summary__arrow { text-align: center; color: #6b7280; font-size: 16px; line-height: 1.1; }

@@ -42,6 +42,16 @@ public sealed class ReschedulingService : IReschedulingService
     public const string ConditionsChangedMessage = "Las condiciones cambiaron desde la previsualización: revise las advertencias.";
     public const string AlreadyRescheduledMessage = "Esta planificación ya fue reprogramada por otro usuario.";
 
+    public const string MaterialDeliveredMessage =
+        "La práctica ya tiene material entregado (está en ejecución): no se puede reprogramar.";
+
+    /// <summary>
+    /// True si la planificación ya tiene una salida de material vigente: la práctica está en ejecución y no se
+    /// reprograma a mano (regla del 2026-11-15). La reposición de un día suspendido no pasa por esta regla.
+    /// </summary>
+    public static Task<bool> HasDeliveredMaterialAsync(ApplicationDbContext context, int planningId, CancellationToken ct = default) =>
+        context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == planningId && d.Status != LoanStatus.Cancelled, ct);
+
     private const string OriginUniqueIndex = "IX_Reschedulings_OriginPlanningId";
 
     private readonly ApplicationDbContext _context;
@@ -120,6 +130,9 @@ public sealed class ReschedulingService : IReschedulingService
                 .FirstOrDefaultAsync(ct);
             if (managementStatus is not (ManagementStatus.Active or ManagementStatus.Inactive))
                 return await RollbackAsync(transaction, Fail(AcademicManagementService.ReadOnlyMessage));
+
+            if (command.DayRecoveryId is null && await HasDeliveredMaterialAsync(_context, origin.Id, ct))
+                return await RollbackAsync(transaction, Fail(MaterialDeliveredMessage));
 
             if (command.TeacherPersonId != origin.TeacherPersonId
                 && !await ActiveTeachers(_context).AnyAsync(t => t.Id == command.TeacherPersonId, ct))
@@ -278,6 +291,22 @@ public sealed class ReschedulingService : IReschedulingService
                 if (!stillPending)
                     recovery.Status = DayRecoveryStatus.Completed;
             }
+
+            // Aviso al docente (y al anterior, si cambió): qué se movió, adónde y por qué.
+            var labCode = await _context.Laboratories.AsNoTracking()
+                .Where(l => l.Id == command.LaboratoryId).Select(l => l.Code).FirstOrDefaultAsync(ct);
+            var where = $"{date:dd/MM/yyyy}, {PlanningSlot.PeriodsText(periods.First(p => p.Id == destination.StartPeriodId).Order, periodCount).ToLowerInvariant()}, {labCode}";
+            var noticeTitle = recovery != null ? "Tu práctica fue repuesta" : "Tu práctica fue reprogramada";
+            var noticeText = $"{destination.PracticeName}: pasa del {snapshot.Date:dd/MM/yyyy} al {where}. Motivo: {reason}";
+            var notices = new List<Notifications.TeacherNotice>
+            {
+                new(command.TeacherPersonId, destination.Id, origin.ManagementId, noticeTitle, noticeText, "mdi mdi-calendar-clock text-primary")
+            };
+            if (snapshot.TeacherPersonId != command.TeacherPersonId)
+                notices.Add(new(snapshot.TeacherPersonId, origin.Id, origin.ManagementId, "Tu práctica pasó a otro docente",
+                    $"{destination.PracticeName} del {snapshot.Date:dd/MM/yyyy} se movió al {where} con otro docente. Motivo: {reason}",
+                    "mdi mdi-account-switch text-warning"));
+            await Notifications.TeacherNotifier.AddAsync(_context, notices, ct);
 
             await _context.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
