@@ -200,11 +200,17 @@ public class L3CircuitService : IL3CircuitService
 
     private readonly ApplicationDbContext _context;
     private readonly ILogger<L3CircuitService> _logger;
+    private readonly IPlanningLock? _planningLock;
 
-    public L3CircuitService(ApplicationDbContext context, ILogger<L3CircuitService> logger)
+    /// <param name="planningLock">
+    /// Bloqueo por planificación (lo inyecta la app). Evita que dos envíos simultáneos de «Registrar salida» creen dos
+    /// salidas (QA S20). Las pruebas con base en memoria lo omiten: allí no hay transacciones reales.
+    /// </param>
+    public L3CircuitService(ApplicationDbContext context, ILogger<L3CircuitService> logger, IPlanningLock? planningLock = null)
     {
         _context = context;
         _logger = logger;
+        _planningLock = planningLock;
     }
 
     public Task<int?> GetDefaultOriginLaboratoryIdAsync() =>
@@ -299,6 +305,16 @@ public class L3CircuitService : IL3CircuitService
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Doble envío (QA S20): con el bloqueo de la planificación tomado, se vuelve a revisar que no exista ya la salida.
+            // El segundo envío espera a que el primero confirme y entonces encuentra su salida.
+            if (_planningLock != null)
+            {
+                if (!await _planningLock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                    return L3CircuitResult.Fail(PlanningLockResources.BusyMessage + ".");
+                if (await _context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == planningId))
+                    return L3CircuitResult.Fail("La planificación ya tiene una salida registrada.");
+            }
+
             // El stock de almacén solo aplica a las líneas de inventario: los equipos se gobiernan por sus unidades físicas.
             var inventory = allocations.Where(a => !IsEquipmentLine(details[a.Line.DetailId])).ToList();
             var inventoryArticleIds = inventory.Select(a => details[a.Line.DetailId].ArticleId).Distinct().ToList();
