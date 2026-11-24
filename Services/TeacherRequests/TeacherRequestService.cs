@@ -52,6 +52,38 @@ public interface ITeacherRequestService
 
     /// <summary>Control semanal de la gestión vigente: programadas (previstas) frente a las que ya tienen solicitud.</summary>
     Task<IReadOnlyList<WeekCoverage>> GetWeeklyCoverageAsync(DateTime from, int weeks);
+
+    // ─── Cambio de material (L-3) de prácticas ya aprobadas ───
+
+    /// <summary>Si el docente puede pedir un cambio de material para la práctica aprobada; si no, el motivo.</summary>
+    Task<MaterialChangeEligibility> CanRequestMaterialChangeAsync(TeacherProfile teacher, int planningId);
+
+    /// <summary>
+    /// El docente pide cambiar el L-3 de su práctica aprobada: <paramref name="lines"/> es el L-3 completo deseado
+    /// (un artículo ausente o en 0 se quita) y <paramref name="reason"/> el motivo. La planificación sigue «Aprobada».
+    /// </summary>
+    Task<TeacherOpResult> RequestMaterialChangeAsync(TeacherProfile teacher, int planningId, IReadOnlyList<RequestLineInput> lines, string reason);
+
+    /// <summary>El docente retira su pedido de cambio de material pendiente.</summary>
+    Task<TeacherOpResult> WithdrawMaterialChangeAsync(TeacherProfile teacher, int planningId);
+
+    /// <summary>La Inge aprueba el pedido pendiente: aplica el L-3 pedido, revalida stock y recalcula orígenes.</summary>
+    Task<TeacherOpResult> ApproveMaterialChangeAsync(int reviewerUserId, int planningId, string? comment, bool allowShortage = false);
+
+    /// <summary>La Inge rechaza el pedido pendiente: el L-3 vigente no cambia.</summary>
+    Task<TeacherOpResult> RejectMaterialChangeAsync(int reviewerUserId, int planningId, string reason);
+
+    /// <summary>Pedido de cambio pendiente de esa planificación (null si no hay): líneas, motivo y alertas.</summary>
+    Task<PendingMaterialChangeView?> GetPendingMaterialChangeAsync(int planningId);
+
+    /// <summary>Bandeja de pedidos de cambio pendientes (sin borradas), ordenados por fecha de práctica; en lote.</summary>
+    Task<IReadOnlyList<MaterialChangeInboxRow>> GetPendingMaterialChangesAsync();
+
+    /// <summary>Cantidad de pedidos de cambio de material pendientes.</summary>
+    Task<int> CountPendingMaterialChangesAsync();
+
+    /// <summary>Stock de las líneas finales del pedido de cambio pendiente (excluyendo esa planificación).</summary>
+    Task<IReadOnlyList<MaterialLineCheck>> CheckPendingMaterialChangeAsync(int planningId);
 }
 
 public sealed class TeacherRequestService : ITeacherRequestService
@@ -881,87 +913,37 @@ public sealed class TeacherRequestService : ITeacherRequestService
 
             if (adjustedLines != null)
             {
-                var wanted = adjustedLines.GroupBy(l => l.ArticleId).ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
-                var newIds = wanted.Where(w => w.Value > 0).Select(w => w.Key).Where(id => plan.Requirements.All(r => r.ArticleId != id)).ToList();
-                if (newIds.Count > 0 && await _context.Articles.AsNoTracking().CountAsync(a => newIds.Contains(a.Id) && a.Status == GeneralStatus.Activo) != newIds.Count)
+                var (lineError, changedLines) = await ApplyAdjustedLinesAsync(plan, adjustedLines);
+                if (lineError != null)
                 {
                     await transaction.RollbackAsync();
-                    return TeacherOpResult.Fail("Hay artículos agregados que no están activos.");
+                    return TeacherOpResult.Fail(lineError);
                 }
-                foreach (var req in plan.Requirements.ToList())
-                {
-                    var previous = req.RequestedQuantity ?? 0;
-                    var next = wanted.GetValueOrDefault(req.ArticleId, previous);
-                    if (next == previous) continue;
-                    review.Lines.Add(new PlanningReviewLine { ArticleId = req.ArticleId, PreviousQuantity = previous, NewQuantity = next > 0 ? next : null });
-                    if (next > 0)
-                    {
-                        req.RequestedQuantity = next;
-                        req.ExpectedQuantity = (int)Math.Ceiling(next);
-                    }
-                    else
-                    {
-                        _context.PlanningRequirements.Remove(req);
-                    }
-                }
-                foreach (var id in newIds)
-                {
-                    plan.Requirements.Add(new PlanningRequirement { ArticleId = id, RequestedQuantity = wanted[id], ExpectedQuantity = (int)Math.Ceiling(wanted[id]) });
-                    review.Lines.Add(new PlanningReviewLine { ArticleId = id, PreviousQuantity = null, NewQuantity = wanted[id] });
-                }
+                foreach (var changed in changedLines) review.Lines.Add(changed);
                 if (review.Lines.Count > 0) review.Action = PlanningReviewAction.ApprovedWithChanges;
             }
 
             // Sobreventa: las solicitudes pendientes no consumen stock, así que el material se revalida recién al
             // aprobar, con los ajustes ya aplicados en memoria y excluyendo esta planificación (igual que CheckMaterialAsync).
             var finalLines = FinalLines(plan.Requirements, adjustedLines);
-            string? shortageDetail = null;
-            if (finalLines.Count > 0)
+            var shortageDetail = await FindShortageDetailAsync(date, startPeriodId, count, finalLines, plan.Id);
+            if (shortageDetail != null && !allowShortage)
             {
-                var material = await CheckMaterialAsync(date, startPeriodId, count, finalLines, plan.Id);
-                var shortages = material.Where(m => m.State == MaterialState.Short).ToList();
-                if (shortages.Count > 0)
-                {
-                    shortageDetail = string.Join("; ", shortages.Select(s => $"{s.Name}: pide {s.Requested:0.##}, libre {(s.Free ?? 0):0.##}"));
-                    if (!allowShortage)
-                    {
-                        await transaction.RollbackAsync();
-                        return TeacherOpResult.Fail("No se puede aprobar: no alcanza el material en ese horario: " + shortageDetail
-                            + ". Ajusta cantidades, observa la solicitud o marca «Aprobar igual con faltantes».");
-                    }
-                    // Aprobación consciente de los faltantes: queda asentada en el historial y avisada al revisor.
-                    review.Comment = Trim($"{comment} [Aprobada con faltantes: {shortageDetail}]", 1000);
-                }
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("No se puede aprobar: no alcanza el material en ese horario: " + shortageDetail
+                    + ". Ajusta cantidades, observa la solicitud o marca «Aprobar igual con faltantes».");
             }
+            // Aprobación consciente de los faltantes: queda asentada en el historial y avisada al revisor.
+            if (shortageDetail != null) review.Comment = Trim($"{comment} [Aprobada con faltantes: {shortageDetail}]", 1000);
 
             // ─── Asignaciones de origen (V13: SolicitudL3Asignaciones) ───
-            // Con la líneas finales ya aplicadas: si el revisor no eligió orígenes se usan los sugeridos; si eligió,
+            // Con las líneas finales ya aplicadas: si el revisor no eligió orígenes se usan los sugeridos; si eligió,
             // se valida que cubran exactamente cada línea y que ningún origen entregue más que su libre.
-            var finalByArticle = finalLines.ToDictionary(l => l.ArticleId, l => l.Quantity);
-            var unitLineArticles = plan.Requirements.Where(r => r.EquipmentUnitId != null).Select(r => r.ArticleId).ToHashSet();
-            var catalogUnitArticles = (await _context.Articles.AsNoTracking()
-                .Where(a => finalByArticle.Keys.Contains(a.Id) && a.EquipmentId != null)
-                .Select(a => a.Id).ToListAsync()).ToHashSet();
-            var assignable = finalByArticle
-                .Where(kv => kv.Value > 0 && !unitLineArticles.Contains(kv.Key) && !catalogUnitArticles.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-            IReadOnlyList<AssignmentInput>? effectiveAssignments = assignments;
-            if (effectiveAssignments == null && assignable.Count > 0)
+            var originsError = await ApplyOriginsAsync(plan, finalLines, assignments, allowShortage, snapshot.StartTime, snapshot.EndTime);
+            if (originsError != null)
             {
-                var suggested = await SuggestAssignmentsCoreAsync(plan.Id, plan.ScheduledDate.Date, plan.StartTime, plan.EndTime, assignable);
-                effectiveAssignments = suggested.SelectMany(s => s.Suggested).ToList();
-            }
-
-            if (effectiveAssignments is { Count: > 0 })
-            {
-                var assignmentError = await ValidateAndApplyAssignmentsAsync(plan, assignable, effectiveAssignments, allowShortage,
-                    snapshot.StartTime, snapshot.EndTime);
-                if (assignmentError != null)
-                {
-                    await transaction.RollbackAsync();
-                    return TeacherOpResult.Fail(assignmentError);
-                }
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail(originsError);
             }
 
             plan.Status = PlanningStatus.Approved;
@@ -1092,6 +1074,565 @@ public sealed class TeacherRequestService : ITeacherRequestService
             .AnyAsync(p => p.PracticeScheduleId == sid && p.Id != plan.Id && !p.IsDeleted
                 && p.Status != PlanningStatus.Rejected && p.Status != PlanningStatus.Cancelled);
         if (!inUse) schedule.Status = PracticeScheduleStatus.Cancelled;
+    }
+
+    // ───────────────────────────── Cambio de material (L-3) de una práctica aprobada ─────────────────────────────
+    // El docente pide el cambio con un motivo y la Inge lo aprueba o rechaza; la planificación sigue «Aprobada»
+    // todo el tiempo y el pedido queda en PlanningReview (Action 8-11) con sus líneas Previous/New.
+
+    /// <summary>Acciones del historial que abren o cierran un pedido de cambio de material.</summary>
+    private static readonly PlanningReviewAction[] MaterialChangeActions =
+    [
+        PlanningReviewAction.MaterialChangeRequested, PlanningReviewAction.MaterialChangeApproved,
+        PlanningReviewAction.MaterialChangeRejected, PlanningReviewAction.MaterialChangeWithdrawn
+    ];
+
+    /// <summary>URL de revisión del pedido de cambio de material de una planificación (entrega B la publica).</summary>
+    private static string MaterialChangeReviewUrl(int planningId) => $"/LaboratoryOperations/Solicitudes/RevisarCambio?id={planningId}";
+
+    /// <summary>
+    /// Pedido de cambio de material pendiente de una planificación: entre sus reviews 8-11, el más reciente
+    /// (por CreatedDate y luego Id) cuando todavía es un pedido (Action 8); null si no hay o ya fue resuelto.
+    /// </summary>
+    private async Task<PlanningReview?> PendingMaterialChangeReviewAsync(int planningId)
+    {
+        var latest = await _context.PlanningReviews.AsNoTracking()
+            .Where(r => r.PlanningId == planningId && MaterialChangeActions.Contains(r.Action))
+            .OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.Id)
+            .FirstOrDefaultAsync();
+        return latest?.Action == PlanningReviewAction.MaterialChangeRequested ? latest : null;
+    }
+
+    /// <summary>Pedido pendiente tal como se usa en lote: review, planificación, fecha y motivo.</summary>
+    private sealed record PendingMaterialChangeRow(int ReviewId, int PlanningId, DateTime CreatedDate, string? Comment);
+
+    /// <summary>
+    /// Pedidos de cambio de material pendientes de todas las planificaciones (sin borradas): una consulta de los
+    /// reviews de cambio y la selección del último por planificación en memoria; sin consultas por fila.
+    /// </summary>
+    private async Task<List<PendingMaterialChangeRow>> PendingMaterialChangesCoreAsync()
+    {
+        var changes = await _context.PlanningReviews.AsNoTracking()
+            .Where(r => MaterialChangeActions.Contains(r.Action) && !r.Planning!.IsDeleted)
+            .Select(r => new { r.Id, r.PlanningId, r.Action, r.CreatedDate, r.Comment })
+            .ToListAsync();
+        return changes.GroupBy(r => r.PlanningId)
+            .Select(g => g.OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.Id).First())
+            .Where(r => r.Action == PlanningReviewAction.MaterialChangeRequested)
+            .Select(r => new PendingMaterialChangeRow(r.Id, r.PlanningId, r.CreatedDate, r.Comment))
+            .ToList();
+    }
+
+    /// <summary>Texto del cambio de una línea de pedido: Agregó / Quitó / Aumentó / Disminuyó.</summary>
+    private static string MaterialChangeText(decimal? previous, decimal? next) =>
+        previous == null ? "Agregó"
+        : next == null ? "Quitó"
+        : next.Value > previous.Value ? "Aumentó"
+        : "Disminuyó";
+
+    /// <summary>Líneas de los pedidos indicados como vistas (artículo, Previous/New y tipo de cambio), en una sola consulta.</summary>
+    private async Task<Dictionary<int, List<MaterialChangeLineView>>> MaterialChangeLineViewsAsync(IReadOnlyCollection<int> reviewIds)
+    {
+        var rows = await _context.PlanningReviewLines.AsNoTracking()
+            .Where(l => reviewIds.Contains(l.PlanningReviewId))
+            .Select(l => new
+            {
+                l.PlanningReviewId, l.ArticleId, l.PreviousQuantity, l.NewQuantity,
+                l.Article!.Code, l.Article.Name,
+                Category = l.Article.ArticleCategory != null ? l.Article.ArticleCategory.Name : l.Article.Category
+            })
+            .ToListAsync();
+        return rows.GroupBy(r => r.PlanningReviewId)
+            .ToDictionary(g => g.Key, g => g.Select(r =>
+            {
+                var change = MaterialChangeText(r.PreviousQuantity, r.NewQuantity);
+                return new MaterialChangeLineView(r.ArticleId, r.Code, r.Name, r.Category, r.PreviousQuantity, r.NewQuantity,
+                    change, MaterialChangeRules.IsItemChange(change));
+            }).ToList());
+    }
+
+    /// <summary>Días entre la fecha local del pedido y la práctica (negativos si la práctica ya pasó).</summary>
+    private static int MaterialChangeDaysAhead(DateTime scheduledDate, DateTime requestedUtc) =>
+        (scheduledDate.Date - BoliviaTime.ToLocal(requestedUtc).Date).Days;
+
+    public async Task<MaterialChangeEligibility> CanRequestMaterialChangeAsync(TeacherProfile teacher, int planningId)
+    {
+        var plan = await _context.Plannings.AsNoTracking()
+            .Where(p => p.Id == planningId)
+            .Select(p => new
+            {
+                p.TeacherPersonId, p.IsDeleted, p.Status, p.ScheduledDate, p.LaboratoryId, p.StartPeriodId, p.PeriodCount,
+                HasDepartures = p.Departures.Any()
+            })
+            .FirstOrDefaultAsync();
+        if (plan == null || plan.IsDeleted || plan.TeacherPersonId != teacher.PersonId)
+            return new MaterialChangeEligibility(false, "No se encontró tu práctica aprobada.");
+        if (plan.Status != PlanningStatus.Approved)
+            return new MaterialChangeEligibility(false,
+                $"La práctica está {PlanningStatus.Label(plan.Status)}: el cambio de material se pide solo para prácticas aprobadas.");
+        if (plan.HasDepartures)
+            return new MaterialChangeEligibility(false, "La práctica ya tiene material entregado: no se puede cambiar su L-3.");
+        if (plan.ScheduledDate.Date < DateTime.Today)
+            return new MaterialChangeEligibility(false, "La práctica ya pasó: no se puede pedir cambio de material.");
+        if (!await _managements.IsPlanningWritableAsync(planningId))
+            return new MaterialChangeEligibility(false, AcademicManagementService.ReadOnlyMessage);
+        if (plan.LaboratoryId == null || plan.StartPeriodId == null || plan.PeriodCount == null)
+            return new MaterialChangeEligibility(false, "La práctica no tiene horario completo.");
+        if (await PendingMaterialChangeReviewAsync(planningId) != null)
+            return new MaterialChangeEligibility(false, "Ya tienes un pedido de cambio de material en revisión.");
+        return new MaterialChangeEligibility(true, null);
+    }
+
+    public async Task<TeacherOpResult> RequestMaterialChangeAsync(TeacherProfile teacher, int planningId,
+        IReadOnlyList<RequestLineInput> lines, string reason)
+    {
+        var motivo = reason?.Trim();
+        if (string.IsNullOrEmpty(motivo) || motivo.Length < 10 || motivo.Length > 1000)
+            return TeacherOpResult.Fail("Escribe el motivo del cambio (entre 10 y 1000 caracteres).");
+        if (lines.Any(l => l.Quantity < 0 || l.Quantity > 9999 || decimal.Round(l.Quantity, 2) != l.Quantity))
+            return TeacherOpResult.Fail("Las cantidades deben estar entre 0 y 9 999, con hasta 2 decimales.");
+        // El L-3 deseado completo: un artículo ausente o en 0 se quita.
+        var wanted = lines.Where(l => l.Quantity != 0).GroupBy(l => l.ArticleId)
+            .Select(g => new RequestLineInput(g.Key, g.Sum(l => l.Quantity))).ToList();
+        if (wanted.All(l => l.Quantity <= 0))
+            return TeacherOpResult.Fail("Agrega al menos un artículo con cantidad mayor a 0.");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            // Revalidación bajo bloqueo: el revisor pudo aprobar o rechazar otro pedido, o el docente retirarlo.
+            var eligibility = await CanRequestMaterialChangeAsync(teacher, planningId);
+            if (!eligibility.Allowed)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail(eligibility.Reason!);
+            }
+
+            // L-3 vigente por artículo (bajo bloqueo): contra esto se calculan las diferencias del pedido.
+            var current = await _context.PlanningRequirements.AsNoTracking()
+                .Where(r => r.PlanningId == planningId)
+                .Select(r => new { r.ArticleId, r.EquipmentUnitId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity })
+                .ToListAsync();
+            var currentByArticle = current.GroupBy(r => r.ArticleId).ToDictionary(g => g.Key, g => g.Sum(r => r.Quantity));
+            var currentIds = currentByArticle.Keys.ToHashSet();
+            var unitArticles = current.Where(r => r.EquipmentUnitId != null).Select(r => r.ArticleId).ToHashSet();
+
+            // Unidades físicas: solo se mantienen o se quitan; la cantidad del artículo no puede cambiar.
+            foreach (var articleId in unitArticles)
+            {
+                var desired = wanted.FirstOrDefault(l => l.ArticleId == articleId)?.Quantity ?? 0;
+                if (desired > 0 && desired != currentByArticle.GetValueOrDefault(articleId))
+                {
+                    await transaction.RollbackAsync();
+                    return TeacherOpResult.Fail("Las unidades físicas solo se pueden mantener o quitar, no cambiar su cantidad.");
+                }
+            }
+
+            var newIds = wanted.Where(l => l.Quantity > 0 && !currentIds.Contains(l.ArticleId)).Select(l => l.ArticleId).ToList();
+            if (newIds.Count > 0 && await _context.Articles.AsNoTracking()
+                .CountAsync(a => newIds.Contains(a.Id) && a.Status == GeneralStatus.Activo) != newIds.Count)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("Hay artículos agregados que no están activos en el catálogo.");
+            }
+
+            // Tiene que haber al menos una diferencia contra el L-3 vigente (cantidad, artículo nuevo o quitado).
+            var hasDifference = newIds.Count > 0
+                || wanted.Any(l => l.Quantity > 0 && currentIds.Contains(l.ArticleId) && currentByArticle[l.ArticleId] != l.Quantity)
+                || currentIds.Any(id => (wanted.FirstOrDefault(l => l.ArticleId == id)?.Quantity ?? 0) <= 0);
+            if (!hasDifference)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("El L-3 enviado es igual al vigente: no hay cambios que pedir.");
+            }
+
+            var review = new PlanningReview
+            {
+                PlanningId = planningId,
+                Action = PlanningReviewAction.MaterialChangeRequested,
+                FromStatus = PlanningStatus.Approved,
+                ToStatus = PlanningStatus.Approved,
+                Comment = motivo,
+                UserId = teacher.UserId,
+                CreatedDate = DateTime.UtcNow
+            };
+            // Una línea por artículo que cambia: Previous null = nuevo, New null = se quita.
+            foreach (var line in wanted.Where(l => l.Quantity > 0))
+            {
+                if (currentIds.Contains(line.ArticleId))
+                {
+                    var previous = currentByArticle[line.ArticleId];
+                    if (previous != line.Quantity)
+                        review.Lines.Add(new PlanningReviewLine { ArticleId = line.ArticleId, PreviousQuantity = previous, NewQuantity = line.Quantity });
+                }
+                else
+                {
+                    review.Lines.Add(new PlanningReviewLine { ArticleId = line.ArticleId, PreviousQuantity = null, NewQuantity = line.Quantity });
+                }
+            }
+            foreach (var removed in currentIds.Where(id => (wanted.FirstOrDefault(l => l.ArticleId == id)?.Quantity ?? 0) <= 0))
+                review.Lines.Add(new PlanningReviewLine { ArticleId = removed, PreviousQuantity = currentByArticle[removed], NewQuantity = null });
+
+            _context.PlanningReviews.Add(review);
+
+            var plan = await _context.Plannings.AsNoTracking().FirstAsync(p => p.Id == planningId);
+            var daysAhead = MaterialChangeDaysAhead(plan.ScheduledDate, review.CreatedDate);
+            var itemChanges = review.Lines.Count(l => l.PreviousQuantity == null || l.NewQuantity == null);
+            await NotifyReviewersAsync(plan, "Pedido de cambio de material",
+                $"{teacher.Name} · {plan.PracticeName} · {plan.ScheduledDate:dd/MM} {plan.StartTime:hh\\:mm}"
+                    + (daysAhead < MaterialChangeRules.OnTimeDays ? " · último momento" : string.Empty)
+                    + (itemChanges >= MaterialChangeRules.WarningItemCount ? " · 3+ artículos" : string.Empty),
+                MaterialChangeReviewUrl(planningId));
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new TeacherOpResult(true,
+                $"Pedido de cambio de material de {L3Codes.Format(plan.Id, plan.Code)} enviado. Te avisaremos cuando sea revisado.",
+                planningId);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo guardar el pedido de cambio de material {PlanningId}", planningId);
+            return TeacherOpResult.Fail("No se pudo guardar el pedido de cambio de material. Intenta nuevamente.");
+        }
+    }
+
+    public async Task<TeacherOpResult> WithdrawMaterialChangeAsync(TeacherProfile teacher, int planningId)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(p => p.Id == planningId);
+            if (plan == null || plan.IsDeleted || plan.TeacherPersonId != teacher.PersonId)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La solicitud no existe.");
+            }
+            var pending = await PendingMaterialChangeReviewAsync(planningId);
+            if (pending == null)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("No tienes un pedido de cambio de material pendiente.");
+            }
+
+            _context.PlanningReviews.Add(new PlanningReview
+            {
+                PlanningId = planningId, Action = PlanningReviewAction.MaterialChangeWithdrawn,
+                // El pedido no cambia el estado de la práctica: se asienta el estado real (normalmente «Aprobada»).
+                FromStatus = plan.Status, ToStatus = plan.Status,
+                UserId = teacher.UserId, CreatedDate = DateTime.UtcNow
+            });
+            // El pedido salió de revisión: los avisos de los revisores de esa bandeja quedan resueltos.
+            await ResolveRequestNotificationsAsync(MaterialChangeReviewUrl(planningId));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new TeacherOpResult(true,
+                $"Pedido de cambio de material de {L3Codes.Format(plan.Id, plan.Code)} retirado.", planningId);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo retirar el pedido de cambio de material {PlanningId}", planningId);
+            return TeacherOpResult.Fail("No se pudo retirar el pedido. Intenta nuevamente.");
+        }
+    }
+
+    public async Task<TeacherOpResult> ApproveMaterialChangeAsync(int reviewerUserId, int planningId, string? comment,
+        bool allowShortage = false)
+    {
+        var snapshot = await _context.Plannings.AsNoTracking().Include(p => p.StartPeriod).FirstOrDefaultAsync(p => p.Id == planningId);
+        if (snapshot == null) return TeacherOpResult.Fail("La práctica no existe.");
+        if (snapshot.Status != PlanningStatus.Approved)
+            return TeacherOpResult.Fail($"La práctica está {PlanningStatus.Label(snapshot.Status)}: el cambio de material se aprueba solo en una práctica aprobada.");
+        if (!await _managements.IsPlanningWritableAsync(planningId)) return TeacherOpResult.Fail(AcademicManagementService.ReadOnlyMessage);
+        if (snapshot.LaboratoryId is not int labId || snapshot.StartPeriodId is not int startPeriodId || snapshot.PeriodCount is not int count)
+            return TeacherOpResult.Fail("La práctica no tiene horario completo.");
+        var pendingBefore = await PendingMaterialChangeReviewAsync(planningId);
+        if (pendingBefore == null) return TeacherOpResult.Fail("No hay un pedido de cambio de material pendiente.");
+
+        var date = snapshot.ScheduledDate.Date;
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            if (!await _lock.TryAcquireAsync([
+                    PlanningLockResources.Planning(planningId),
+                    PlanningLockResources.ManagementDay(snapshot.ManagementId, date),
+                    PlanningLockResources.LaboratoryDay(labId, date),
+                    PlanningLockResources.TeacherDay(snapshot.TeacherPersonId, date)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            var plan = await _context.Plannings.AsTracking()
+                .Include(p => p.Requirements).ThenInclude(r => r.Assignments)
+                .FirstAsync(p => p.Id == planningId);
+            if (plan.Status != PlanningStatus.Approved)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La práctica cambió de estado mientras se revisaba. Actualiza la página.");
+            }
+            if (await _context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == planningId))
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La práctica ya tiene material entregado: no se puede cambiar su L-3.");
+            }
+            // Relectura bajo bloqueo: el pedido pendiente tiene que seguir siendo el mismo que se revisó.
+            var pending = await PendingMaterialChangeReviewAsync(planningId);
+            if (pending == null || pending.Id != pendingBefore.Id)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("El pedido de cambio cambió mientras se revisaba. Actualiza la página.");
+            }
+            var requestedLines = await _context.PlanningReviewLines.AsNoTracking()
+                .Where(l => l.PlanningReviewId == pending.Id)
+                .ToListAsync();
+
+            ApplyMaterialChangeLines(plan, requestedLines);
+
+            // Sobreventa: el stock se revalida con el L-3 pedido ya aplicado en memoria y excluyendo esta planificación.
+            var finalLines = FinalLines(plan.Requirements.Where(r => _context.Entry(r).State != EntityState.Deleted).ToList(), null);
+            var shortageDetail = await FindShortageDetailAsync(date, startPeriodId, count, finalLines, plan.Id);
+            if (shortageDetail != null && !allowShortage)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("No se puede aprobar el cambio: no alcanza el material en ese horario: " + shortageDetail
+                    + ". Ajusta las cantidades del cambio o marca «Aprobar igual con faltantes».");
+            }
+            var reviewComment = shortageDetail == null ? comment : $"{comment} [Aprobado con faltantes: {shortageDetail}]";
+
+            // Orígenes: sin reparto elegido se recalcula el sugerido, que reemplaza las asignaciones anteriores.
+            var originsError = await ApplyOriginsAsync(plan, finalLines, null, allowShortage, plan.StartTime, plan.EndTime);
+            if (originsError != null)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail(originsError);
+            }
+
+            _context.PlanningReviews.Add(new PlanningReview
+            {
+                PlanningId = plan.Id, Action = PlanningReviewAction.MaterialChangeApproved,
+                FromStatus = PlanningStatus.Approved, ToStatus = PlanningStatus.Approved,
+                Comment = Trim(reviewComment, 1000), UserId = reviewerUserId, CreatedDate = DateTime.UtcNow
+            });
+            await NotifyTeacherAsync(plan, "Cambio de material aprobado",
+                $"{L3Codes.Format(plan.Id, plan.Code)} · {plan.ScheduledDate:dd/MM} {plan.StartTime:hh\\:mm}: el L-3 quedó actualizado.",
+                "fas fa-check-circle text-success");
+            // El pedido salió de revisión: los avisos de los revisores de esa bandeja quedan resueltos.
+            await ResolveRequestNotificationsAsync(MaterialChangeReviewUrl(planningId));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var warnings = new List<string>();
+            if (shortageDetail != null)
+                warnings.Add($"Aprobado con faltantes de material: {shortageDetail}.");
+            return new TeacherOpResult(true, $"Cambio de material de {L3Codes.Format(plan.Id, plan.Code)} aprobado.", plan.Id, warnings);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo aprobar el pedido de cambio de material {PlanningId}", planningId);
+            return TeacherOpResult.Fail("No se pudo aprobar el cambio de material. Intenta nuevamente.");
+        }
+    }
+
+    /// <summary>
+    /// Aplica al L-3 de la planificación las líneas de un pedido de cambio aprobado: actualiza la cantidad pedida
+    /// (Requested/Expected), agrega los artículos nuevos y quita los retirados (borrando primero los orígenes
+    /// asignados de la línea y después la línea). Los artículos con unidad física solo llegan como quitados: la
+    /// validación del pedido impide cambiarles la cantidad.
+    /// </summary>
+    private void ApplyMaterialChangeLines(Planning plan, IReadOnlyList<PlanningReviewLine> lines)
+    {
+        foreach (var line in lines)
+        {
+            var requirements = plan.Requirements.Where(r => r.ArticleId == line.ArticleId).ToList();
+            if (line.NewQuantity == null)
+            {
+                foreach (var requirement in requirements)
+                {
+                    foreach (var assignment in requirement.Assignments.ToList())
+                        _context.PlanningAssignments.Remove(assignment);
+                    _context.PlanningRequirements.Remove(requirement);
+                }
+                continue;
+            }
+            // Cambio de cantidad: la cantidad del artículo queda en su primera línea sin unidad; si el artículo
+            // histórico tenía varias líneas sueltas, las demás se quitan para que la suma no se duplique.
+            // «Agregó» (Previous null) cuyo artículo ya está en el L-3 (p. ej. la práctica se reabrió y se volvió a
+            // aprobar mientras el pedido esperaba) también fija la cantidad en vez de duplicar la línea.
+            var loose = requirements.Where(r => r.EquipmentUnitId == null).ToList();
+            if (loose.Count == 0)
+            {
+                plan.Requirements.Add(new PlanningRequirement
+                {
+                    ArticleId = line.ArticleId,
+                    RequestedQuantity = line.NewQuantity.Value,
+                    ExpectedQuantity = (int)Math.Ceiling(line.NewQuantity.Value)
+                });
+                continue;
+            }
+            for (var i = 0; i < loose.Count; i++)
+            {
+                if (i == 0)
+                {
+                    loose[i].RequestedQuantity = line.NewQuantity.Value;
+                    loose[i].ExpectedQuantity = (int)Math.Ceiling(line.NewQuantity.Value);
+                }
+                else
+                {
+                    foreach (var assignment in loose[i].Assignments.ToList())
+                        _context.PlanningAssignments.Remove(assignment);
+                    _context.PlanningRequirements.Remove(loose[i]);
+                }
+            }
+        }
+    }
+
+    public async Task<TeacherOpResult> RejectMaterialChangeAsync(int reviewerUserId, int planningId, string reason)
+    {
+        var text = reason?.Trim();
+        if (string.IsNullOrEmpty(text) || text.Length < 5)
+            return TeacherOpResult.Fail("Escribe el motivo del rechazo (mínimo 5 caracteres).");
+        if (text.Length > 1000) return TeacherOpResult.Fail("El motivo no puede superar los 1 000 caracteres.");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(p => p.Id == planningId);
+            if (plan == null || plan.IsDeleted)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La práctica no existe.");
+            }
+            var pending = await PendingMaterialChangeReviewAsync(planningId);
+            if (pending == null)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("No hay un pedido de cambio de material pendiente.");
+            }
+
+            _context.PlanningReviews.Add(new PlanningReview
+            {
+                PlanningId = planningId, Action = PlanningReviewAction.MaterialChangeRejected,
+                // El rechazo no cambia el estado de la práctica: se asienta el estado real (normalmente «Aprobada»).
+                FromStatus = plan.Status, ToStatus = plan.Status,
+                Comment = text, UserId = reviewerUserId, CreatedDate = DateTime.UtcNow
+            });
+            await NotifyTeacherAsync(plan, "Cambio de material rechazado",
+                $"{L3Codes.Format(plan.Id, plan.Code)}: revisa el motivo del rechazo.",
+                "fas fa-times-circle text-danger");
+            // El pedido salió de revisión: los avisos de los revisores de esa bandeja quedan resueltos.
+            await ResolveRequestNotificationsAsync(MaterialChangeReviewUrl(planningId));
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new TeacherOpResult(true, $"Cambio de material de {L3Codes.Format(plan.Id, plan.Code)} rechazado.", planningId);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo rechazar el pedido de cambio de material {PlanningId}", planningId);
+            return TeacherOpResult.Fail("No se pudo rechazar el pedido. Intenta nuevamente.");
+        }
+    }
+
+    public async Task<PendingMaterialChangeView?> GetPendingMaterialChangeAsync(int planningId)
+    {
+        var pending = await PendingMaterialChangeReviewAsync(planningId);
+        if (pending == null) return null;
+        var plan = await _context.Plannings.AsNoTracking()
+            .Where(p => p.Id == planningId)
+            .Select(p => new { p.ScheduledDate })
+            .FirstOrDefaultAsync();
+        if (plan == null) return null;
+
+        var lines = (await MaterialChangeLineViewsAsync([pending.Id])).GetValueOrDefault(pending.Id) ?? [];
+        var requestedBy = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == pending.UserId)
+            .Select(u => (u.FirstName + " " + u.LastName).Trim())
+            .FirstOrDefaultAsync();
+        var daysAhead = MaterialChangeDaysAhead(plan.ScheduledDate, pending.CreatedDate);
+        return new PendingMaterialChangeView(pending.Id, planningId, pending.CreatedDate, requestedBy, pending.Comment ?? string.Empty,
+            daysAhead, daysAhead < MaterialChangeRules.OnTimeDays,
+            lines.Count(l => l.IsItemChange) >= MaterialChangeRules.WarningItemCount, lines);
+    }
+
+    public async Task<IReadOnlyList<MaterialChangeInboxRow>> GetPendingMaterialChangesAsync()
+    {
+        var pendientes = await PendingMaterialChangesCoreAsync();
+        if (pendientes.Count == 0) return [];
+
+        var planIds = pendientes.Select(p => p.PlanningId).ToList();
+        var planes = await _context.Plannings.AsNoTracking()
+            .Where(p => planIds.Contains(p.Id) && !p.IsDeleted)
+            .Select(p => new
+            {
+                p.Id, p.Code, p.TeacherPersonId, p.GroupName, p.PracticeName, p.ScheduledDate,
+                Subject = p.Subject != null ? p.Subject.Name : null,
+                LabCode = p.Laboratory != null ? p.Laboratory.Code : null
+            })
+            .ToListAsync();
+        var planPorId = planes.ToDictionary(p => p.Id);
+        var linesByReview = await MaterialChangeLineViewsAsync(pendientes.Select(p => p.ReviewId).ToList());
+
+        // Nombre visible del docente desde Interns (Person.FullName es NotMapped y no se puede consultar).
+        var teacherIds = planes.Select(p => p.TeacherPersonId).Distinct().ToList();
+        var docentes = await _context.Interns.AsNoTracking()
+            .Where(i => teacherIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, i => string.IsNullOrWhiteSpace(i.Title) ? i.Name : $"{i.Title} {i.Name}");
+
+        var result = new List<MaterialChangeInboxRow>();
+        foreach (var pendiente in pendientes)
+        {
+            if (!planPorId.TryGetValue(pendiente.PlanningId, out var plan)) continue;
+            var lines = linesByReview.GetValueOrDefault(pendiente.ReviewId) ?? [];
+            var daysAhead = MaterialChangeDaysAhead(plan.ScheduledDate, pendiente.CreatedDate);
+            var itemChanges = lines.Count(l => l.IsItemChange);
+            result.Add(new MaterialChangeInboxRow(plan.Id, plan.Code, docentes.GetValueOrDefault(plan.TeacherPersonId, "—"),
+                plan.Subject, string.IsNullOrWhiteSpace(plan.GroupName) ? "—" : plan.GroupName!, plan.PracticeName, plan.LabCode,
+                plan.ScheduledDate, pendiente.CreatedDate, daysAhead,
+                daysAhead < MaterialChangeRules.OnTimeDays, itemChanges >= MaterialChangeRules.WarningItemCount,
+                lines.Count(l => !l.IsItemChange), itemChanges, pendiente.Comment ?? string.Empty));
+        }
+        return result.OrderBy(r => r.ScheduledDate).ToList();
+    }
+
+    public async Task<int> CountPendingMaterialChangesAsync() => (await PendingMaterialChangesCoreAsync()).Count;
+
+    public async Task<IReadOnlyList<MaterialLineCheck>> CheckPendingMaterialChangeAsync(int planningId)
+    {
+        var pending = await PendingMaterialChangeReviewAsync(planningId);
+        if (pending == null) return [];
+        var plan = await _context.Plannings.AsNoTracking()
+            .Where(p => p.Id == planningId)
+            .Select(p => new { p.ScheduledDate, p.StartPeriodId, p.PeriodCount })
+            .FirstOrDefaultAsync();
+        if (plan?.StartPeriodId is not int startPeriodId || plan.PeriodCount is not int periodCount) return [];
+
+        // L-3 final del pedido: el vigente con las líneas del pedido aplicadas (agregar, quitar o actualizar).
+        var current = await _context.PlanningRequirements.AsNoTracking()
+            .Where(r => r.PlanningId == planningId)
+            .Select(r => new { r.ArticleId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity })
+            .ToListAsync();
+        var requested = await _context.PlanningReviewLines.AsNoTracking()
+            .Where(l => l.PlanningReviewId == pending.Id)
+            .Select(l => new { l.ArticleId, l.NewQuantity })
+            .ToListAsync();
+        var final = current.GroupBy(r => r.ArticleId).ToDictionary(g => g.Key, g => g.Sum(r => r.Quantity));
+        foreach (var line in requested)
+        {
+            if (line.NewQuantity == null) final.Remove(line.ArticleId);
+            else final[line.ArticleId] = line.NewQuantity.Value;
+        }
+        var lines = final.Where(kv => kv.Value > 0).Select(kv => new RequestLineInput(kv.Key, kv.Value)).ToList();
+        return await CheckMaterialAsync(plan.ScheduledDate.Date, startPeriodId, periodCount, lines, planningId);
     }
 
     // ───────────────────────────── Programación → solicitudes ─────────────────────────────
@@ -1399,6 +1940,92 @@ public sealed class TeacherRequestService : ITeacherRequestService
         return lines.Where(l => l.Quantity > 0).ToList();
     }
 
+    /// <summary>
+    /// Aplica al L-3 de la planificación las líneas ajustadas por el revisor al aprobar: actualiza cantidades, agrega
+    /// los artículos nuevos (que deben seguir activos) y quita los llevados a 0. Devuelve las líneas del review
+    /// (Previous/New por artículo cambiado) o el texto del error cuando hay artículos agregados inactivos.
+    /// </summary>
+    private async Task<(string? Error, List<PlanningReviewLine> Lines)> ApplyAdjustedLinesAsync(Planning plan,
+        IReadOnlyList<RequestLineInput> adjustedLines)
+    {
+        var wanted = adjustedLines.GroupBy(l => l.ArticleId).ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+        var newIds = wanted.Where(w => w.Value > 0).Select(w => w.Key).Where(id => plan.Requirements.All(r => r.ArticleId != id)).ToList();
+        if (newIds.Count > 0 && await _context.Articles.AsNoTracking().CountAsync(a => newIds.Contains(a.Id) && a.Status == GeneralStatus.Activo) != newIds.Count)
+            return ("Hay artículos agregados que no están activos.", []);
+
+        var lines = new List<PlanningReviewLine>();
+        foreach (var req in plan.Requirements.ToList())
+        {
+            var previous = req.RequestedQuantity ?? 0;
+            var next = wanted.GetValueOrDefault(req.ArticleId, previous);
+            if (next == previous) continue;
+            lines.Add(new PlanningReviewLine { ArticleId = req.ArticleId, PreviousQuantity = previous, NewQuantity = next > 0 ? next : null });
+            if (next > 0)
+            {
+                req.RequestedQuantity = next;
+                req.ExpectedQuantity = (int)Math.Ceiling(next);
+            }
+            else
+            {
+                _context.PlanningRequirements.Remove(req);
+            }
+        }
+        foreach (var id in newIds)
+        {
+            plan.Requirements.Add(new PlanningRequirement { ArticleId = id, RequestedQuantity = wanted[id], ExpectedQuantity = (int)Math.Ceiling(wanted[id]) });
+            lines.Add(new PlanningReviewLine { ArticleId = id, PreviousQuantity = null, NewQuantity = wanted[id] });
+        }
+        return (null, lines);
+    }
+
+    /// <summary>
+    /// Detalle de los faltantes de material en el horario con las líneas finales ya aplicadas (excluyendo esta
+    /// planificación, igual que <see cref="CheckMaterialAsync"/>); null si alcanza todo o no hay líneas. El caller
+    /// decide si bloquea la aprobación o la deja pasar con la nota de faltantes.
+    /// </summary>
+    private async Task<string?> FindShortageDetailAsync(DateTime date, int startPeriodId, int periodCount,
+        IReadOnlyList<RequestLineInput> finalLines, int planningId)
+    {
+        if (finalLines.Count == 0) return null;
+        var material = await CheckMaterialAsync(date, startPeriodId, periodCount, finalLines, planningId);
+        var shortages = material.Where(m => m.State == MaterialState.Short).ToList();
+        if (shortages.Count == 0) return null;
+        return string.Join("; ", shortages.Select(s => $"{s.Name}: pide {s.Requested:0.##}, libre {(s.Free ?? 0):0.##}"));
+    }
+
+    /// <summary>
+    /// Revisa y aplica los orígenes (V13) con las líneas finales ya aplicadas: si el revisor no eligió reparto se usa
+    /// el sugerido; si eligió, se valida que cubran exactamente cada línea y que ningún origen entregue más que su
+    /// libre. Reemplaza las asignaciones previas. Devuelve el texto del error o null si quedó aplicado.
+    /// </summary>
+    private async Task<string?> ApplyOriginsAsync(Planning plan, IReadOnlyList<RequestLineInput> finalLines,
+        IReadOnlyList<AssignmentInput>? assignments, bool allowShortage, TimeSpan? start, TimeSpan? end)
+    {
+        var finalByArticle = finalLines.ToDictionary(l => l.ArticleId, l => l.Quantity);
+        var unitLineArticles = plan.Requirements.Where(r => r.EquipmentUnitId != null).Select(r => r.ArticleId).ToHashSet();
+        var catalogUnitArticles = (await _context.Articles.AsNoTracking()
+            .Where(a => finalByArticle.Keys.Contains(a.Id) && a.EquipmentId != null)
+            .Select(a => a.Id).ToListAsync()).ToHashSet();
+        var assignable = finalByArticle
+            .Where(kv => kv.Value > 0 && !unitLineArticles.Contains(kv.Key) && !catalogUnitArticles.Contains(kv.Key))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+        IReadOnlyList<AssignmentInput>? effectiveAssignments = assignments;
+        if (effectiveAssignments == null && assignable.Count > 0)
+        {
+            var suggested = await SuggestAssignmentsCoreAsync(plan.Id, plan.ScheduledDate.Date, plan.StartTime, plan.EndTime, assignable);
+            effectiveAssignments = suggested.SelectMany(s => s.Suggested).ToList();
+        }
+
+        if (effectiveAssignments is { Count: > 0 })
+        {
+            var assignmentError = await ValidateAndApplyAssignmentsAsync(plan, assignable, effectiveAssignments, allowShortage,
+                start, end);
+            if (assignmentError != null) return assignmentError;
+        }
+        return null;
+    }
+
     // ───────────────────────────── Consultas compartidas ─────────────────────────────
 
     public async Task<IReadOnlyList<RequestLineView>> GetLinesAsync(int planningId)
@@ -1448,10 +2075,16 @@ public sealed class TeacherRequestService : ITeacherRequestService
     /// ya no piden acción. La comparación del id es exacta (id=12 no toca id=123). Se llama antes del SaveChanges
     /// de cada transición para que la limpieza quede dentro de la misma transacción.
     /// </summary>
-    private async Task ResolveRequestNotificationsAsync(int planningId)
+    private Task ResolveRequestNotificationsAsync(int planningId) =>
+        ResolveRequestNotificationsAsync($"/LaboratoryOperations/Solicitudes/Revisar?id={planningId}");
+
+    /// <summary>
+    /// Marca como leídos los avisos pendientes de TODOS los revisores cuya URL de acción es la base indicada
+    /// (la URL completa o la misma seguida de más parámetros: id exacto, id=12 no toca id=123). Se llama antes del
+    /// SaveChanges de cada transición para que la limpieza quede dentro de la misma transacción.
+    /// </summary>
+    private async Task ResolveRequestNotificationsAsync(string baseUrl)
     {
-        var baseUrl = $"/LaboratoryOperations/Solicitudes/Revisar?id={planningId}";
-        // Coincidencia exacta del id: la URL completa o el mismo id seguido de otros parámetros.
         var stale = await _context.Notifications
             .AsTracking()
             .Where(n => !n.IsRead && (n.ActionUrl == baseUrl || n.ActionUrl!.StartsWith(baseUrl + "&")))
@@ -1460,7 +2093,17 @@ public sealed class TeacherRequestService : ITeacherRequestService
             notification.IsRead = true;
     }
 
-    private async Task NotifyReviewersAsync(Planning planning, string teacherName, bool resubmitted)
+    private Task NotifyReviewersAsync(Planning planning, string teacherName, bool resubmitted) =>
+        NotifyReviewersAsync(planning,
+            resubmitted ? "Solicitud corregida" : "Nueva solicitud de práctica",
+            $"{teacherName} · {planning.PracticeName} · {planning.ScheduledDate:dd/MM} {planning.StartTime:hh\\:mm}",
+            $"/LaboratoryOperations/Solicitudes/Revisar?id={planning.Id}");
+
+    /// <summary>
+    /// Avisa a todos los revisores activos (Supervisor / Administrador / SuperAdmin) con título, mensaje y URL
+    /// propios; la llamamos dentro de la transacción del caller para que el aviso se confirme con el cambio.
+    /// </summary>
+    private async Task NotifyReviewersAsync(Planning planning, string title, string message, string actionUrl)
     {
         var reviewers = await _context.Users.AsNoTracking()
             .Where(u => u.Status == GeneralStatus.Activo
@@ -1471,9 +2114,9 @@ public sealed class TeacherRequestService : ITeacherRequestService
             _context.Notifications.Add(new Notification
             {
                 UserId = userId,
-                Title = resubmitted ? "Solicitud corregida" : "Nueva solicitud de práctica",
-                Message = Trim($"{teacherName} · {planning.PracticeName} · {planning.ScheduledDate:dd/MM} {planning.StartTime:hh\\:mm}", 255)!,
-                ActionUrl = $"/LaboratoryOperations/Solicitudes/Revisar?id={planning.Id}",
+                Title = title,
+                Message = Trim(message, 255)!,
+                ActionUrl = actionUrl,
                 IconClass = "fas fa-inbox text-primary",
                 ManagementId = planning.ManagementId,
                 Scope = NotificationScopes.Planning,

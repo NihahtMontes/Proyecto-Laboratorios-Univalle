@@ -181,3 +181,30 @@ public sealed record ReviewEventView(int Id, Models.PlanningReviewAction Action,
     string? Comment, string UserName, DateTime Date, IReadOnlyList<ReviewLineView> Lines);
 
 public sealed record ReviewLineView(string ArticleName, decimal? PreviousQuantity, decimal? NewQuantity);
+
+/// <summary>Si el docente puede pedir un cambio de material (L-3) para una práctica aprobada; si no, el motivo en español.</summary>
+public sealed record MaterialChangeEligibility(bool Allowed, string? Reason);
+
+/// <summary>
+/// Línea de un pedido de cambio de material: cantidad vigente del L-3 (<paramref name="Previous"/>; null = artículo
+/// nuevo) y pedida (<paramref name="Proposed"/>; null = se quita). <paramref name="Change"/> es «Aumentó»,
+/// «Disminuyó», «Agregó» o «Quitó»; <paramref name="IsItemChange"/> distingue agregar/quitar de cambiar cantidad.
+/// </summary>
+public sealed record MaterialChangeLineView(int ArticleId, string Code, string Name, string? Category, decimal? Previous,
+    decimal? Proposed, string Change, bool IsItemChange);
+
+/// <summary>
+/// Pedido de cambio de material pendiente de revisión de una práctica aprobada. <paramref name="DaysAhead"/> son los
+/// días entre la fecha local del pedido y la práctica; <paramref name="LastMinute"/> y <paramref name="Warning"/>
+/// aplican las reglas de <see cref="Services.MaterialChangeRules"/>.
+/// </summary>
+public sealed record PendingMaterialChangeView(int ReviewId, int PlanningId, DateTime RequestedAtUtc, string? RequestedBy,
+    string Reason, int DaysAhead, bool LastMinute, bool Warning, IReadOnlyList<MaterialChangeLineView> Lines);
+
+/// <summary>
+/// Fila de la bandeja de pedidos de cambio de material pendientes (una por planificación): qué práctica, quién la
+/// pidió, con cuánta anticipación y cuántas líneas cambian de cantidad o de artículos.
+/// </summary>
+public sealed record MaterialChangeInboxRow(int PlanningId, string? Code, string TeacherName, string? Subject, string? Group,
+    string Practice, string? LabCode, DateTime ScheduledDate, DateTime RequestedAtUtc, int DaysAhead, bool LastMinute,
+    bool Warning, int QuantityChanges, int ItemChanges, string Reason);
