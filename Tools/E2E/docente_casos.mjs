@@ -60,7 +60,7 @@ async function createTeacher(admin, t) {
   await admin.fill('[name="Input.Email"]', `${t.user}@qa.univalle.test`);
   await admin.fill('[name="Input.FirstName"]', "Docente");
   await admin.fill('[name="Input.LastName"]', t.user);
-  await admin.fill('[name="Input.IdentityCard"]', `Q${t.person}${Date.now().toString().slice(-5)}`);
+  await admin.fill('[name="Input.IdentityCard"]', `7${String(t.person).padStart(2, "0").slice(-2)}${Date.now().toString().slice(-4)}`);
   await admin.fill('[name="Input.PhoneNumber"]', "70000009");
   await admin.fill('[name="Input.Password"]', t.pw + "x");
   await admin.locator('[name="Input.MustChangePassword"]').uncheck().catch(() => {});

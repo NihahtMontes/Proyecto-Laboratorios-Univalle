@@ -69,7 +69,7 @@ async function createTeacher(admin, t, shoot) {
   await admin.fill('[name="Input.Email"]', `${t.user}@univalle.edu`);
   await admin.fill('[name="Input.FirstName"]', t.first);
   await admin.fill('[name="Input.LastName"]', t.last);
-  await admin.fill('[name="Input.IdentityCard"]', `QA${t.person}${String(Date.now()).slice(-4)}`);
+  await admin.fill('[name="Input.IdentityCard"]', `7${String(t.person).padStart(2, "0").slice(-2)}${String(Date.now()).slice(-4)}`);
   await admin.fill('[name="Input.PhoneNumber"]', "70000041");
   await admin.fill('[name="Input.Password"]', TEMP);
   if (shoot) await shoot();

@@ -13,7 +13,8 @@ from http_forms import Client, expect
 R = []
 PW = os.environ["E2E_PW"]
 c = Client(os.environ.get("E2E_USER", "qa_super"), PW)
-sup = Client("qa_sup", PW)
+# Supervisor: por defecto la cuenta de la copia vieja (qa_sup con la misma clave); en copias nuevas, supervisor.qa de Tools/QaTestUsers.
+sup = Client(os.environ.get("E2E_SUP_USER", "qa_sup"), os.environ.get("E2E_SUP_PW", PW))
 MGMT = 4
 PLAN_URL = f"/LaboratoryOperations/Planificacion?managementId={MGMT}"
 # Maestros reales de la copia: materia CBC1G5 (Id 4), prácticas 28/29/30, laboratorios H-07 (7), H-01 (1), H-02 (2), docente 39
@@ -53,12 +54,14 @@ dup = post({})
 expect(R, "Planificación: mismo grupo y práctica otra vez", dup, status=200, error="ya tiene planificada esta práctica")
 solape = post({"Input.PracticeId": "28", "Input.GroupName": "QAPB", "Input.StartPeriodId": "2", "Input.PeriodCount": "1"})
 expect(R, "Planificación: laboratorio solapado (P2 sobre P1-P2)", solape, status=200, error="ocupado")
-contiguo = post({"Input.PracticeId": "28", "Input.GroupName": "QAPB", "Input.StartPeriodId": "3", "Input.PeriodCount": "1"})
-expect(R, "Planificación: laboratorio contiguo (P3 pegado a P1-P2) exige un periodo libre", contiguo, status=200, error="periodo libre")
-libre = post({"Input.PracticeId": "28", "Input.GroupName": "QAPB", "Input.StartPeriodId": "4", "Input.PeriodCount": "1"}, follow=False)
-expect(R, "Planificación: P4 libre se acepta", libre, status=302)
+# Regla de limpieza de 10 minutos (2026-11-23): las prácticas pegadas en el mismo laboratorio se permiten.
+contiguo = post({"Input.PracticeId": "28", "Input.GroupName": "QAPB", "Input.StartPeriodId": "3", "Input.PeriodCount": "1"}, follow=False)
+expect(R, "Planificación: laboratorio contiguo (P3 pegado a P1-P2) se acepta: la limpieza es de 10 minutos", contiguo, status=302)
+libre = post({"Input.PracticeId": "28", "Input.GroupName": "QAPD", "Input.StartPeriodId": "4", "Input.PeriodCount": "1"}, follow=False)
+expect(R, "Planificación: P4 (pegado a P3) se acepta", libre, status=302)
 doc = post({"Input.PracticeId": "29", "Input.GroupName": "QAPC", "Input.LaboratoryId": "1"}, follow=False)
-expect(R, "Planificación: mismo docente solapado en OTRO laboratorio NO se valida (se guarda)", doc, status=302)
+# Decisión 2026-10-21: el choque de docente se BLOQUEA (alerta y, para insistir, cuenta regresiva de 5 s con constancia).
+expect(R, "Planificación: mismo docente solapado en OTRO laboratorio se bloquea sin confirmación", doc, status=200, error="docente")
 
 # ---------- edición ----------
 if pid:
@@ -88,7 +91,7 @@ R.append(e2e_lib.Result("Reabrir devuelve la planificación a Planificada", "Pla
 sup_status, sup_loc = sup.probe(f"/LaboratoryOperations/Planificaciones?managementId={MGMT}")
 R.append(e2e_lib.Result("Supervisor ve Planificaciones", 200, sup_status))
 rr = sup.raw_post(reopen_url, [], follow=False, token_from=f"/LaboratoryOperations/Planificaciones?managementId={MGMT}")
-R.append(e2e_lib.Result("Reabrir como Supervisor no está permitido (302 a /Error)", True, rr.status in (302, 403) and "/error" in (rr.location or "").lower() or rr.status == 403, f"status={rr.status} loc={rr.location}"))
+R.append(e2e_lib.Result("Reabrir como Supervisor no está permitido (302 a /Error o /AccesoDenegado)", True, rr.status in (302, 403) and any(x in (rr.location or "").lower() for x in ("/error", "/accesodenegado")) or rr.status == 403, f"status={rr.status} loc={rr.location}"))
 
 # ---------- calendario ----------
 cal = f"/LaboratoryOperations/CalendarioAcademico?managementId={MGMT}"

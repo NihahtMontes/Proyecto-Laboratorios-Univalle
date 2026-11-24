@@ -21,7 +21,7 @@ def defaults(**ov):
     N[0] += 1
     n = N[0]
     d = {"Input.UserName": f"qa{tag}{n}", "Input.Email": f"qa.{tag}.{n}@example.test", "Input.FirstName": "Prueba", "Input.LastName": f"Usuario{n}",
-         "Input.SecondLastName": "", "Input.IdentityCard": "Q" + K.digits(8), "Input.PhoneNumber": "70012345", "Input.Role": "1", "Input.Password": PW,
+         "Input.SecondLastName": "", "Input.IdentityCard": "7" + K.digits(6), "Input.PhoneNumber": "70012345", "Input.Role": "1", "Input.Password": PW,
          "Input.Position": "Tester", "Input.Department": "QA"}
     for k, v in ov.items():
         d["Input." + k] = v
@@ -254,7 +254,7 @@ expect(R, "Usuarios/Edit: correo duplicado de otra cuenta", sub(c, "edit email d
 expect(R, "Usuarios/Edit: clave nueva de 4 caracteres", sub(c, "edit pw corta", E, {"Input.NewPassword": "Ab1!"}), status=200, error="La contraseña debe tener al menos 12 caracteres")
 r = sub(c, "edit pw 8", E, {"Input.NewPassword": "Abcdef1!"})
 check(R, "Usuarios/Edit: clave nueva de 8 caracteres (Identity exige 12) -> error en español", r.status == 200 and bool(r.errors) and not any(re.search(r"\b(Passwords?|must|have at least)\b", e) for e in r.errors), f"status={r.status} errores={r.errors[:3]}")
-r = post(c, "edit POST id 99999", "/Users/Edit/99999", [("Input.FirstName", "Zz"), ("Input.LastName", "Zz"), ("Input.IdentityCard", "ZZ" + K.digits(6)), ("Input.Email", f"zz.{tag}@example.test"), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")], "/Users/Create")
+r = post(c, "edit POST id 99999", "/Users/Edit/99999", [("Input.FirstName", "Zz"), ("Input.LastName", "Zz"), ("Input.IdentityCard", "8" + K.digits(6)), ("Input.Email", f"zz.{tag}@example.test"), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")], "/Users/Create")
 check(R, "Usuarios/Edit: POST sobre un usuario inexistente -> 404", r.status == 404, f"status={r.status}")
 
 # edición válida
@@ -367,7 +367,7 @@ for bid in ("abc", "1.5", "99999999999", "2147483648"):
 NOTES.append("Usuarios/Details con id inexistente (99999, -1, 0) responde 302 a /Error ('No se encontro el usuario solicitado.') en lugar de 404 (Details.cshtml.cs, rama user == null).")
 for p in ("Edit", "Delete"):
     for bid in ("99999", "-1", "abc"):
-        campos = [("Input.FirstName", "Zz"), ("Input.LastName", "Zz"), ("Input.IdentityCard", "ZZ" + K.digits(6)), ("Input.Email", f"zz.{K.rnd()}@example.test"), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")] if p == "Edit" else [("AppUser.Id", "0")]
+        campos = [("Input.FirstName", "Zz"), ("Input.LastName", "Zz"), ("Input.IdentityCard", "8" + K.digits(6)), ("Input.Email", f"zz.{K.rnd()}@example.test"), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")] if p == "Edit" else [("AppUser.Id", "0")]
         r = post(c, f"POST {p} {bid}", f"/Users/{p}/{bid}", campos, "/Users/Create")
         check(R, f"Usuarios: POST /Users/{p}/{bid} -> 404", r.status == 404, f"status={r.status}")
 K.guard_anon("Usuarios", ["/Users", "/Users/Create", f"/Users/Edit/{id_adm}", f"/Users/Delete/{id_adm}", f"/Users/Details/{id_adm}"],

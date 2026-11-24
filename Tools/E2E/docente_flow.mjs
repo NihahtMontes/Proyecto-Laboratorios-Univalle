@@ -64,7 +64,7 @@ try {
   await admin.fill('[name="Input.Email"]', `${TEACHER}@qa.univalle.test`);
   await admin.fill('[name="Input.FirstName"]', "Docente");
   await admin.fill('[name="Input.LastName"]', "Prueba");
-  await admin.fill('[name="Input.IdentityCard"]', `Q${Date.now().toString().slice(-8)}`);
+  await admin.fill('[name="Input.IdentityCard"]', `7${Date.now().toString().slice(-6)}`);
   await admin.fill('[name="Input.PhoneNumber"]', "70000004");
   await admin.fill('[name="Input.Password"]', TEMP_PW);
   await shot(admin, "01_alta_docente");

@@ -257,7 +257,8 @@ try {
   const base = { subject: IMPORT.subject, group: IMPORT.group, lab: IMPORT.lab, teacher: IMPORT.teacher, count: 2 };
   const rows = [
     { ...base, practice: "PRA-IGA3G8-01", date: "2026-12-01", start: 3 },                 // fila 2: nueva, repetida con la 6
-    { ...base, practice: "PRA-IGA3G8-02", date: "2026-12-02", start: 3 },                 // fila 3: nueva y limpia
+    // fila 3: nueva y limpia. Desde el 18/11 el grupo C de IGA3G8 ya tiene planificada la 02 (PRA-01218) en EXP: se usa otro grupo.
+    { ...base, subject: "NPC1N7", group: "A1", lab: "H-06", teacher: "Laura echeverria", practice: "PRA-NPC1N7-06", date: "2026-12-02", start: 3 },
     { ...base, practice: IMPORT.existingPractice, date: "2026-12-01", start: 8 },         // fila 4: ya cargada → decidir
     { ...base, practice: "PRACTICA-INVENTADA", date: "2026-12-02", start: 8, teacher: "Pedro" }, // fila 5: práctica y docente con error
     { ...base, practice: "PRA-IGA3G8-01", date: "2026-12-03", start: 9 }                  // fila 6: repetida con la 2
@@ -302,7 +303,7 @@ try {
   await settle(admin);
   const marks = Number(sql("SELECT MaxPlan FROM dbo.E2E_Marks"));
   const created = sql(`SELECT STRING_AGG(CONCAT(p.Status,' ',CONVERT(varchar(10),p.ScheduledDate,23),' P',cp.[Order],'x',p.PeriodCount,' ',l.Code,' req',q.n), '; ') WITHIN GROUP (ORDER BY p.ScheduledDate) FROM Plannings p JOIN ClassPeriods cp ON cp.Id=p.StartPeriodId JOIN Laboratories l ON l.Id=p.LaboratoryId JOIN PracticeSchedules s ON s.Id=p.PracticeScheduleId CROSS APPLY (SELECT COUNT(*) n FROM PlanningRequirements r WHERE r.PlanningId=p.Id) q WHERE p.Id > ${marks} AND s.ImportBatchId > (SELECT MaxBatch FROM dbo.E2E_Marks)`);
-  check("Importar: se crean las 2 prácticas nuevas, aprobadas y con código", /^Aprobada 2026-12-01 P3x2 H-07 req\d+; Aprobada 2026-12-02 P3x2 H-07 req\d+$/.test(created)
+  check("Importar: se crean las 2 prácticas nuevas, aprobadas y con código", /^Aprobada 2026-12-01 P3x2 H-07 req\d+; Aprobada 2026-12-02 P3x2 H-06 req\d+$/.test(created)
     && Number(sql(`SELECT COUNT(*) FROM Plannings WHERE Id > ${marks} AND Code LIKE 'PRA-%' AND PracticeScheduleId IN (SELECT Id FROM PracticeSchedules WHERE ImportBatchId > (SELECT MaxBatch FROM dbo.E2E_Marks))`)) === 2, created);
   const overwritten = sql(`SELECT CONCAT(CONVERT(varchar(10),p.ScheduledDate,23),' P',cp.[Order],'x',p.PeriodCount,' ',p.Status) FROM Plannings p JOIN ClassPeriods cp ON cp.Id=p.StartPeriodId WHERE p.Id=${IMPORT.existing}`);
   check("Importar: la sobrescrita se mueve y conserva su estado", overwritten === "2026-12-01 P8x2 Aprobada", overwritten);
@@ -324,7 +325,7 @@ try {
   await shot(teacher, "E1_docente_semana");
   await teacher.goto(`${BASE}/Docente/Disponibilidad?view=semana&date=${moveDest ? moveDest[0] : "2026-12-14"}&labId=6`);
   await settle(teacher);
-  check("Docente: su clase reprogramada aparece como «Tuya»", await teacher.locator(".dc-cell.is-mine a.dv-link").count() >= 1, `${await teacher.locator(".dc-cell.is-mine").count()} celdas`);
+  check("Docente: su clase reprogramada aparece como suya (con el nombre de la práctica, ya no «Tuya»)", await teacher.locator(".dc-cell.is-mine a.dv-link").count() >= 1, `${await teacher.locator(".dc-cell.is-mine").count()} celdas`);
   await shot(teacher, "E2_docente_semana_tuya");
   const freeLink = teacher.locator(".dc-cell.is-free a.dv-link").first();
   const freeHref = await freeLink.getAttribute("href");
