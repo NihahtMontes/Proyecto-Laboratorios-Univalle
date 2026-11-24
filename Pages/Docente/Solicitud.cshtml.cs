@@ -22,6 +22,12 @@ public class SolicitudModel : TeacherPageBase
     public bool HasDeparture { get; private set; }
     public int IncidentCount { get; private set; }
 
+    /// <summary>Si el docente puede pedir un cambio de material (L-3) sobre esta práctica aprobada.</summary>
+    public MaterialChangeEligibility? ChangeEligibility { get; private set; }
+
+    /// <summary>Pedido de cambio de material pendiente de revisión (null si no hay).</summary>
+    public PendingMaterialChangeView? PendingChange { get; private set; }
+
     public bool CanEdit => Row.Status == PlanningStatus.Observed && Window.IsOpen;
     public bool CanWithdraw => PlanningStatus.PendingReview.Contains(Row.Status);
     public bool CanPrint => Row.Status is PlanningStatus.Approved or PlanningStatus.Finalized;
@@ -41,6 +47,14 @@ public class SolicitudModel : TeacherPageBase
     public async Task<IActionResult> OnPostWithdrawAsync(int id, string? reason)
     {
         var result = await Requests.WithdrawAsync(Teacher, id, reason);
+        if (result.Ok) TempData.Success(result.Message); else TempData.Error(result.Message);
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>El docente retira su pedido de cambio de material pendiente; la práctica sigue aprobada.</summary>
+    public async Task<IActionResult> OnPostWithdrawChangeAsync(int id)
+    {
+        var result = await Requests.WithdrawMaterialChangeAsync(Teacher, id);
         if (result.Ok) TempData.Success(result.Message); else TempData.Error(result.Message);
         return RedirectToPage(new { id });
     }
@@ -80,6 +94,8 @@ public class SolicitudModel : TeacherPageBase
         IncidentCount = extra.Incidents;
         Lines = await Requests.GetLinesAsync(id);
         History = await Requests.GetHistoryAsync(id);
+        ChangeEligibility = await Requests.CanRequestMaterialChangeAsync(Teacher, id);
+        PendingChange = await Requests.GetPendingMaterialChangeAsync(id);
         return true;
     }
 }

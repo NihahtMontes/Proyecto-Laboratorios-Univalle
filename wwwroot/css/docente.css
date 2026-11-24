@@ -178,3 +178,13 @@
 .dc-cell.is-free .dv-link { color: #64748b; }
 .dc-cell.is-free .dv-link:hover, .dc-cell.is-free .dv-link:focus { background: #7460ee; color: #fff; border-radius: 6px; }
 .dc-cell.is-mine .dv-link:hover, .dc-cell.is-minepending .dv-link:hover { text-decoration: underline; }
+
+/* Pedido de cambio de material (L-3) del docente: tabla editable, buscador y resultados */
+.cm-search-box { position: relative; }
+.cm-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; max-height: 300px; overflow-y: auto; border-radius: 10px; }
+.cm-results .cm-result { cursor: pointer; text-align: left; }
+.cm-row-removed td { background: #f8f9fa !important; }
+.cm-row-removed td:first-child { text-decoration: line-through; color: #adb5bd; }
+.cm-row-new td:first-child::after { content: "nuevo"; font-size: .68rem; font-weight: 700; color: var(--dc-ok); background: #e8f8f4; border-radius: 999px; padding: 1px 8px; margin-left: 8px; vertical-align: middle; }
+.cm-qty { width: 92px; }
+.cm-students { width: 120px; }

@@ -13,6 +13,16 @@ namespace Proyecto_Laboratorios_Univalle.Services;
 /// </summary>
 public sealed class SidebarCountsService
 {
+    /// <summary>
+    /// Acciones 8-11 del historial que abren o cierran un pedido de cambio de material (L-3); el pedido sigue
+    /// pendiente mientras el más reciente de esas acciones sea «Pidió cambio de material» (8).
+    /// </summary>
+    private static readonly PlanningReviewAction[] MaterialChangeActions =
+    [
+        PlanningReviewAction.MaterialChangeRequested, PlanningReviewAction.MaterialChangeApproved,
+        PlanningReviewAction.MaterialChangeRejected, PlanningReviewAction.MaterialChangeWithdrawn
+    ];
+
     private readonly ApplicationDbContext _context;
     private readonly ILogger<SidebarCountsService> _logger;
 
@@ -32,9 +42,17 @@ public sealed class SidebarCountsService
                 || user.IsInRole(AuthorizationHelper.RoleSuperAdmin));
         try
         {
+            // Una sola consulta traducida a SQL (corre en cada página): solicitudes en revisión MÁS pedidos de
+            // cambio de material (L-3) pendientes. El pedido cuenta como pendiente cuando el review más reciente
+            // de acciones 8-11 (por CreatedDate y luego Id) sigue siendo MaterialChangeRequested: la misma regla
+            // que PendingMaterialChangeReviewAsync de TeacherRequestService.
             var pending = isReviewer
                 ? await _context.Plannings.AsNoTracking()
-                    .CountAsync(p => !p.IsDeleted && p.Status == PlanningStatus.Requested)
+                    .CountAsync(p => !p.IsDeleted && (p.Status == PlanningStatus.Requested
+                        || p.Reviews.Where(r => MaterialChangeActions.Contains(r.Action))
+                            .OrderByDescending(r => r.CreatedDate).ThenByDescending(r => r.Id)
+                            .Select(r => (int?)r.Action).FirstOrDefault()
+                            == (int)PlanningReviewAction.MaterialChangeRequested))
                 : 0;
             var observed = teacherOnly && TeacherAccess.PersonId(user) is int personId
                 ? await _context.Plannings.AsNoTracking()

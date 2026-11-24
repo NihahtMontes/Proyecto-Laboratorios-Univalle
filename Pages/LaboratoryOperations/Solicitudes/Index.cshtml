@@ -3,6 +3,7 @@
 @using System.Globalization
 @using Proyecto_Laboratorios_Univalle.Models
 @using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = "Solicitudes de docentes";
     ViewData["Section"] = "Planificación académica";
@@ -48,7 +49,7 @@
             <li class="nav-item">
                 <a class="nav-link @(Model.Tab == t.Key ? "active" : null)" asp-page="./Index" asp-all-route-data="@Model.FilterRoute(t.Key)" data-tab="@t.Key">
                     <i class="@t.Icon mr-1"></i>@t.Label
-                    <span class="badge badge-pill @(Model.Tab == t.Key ? "badge-light" : t.Key == "revisar" && count > 0 ? "badge-danger" : "badge-secondary") ml-1">@count</span>
+                    <span class="badge badge-pill @(Model.Tab == t.Key ? "badge-light" : t.Key == "revisar" && count > 0 ? "badge-danger" : t.Key == "cambios" && count > 0 ? "badge-warning" : "badge-secondary") ml-1">@count</span>
                 </a>
             </li>
         }
@@ -152,7 +153,79 @@
 
     <div class="card border-0 shadow-sm" style="border-radius:16px;">
         <div class="card-body p-0">
-            @if (Model.Rows.Count == 0)
+            @if (Model.Tab == "cambios")
+            {
+                <!-- Pedidos de cambio de material (L-3) sobre prácticas ya aprobadas -->
+                @if (Model.ChangeRows.Count == 0)
+                {
+                    <div class="dc-empty">
+                        <i class="fas fa-exchange-alt text-success"></i>
+                        <div class="font-weight-bold text-dark">@(Model.HasFilters ? "Ningún pedido de cambio coincide con los filtros." : "¡Bandeja al día! No hay pedidos de cambio de material pendientes.")</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Práctica</th>
+                                    <th>Docente</th>
+                                    <th>Fecha de práctica</th>
+                                    <th>Cambios</th>
+                                    <th>Alertas</th>
+                                    <th>Motivo</th>
+                                    <th class="text-right"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.ChangeRows)
+                                {
+                                    <tr class="dc-inbox-row">
+                                        <td>
+                                            <span class="font-weight-bold text-dark">@row.Practice</span>
+                                            <div class="small text-muted">@row.Code · @row.Subject · Gr. @row.Group</div>
+                                        </td>
+                                        <td class="small">@row.Teacher</td>
+                                        <td class="text-nowrap">
+                                            <div class="text-capitalize font-weight-bold">@row.Date.ToString("ddd d MMM", es)</div>
+                                            <span class="badge @(row.DaysAhead <= 2 ? "badge-danger" : row.DaysAhead <= 5 ? "badge-warning" : "badge-light border")">
+                                                @row.DaysAheadText
+                                            </span>
+                                            <div class="small text-muted">@row.DaysAhead día(s) de anticipación al pedir</div>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @if (row.QuantityChanges > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-primary" title="Cambios de cantidad de los mismos artículos"><i class="fas fa-sliders-h mr-1"></i>@row.QuantityChanges de cantidad</span>
+                                            }
+                                            @if (row.ItemChanges > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-orange" title="Artículos agregados o quitados"><i class="fas fa-exchange-alt mr-1"></i>@row.ItemChanges de artículos</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (row.LastMinute)
+                                            {
+                                                <span class="badge badge-pill badge-orange" title="Pedido con menos de @MaterialChangeRules.OnTimeDays días de anticipación a la práctica"><i class="fas fa-hourglass-half mr-1"></i>Último momento</span>
+                                            }
+                                            @if (row.Warning)
+                                            {
+                                                <span class="badge badge-pill badge-danger" title="@(MaterialChangeRules.WarningItemCount) o más artículos agregados o quitados en una misma práctica"><i class="fas fa-exclamation-triangle mr-1"></i>Llamada de atención</span>
+                                            }
+                                        </td>
+                                        <td class="small text-muted text-truncate" style="max-width:280px;" title="@row.Reason">@row.Reason</td>
+                                        <td class="text-right">
+                                            <a asp-page="./RevisarCambio" asp-route-id="@row.PlanningId" class="btn btn-sm rounded-pill px-3 btn-primary">Revisar<i class="fas fa-arrow-right ml-1"></i></a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+            else if (Model.Rows.Count == 0)
             {
                 <div class="dc-empty">
                     <i class="fas fa-inbox text-success"></i>

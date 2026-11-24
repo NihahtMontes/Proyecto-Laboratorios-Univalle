@@ -1,0 +1,232 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.Solicitudes.RevisarCambioModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Services
+@using Proyecto_Laboratorios_Univalle.Services.TeacherRequests
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@{
+    ViewData["Title"] = $"Revisar cambio de material · {Model.Code}";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+    var p = Model.Plan;
+    var pend = Model.Pending;
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">
+                <a asp-page="./Index" asp-route-tab="cambios" class="text-reset">SOLICITUDES DE DOCENTES</a> <i class="fas fa-chevron-right mx-1 small"></i> CAMBIO DE MATERIAL · @Model.Code
+            </h4>
+            <h2 class="font-weight-bold text-dark mb-1"><i class="fas fa-exchange-alt mr-2" style="color:#7460ee;"></i>@p.PracticeName</h2>
+            <span class="badge badge-pill badge-success px-3 py-2"><i class="fas fa-check-circle mr-1"></i>Práctica aprobada</span>
+            <span class="text-muted small ml-2"><i class="fas fa-user mr-1"></i>@Model.TeacherName · @(p.Subject?.Name ?? "—") · Grupo @(p.CourseGroup?.Name ?? p.GroupName)</span>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            <a asp-page="./Revisar" asp-route-id="@p.Id" class="btn btn-light border rounded-pill px-3"><i class="fas fa-file-alt mr-1"></i>Ver la solicitud original</a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        <!-- Pedido y material -->
+        <div class="col-lg-7 mb-4">
+            <!-- Datos del pedido -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px; border-left:4px solid #7460ee;">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center mb-3">
+                        <h5 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-exchange-alt mr-2" style="color:#7460ee;"></i>Pedido de cambio de material en revisión</h5>
+                        @if (pend.LastMinute)
+                        {
+                            <span class="badge badge-pill badge-orange mr-1" title="Pedido con menos de @MaterialChangeRules.OnTimeDays días de anticipación a la práctica"><i class="fas fa-hourglass-half mr-1"></i>Último momento</span>
+                        }
+                        @if (pend.Warning)
+                        {
+                            <span class="badge badge-pill badge-danger mr-1" title="@(MaterialChangeRules.WarningItemCount) o más artículos agregados o quitados en una misma práctica"><i class="fas fa-exclamation-triangle mr-1"></i>Llamada de atención</span>
+                        }
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Fecha de práctica</div>
+                            <div class="font-weight-bold text-dark text-capitalize">@p.ScheduledDate.ToString("dddd d 'de' MMMM", es)</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Horario</div>
+                            <div class="font-weight-bold text-dark">@PlanningStatusView.TimeText(Model.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate)</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Laboratorio</div>
+                            <div class="font-weight-bold text-dark">@p.Laboratory?.Code</div>
+                            <div class="small text-muted">@p.Laboratory?.Name</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Anticipación</div>
+                            <div class="font-weight-bold text-dark">@pend.DaysAhead día(s)</div>
+                            <div class="small text-muted">pidió el @BoliviaTime.ToLocal(pend.RequestedAtUtc).ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    </div>
+                    <div class="p-3 rounded bg-light small"><i class="fas fa-comment-alt mr-1 text-muted"></i><strong>Motivo del docente:</strong> @pend.Reason</div>
+                </div>
+            </div>
+
+            @if (Model.ShortCount > 0)
+            {
+                <div class="alert border-0 shadow-sm d-flex align-items-center mb-4" style="background:#fff8e8;">
+                    <i class="fas fa-exclamation-triangle fa-2x mr-3 text-warning"></i>
+                    <div><strong>Con el pedido aplicado faltan @Model.ShortCount artículo(s).</strong>
+                        <div class="small">Revisa la columna Material: puedes rechazar el pedido, o aprobarlo igual marcando «Aprobar igual con faltantes» (queda registrado en el historial).</div>
+                    </div>
+                </div>
+            }
+
+            <!-- Antes → Después -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-dark mb-1"><i class="fas fa-list mr-2" style="color:#7460ee;"></i>Antes → Después del pedido</h5>
+                    <p class="small text-muted">El L-3 quedaría así cuando apruebes el cambio; la columna Material usa el stock en el horario de la práctica con el pedido ya aplicado.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Artículo</th>
+                                    <th class="text-center">Vigente</th>
+                                    <th class="text-center">Pedido</th>
+                                    <th class="text-center">Cambio</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-center">Material</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var line in Model.ReviewLines)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong class="text-dark">@line.Line.Name</strong> <small class="text-muted">@line.Line.Code</small>
+                                            @if (line.Check != null)
+                                            {
+                                                <div class="dc-explain">@line.Check.Explanation</div>
+                                            }
+                                        </td>
+                                        <td class="text-center align-middle">@(line.Line.Previous?.ToString("0.##") ?? "nuevo")</td>
+                                        <td class="text-center align-middle">@(line.Line.Proposed?.ToString("0.##") ?? "se quita")</td>
+                                        <td class="text-center align-middle"><span class="badge badge-pill @(line.Line.IsItemChange ? "badge-light border text-dark" : "badge-primary")">@line.Line.Change</span></td>
+                                        <td class="text-center align-middle">
+                                            <span class="badge badge-pill badge-@(line.Line.IsItemChange ? "orange" : "secondary")">@(line.Line.IsItemChange ? MaterialChangeRules.ItemKind : MaterialChangeRules.QuantityKind)</span>
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            @if (line.Check != null)
+                                            {
+                                                <span class="dc-light dc-light--@line.Check.StateCss" title="@line.Check.StateText"></span>
+                                                <span class="badge badge-pill badge-@line.Check.StateCss">@line.MaterialText</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- L-3 vigente plegable -->
+            <details class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <summary class="card-body font-weight-bold text-dark" style="cursor:pointer;">
+                    <i class="fas fa-box-open mr-2" style="color:#7460ee;"></i>L-3 vigente (@Model.Lines.Count artículo(s)) <i class="fas fa-chevron-down small text-muted ml-1"></i>
+                </summary>
+                <div class="card-body pt-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light"><tr><th>Artículo</th><th>Categoría</th><th class="text-right">Cantidad</th></tr></thead>
+                            <tbody>
+                                @foreach (var line in Model.Lines)
+                                {
+                                    <tr>
+                                        <td><strong class="text-dark">@line.Name</strong><div class="small text-muted">@line.Code</div></td>
+                                        <td class="small text-muted align-middle">@line.Category</td>
+                                        <td class="text-right align-middle">@line.Quantity.ToString("0.##") <small class="text-muted">@line.Unit</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Historial -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-history mr-2" style="color:#7460ee;"></i>Historial</h5>
+                    <div class="dc-timeline">
+                        @foreach (var h in Model.History)
+                        {
+                            var (icon, color) = h.Action switch
+                            {
+                                PlanningReviewAction.Submitted => ("fas fa-paper-plane", "#7460ee"),
+                                PlanningReviewAction.Resubmitted => ("fas fa-redo", "#7460ee"),
+                                PlanningReviewAction.Observed => ("fas fa-comment-dots", "#fb8c00"),
+                                PlanningReviewAction.Approved => ("fas fa-check", "#36bea6"),
+                                PlanningReviewAction.ApprovedWithChanges => ("fas fa-clipboard-check", "#36bea6"),
+                                PlanningReviewAction.Rejected => ("fas fa-times", "#f62d51"),
+                                PlanningReviewAction.MaterialChangeRequested => ("fas fa-exchange-alt", "#7460ee"),
+                                PlanningReviewAction.MaterialChangeApproved => ("fas fa-check-circle", "#36bea6"),
+                                PlanningReviewAction.MaterialChangeRejected => ("fas fa-ban", "#f62d51"),
+                                PlanningReviewAction.MaterialChangeWithdrawn => ("fas fa-undo", "#9aa0a6"),
+                                _ => ("fas fa-circle", "#7460ee")
+                            };
+                            <div class="dc-tl-item">
+                                <span class="dc-tl-item__dot" style="background:@color;"><i class="@icon"></i></span>
+                                <div class="dc-tl-item__title">@h.ActionText</div>
+                                <div class="dc-tl-item__meta">@h.UserName · @BoliviaTime.ToLocal(h.Date).ToString("dd/MM/yyyy HH:mm")</div>
+                                @if (!string.IsNullOrWhiteSpace(h.Comment))
+                                {
+                                    <div class="dc-tl-item__comment">@h.Comment</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones del revisor -->
+    <div class="card border-0 shadow mb-4 dc-sticky" style="border-radius:16px; bottom:16px; top:auto; z-index:5;">
+        <div class="card-body d-flex flex-wrap align-items-center py-3">
+            <div class="small text-muted mr-auto mb-2 mb-md-0"><i class="fas fa-gavel mr-1"></i>Decide sobre el pedido de <strong>@Model.Code</strong>: el L-3 vigente solo cambia si apruebas.</div>
+            <form method="post" asp-page-handler="Reject" asp-route-id="@p.Id" id="rcRejectForm" class="d-inline"><input type="hidden" name="comment" /></form>
+            <form method="post" asp-page-handler="Approve" asp-route-id="@p.Id" id="rcApproveForm" class="d-flex flex-wrap align-items-center">
+                @if (Model.ShortCount > 0)
+                {
+                    <div class="custom-control custom-checkbox mr-3 mb-1">
+                        <input type="checkbox" class="custom-control-input" id="rc-allow-shortage" name="allowShortage" value="true" />
+                        <label class="custom-control-label small font-weight-bold" for="rc-allow-shortage">Aprobar igual con faltantes (quedará registrado en el historial)</label>
+                    </div>
+                }
+                <div class="form-group mb-1 mr-2">
+                    <label class="sr-only" for="rc-comment">Comentario para el docente (opcional)</label>
+                    <input type="text" class="form-control" id="rc-comment" name="comment" maxlength="1000" placeholder="Comentario para el docente (opcional)" style="width:280px;" />
+                </div>
+            </form>
+            <button type="button" class="btn btn-outline-danger rounded-pill px-3 mr-2 mb-1" id="rc-reject"><i class="fas fa-times mr-1"></i>Rechazar</button>
+            <button type="button" class="btn btn-success rounded-pill px-4 mb-1" id="rc-approve"><i class="fas fa-exchange-alt mr-1"></i>Aprobar cambio</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/revisar-cambio-material.js" asp-append-version="true"></script>
+}

@@ -3,6 +3,7 @@
 @using System.Globalization
 @using Proyecto_Laboratorios_Univalle.Models
 @using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = $"Solicitud {Model.Code}";
     ViewData["Section"] = "Portal docente";
@@ -39,6 +40,10 @@
             @if (Model.CanEdit)
             {
                 <a asp-page="./NuevaSolicitud" asp-route-id="@r.Id" class="btn rounded-pill px-4 text-white mb-1" style="background:#fb8c00;"><i class="fas fa-edit mr-1"></i>Corregir y reenviar</a>
+            }
+            @if (Model.ChangeEligibility?.Allowed == true)
+            {
+                <a asp-page="./CambioMaterial" asp-route-id="@r.Id" class="btn rounded-pill px-4 text-white mb-1" style="background:#7460ee;" id="btnPedirCambio" title="Pedir un cambio del material (L-3) de esta práctica aprobada"><i class="fas fa-exchange-alt mr-1"></i>Pedir cambio de material</a>
             }
             @if (Model.CanPrint)
             {
@@ -125,6 +130,52 @@
                 </div>
             </div>
 
+            @if (Model.PendingChange is { } pend)
+            {
+                <!-- Pedido de cambio de material en revisión -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px; border-left:4px solid #7460ee;">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <h5 class="font-weight-bold text-dark mb-0 mr-2"><i class="fas fa-exchange-alt mr-2" style="color:#7460ee;"></i>Pedido de cambio de material en revisión</h5>
+                            @if (pend.LastMinute)
+                            {
+                                <span class="badge badge-pill badge-orange mr-1" title="Pedido con menos de @MaterialChangeRules.OnTimeDays días de anticipación a la práctica"><i class="fas fa-hourglass-half mr-1"></i>Último momento</span>
+                            }
+                            @if (pend.Warning)
+                            {
+                                <span class="badge badge-pill badge-danger mr-1" title="@(MaterialChangeRules.WarningItemCount) o más artículos agregados o quitados en una misma práctica"><i class="fas fa-exclamation-triangle mr-1"></i>Llamada de atención</span>
+                            }
+                        </div>
+                        <div class="small text-muted mb-3">
+                            Pediste el cambio el @BoliviaTime.ToLocal(pend.RequestedAtUtc).ToString("dd/MM/yyyy HH:mm") ·
+                            faltan <strong>@pend.DaysAhead día(s)</strong> para la práctica. El L-3 vigente sigue funcionando hasta que la Inge revise tu pedido.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-2">
+                                <thead class="thead-light"><tr><th>Artículo</th><th class="text-center">Vigente</th><th class="text-center">Pedido</th><th class="text-center">Cambio</th></tr></thead>
+                                <tbody>
+                                    @foreach (var l in pend.Lines)
+                                    {
+                                        <tr>
+                                            <td><strong class="text-dark">@l.Name</strong><div class="small text-muted">@l.Code</div></td>
+                                            <td class="text-center align-middle">@(l.Previous?.ToString("0.##") ?? "nuevo")</td>
+                                            <td class="text-center align-middle">@(l.Proposed?.ToString("0.##") ?? "se quita")</td>
+                                            <td class="text-center align-middle">
+                                                <span class="badge badge-pill badge-@(l.IsItemChange ? "light border text-dark" : "primary")">@l.Change</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-3 rounded bg-light small mb-3"><i class="fas fa-comment-alt mr-1 text-muted"></i><strong>Tu motivo:</strong> @pend.Reason</div>
+                        <form method="post" asp-page-handler="WithdrawChange" asp-route-id="@r.Id" id="withdrawChangeForm" class="mb-1">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="btnWithdrawChange"><i class="fas fa-undo mr-1"></i>Retirar pedido</button>
+                        </form>
+                    </div>
+                </div>
+            }
+
             <!-- Material -->
             <div class="card border-0 shadow-sm" style="border-radius:16px;">
                 <div class="card-body">
@@ -185,6 +236,10 @@
                                     PlanningReviewAction.Approved => ("fas fa-check", "#36bea6"),
                                     PlanningReviewAction.ApprovedWithChanges => ("fas fa-clipboard-check", "#36bea6"),
                                     PlanningReviewAction.Rejected => ("fas fa-times", "#f62d51"),
+                                    PlanningReviewAction.MaterialChangeRequested => ("fas fa-exchange-alt", "#7460ee"),
+                                    PlanningReviewAction.MaterialChangeApproved => ("fas fa-check-circle", "#36bea6"),
+                                    PlanningReviewAction.MaterialChangeRejected => ("fas fa-ban", "#f62d51"),
+                                    PlanningReviewAction.MaterialChangeWithdrawn => ("fas fa-undo", "#9aa0a6"),
                                     _ => ("fas fa-undo", "#9aa0a6")
                                 };
                                 <div class="dc-tl-item">
@@ -200,7 +255,7 @@
                                         <ul class="small mt-2 mb-0 pl-3">
                                             @foreach (var l in h.Lines)
                                             {
-                                                <li>@l.ArticleName: @(l.PreviousQuantity?.ToString("0.##") ?? "—") → <strong>@(l.NewQuantity?.ToString("0.##") ?? "quitado")</strong></li>
+                                                <li>@l.ArticleName: @(l.PreviousQuantity is null ? "nuevo" : l.PreviousQuantity?.ToString("0.##")) → <strong>@(l.NewQuantity?.ToString("0.##") ?? "se quita")</strong></li>
                                             }
                                         </ul>
                                     }
@@ -233,24 +288,45 @@
     <script>
         (function () {
             var btn = document.getElementById('btnWithdraw');
-            if (!btn) return;
-            btn.addEventListener('click', function () {
-                Swal.fire({
-                    title: '¿Retirar la solicitud?',
-                    text: 'Ya no será revisada. Puedes indicar el motivo (opcional).',
-                    input: 'text',
-                    inputPlaceholder: 'Motivo (opcional)',
-                    type: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, retirar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#6c757d'
-                }).then(function (result) {
-                    if (!(result && (result.isConfirmed === true || result.value !== undefined && result.dismiss === undefined))) return;
-                    document.getElementById('withdrawReason').value = typeof result.value === 'string' ? result.value : '';
-                    HTMLFormElement.prototype.submit.call(document.getElementById('withdrawForm'));
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    Swal.fire({
+                        title: '¿Retirar la solicitud?',
+                        text: 'Ya no será revisada. Puedes indicar el motivo (opcional).',
+                        input: 'text',
+                        inputPlaceholder: 'Motivo (opcional)',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, retirar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (!(result && (result.isConfirmed === true || result.value !== undefined && result.dismiss === undefined))) return;
+                        document.getElementById('withdrawReason').value = typeof result.value === 'string' ? result.value : '';
+                        HTMLFormElement.prototype.submit.call(document.getElementById('withdrawForm'));
+                    });
                 });
-            });
+            }
+
+            // Retirar el pedido de cambio de material en revisión (el L-3 vigente no cambia).
+            var btnChange = document.getElementById('btnWithdrawChange');
+            if (btnChange) {
+                btnChange.addEventListener('click', function () {
+                    Swal.fire({
+                        title: '¿Retirar el pedido de cambio de material?',
+                        text: 'El L-3 vigente se mantiene como está y el pedido sale de la bandeja de revisión.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, retirar pedido',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (!(result && (result.isConfirmed === true || result.value === true))) return;
+                        btnChange.disabled = true;
+                        HTMLFormElement.prototype.submit.call(document.getElementById('withdrawChangeForm'));
+                    });
+                });
+            }
         })();
     </script>
 }

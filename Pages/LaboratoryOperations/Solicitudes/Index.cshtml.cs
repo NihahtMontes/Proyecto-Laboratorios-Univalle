@@ -41,9 +41,25 @@ public class IndexModel : PageModel
         public string TimeText => Start.HasValue ? $"{Start.Value:hh\\:mm}–{(End ?? Start.Value):hh\\:mm}" : "Sin horario";
     }
 
+    /// <summary>
+    /// Fila de la pestaña «Cambios de material»: un pedido de cambio de L-3 pendiente sobre una práctica aprobada.
+    /// </summary>
+    public sealed record ChangeRow(int PlanningId, string Code, string Teacher, string? Subject, string? Group, string Practice,
+        string? LabCode, DateTime Date, int DaysAhead, bool LastMinute, bool Warning, int QuantityChanges, int ItemChanges, string Reason)
+    {
+        public string DaysAheadText => DaysAhead switch
+        {
+            < 0 => "Fecha pasada",
+            0 => "Hoy",
+            1 => "Mañana",
+            _ => $"En {DaysAhead} días"
+        };
+    }
+
     public static readonly IReadOnlyList<(string Key, string Label, string Icon)> Tabs =
     [
         ("revisar", "Por revisar", "fas fa-inbox"),
+        ("cambios", "Cambios de material", "fas fa-exchange-alt"),
         ("observadas", "Observadas", "fas fa-comment-dots"),
         ("aprobadas", "Aprobadas", "fas fa-check-circle"),
         ("rechazadas", "Rechazadas", "fas fa-times-circle"),
@@ -58,6 +74,8 @@ public class IndexModel : PageModel
     public int Observed => TabCounts.GetValueOrDefault("observadas");
     public IReadOnlyDictionary<string, int> TabCounts { get; private set; } = new Dictionary<string, int>();
     public List<InboxRow> Rows { get; private set; } = [];
+    /// <summary>Pedidos de cambio de material pendientes (pestaña «cambios»), con los filtros aplicados en memoria.</summary>
+    public List<ChangeRow> ChangeRows { get; private set; } = [];
     /// <summary>True si la consulta tenía más filas que el máximo mostrado.</summary>
     public bool Truncated { get; private set; }
     /// <summary>Control semanal (esta semana y las 3 siguientes): prácticas programadas frente a solicitudes recibidas.</summary>
@@ -134,15 +152,24 @@ public class IndexModel : PageModel
         if (From.HasValue && To.HasValue && To < From) (From, To) = (To, From);
 
         // Los contadores respetan los filtros: dicen cuántas hay en cada pestaña para lo que se está buscando.
+        // El contador de «cambios» es global (el servicio ya trae la bandeja lista; los filtros se aplican en memoria).
         var filtered = ApplyFilters(TeacherRequests());
         var counts = new Dictionary<string, int>();
         foreach (var t in Tabs)
-            counts[t.Key] = await ForTab(filtered, t.Key).CountAsync();
+            counts[t.Key] = t.Key == "cambios"
+                ? await _requests.CountPendingMaterialChangesAsync()
+                : await ForTab(filtered, t.Key).CountAsync();
         TabCounts = counts;
         if (Tab == "revisar")
             Coverage = await _requests.GetWeeklyCoverageAsync(DateTime.Today, 4);
 
         await LoadFilterOptionsAsync();
+
+        if (Tab == "cambios")
+        {
+            await LoadChangeRowsAsync();
+            return;
+        }
 
         var query = ForTab(filtered, Tab);
         var pendingTab = Tab is "revisar" or "observadas";
@@ -218,6 +245,50 @@ public class IndexModel : PageModel
                 r.PracticeName, r.Subject, r.Group, r.ScheduledDate, r.StartTime, r.EndTime, r.Lab, r.Items, r.Status, r.RequestDate,
                 blocks, competitors, shortCount, noStock, r.Comment, r.LastActionDate, r.Withdrawn));
         }
+    }
+
+    /// <summary>
+    /// Bandeja de pedidos de cambio de material pendientes: el servicio trae la bandeja completa en lote y los
+    /// filtros (docente, materia, laboratorio, fecha y búsqueda) se aplican en memoria sobre esas filas.
+    /// </summary>
+    private async Task LoadChangeRowsAsync()
+    {
+        IEnumerable<MaterialChangeInboxRow> query = await _requests.GetPendingMaterialChangesAsync();
+
+        // Docente y materia: los option lists traen el mismo nombre visible que arma el servicio (Título + Nombre).
+        if (TeacherId is int teacherId)
+        {
+            var teacherName = TeacherOptions.FirstOrDefault(o => o.Id == teacherId).Name;
+            if (teacherName != null) query = query.Where(r => r.TeacherName == teacherName);
+        }
+        if (SubjectId is int subjectId)
+        {
+            var subjectName = SubjectOptions.FirstOrDefault(o => o.Id == subjectId).Name;
+            if (subjectName != null) query = query.Where(r => r.Subject == subjectName);
+        }
+        if (LaboratoryId is int labId)
+        {
+            var labCode = await _context.Laboratories.AsNoTracking()
+                .Where(l => l.Id == labId).Select(l => l.Code).FirstOrDefaultAsync();
+            if (labCode != null) query = query.Where(r => r.LabCode == labCode);
+        }
+        if (From is DateTime from) query = query.Where(r => r.ScheduledDate.Date >= from.Date);
+        if (To is DateTime to) query = query.Where(r => r.ScheduledDate.Date <= to.Date);
+        if (!string.IsNullOrWhiteSpace(Q))
+        {
+            var term = Q.Trim();
+            // "PRA-00123" o "123" buscan por código; cualquier otro texto, por el nombre de la práctica.
+            var digits = new string(term.Where(char.IsDigit).ToArray());
+            var id = digits.Length is > 0 and <= 9 ? int.Parse(digits) : (int?)null;
+            query = query.Where(r => r.Practice.Contains(term) || (r.Code != null && r.Code.Contains(term))
+                || (id != null && r.PlanningId == id));
+        }
+
+        ChangeRows = query.OrderBy(r => r.ScheduledDate)
+            .Select(r => new ChangeRow(r.PlanningId, L3Codes.Format(r.PlanningId, r.Code), r.TeacherName, r.Subject, r.Group,
+                r.Practice, r.LabCode, r.ScheduledDate, r.DaysAhead, r.LastMinute, r.Warning, r.QuantityChanges, r.ItemChanges,
+                r.Reason))
+            .ToList();
     }
 
     /// <summary>Opciones de los filtros: solo docentes, materias y laboratorios que aparecen en alguna solicitud.</summary>
