@@ -15,7 +15,7 @@ Un solo lugar con **todo lo que pidió el usuario**, de cada fuente, y en qué e
 | # | Pedido | Estado | Detalle |
 |---|---|---|---|
 | 1 | La grilla del H-05 debe verse igual para el docente y para el SuperAdmin («global» para todos) | ✅ | `ILabWeekOccupancyService` (fuente única: cualquier gestión + cupos de práctica libre) para la grilla del admin, Disponibilidad, NuevaSolicitud y reprogramar o reponer. E2E `grilla_unica.mjs`: 11/11, con las mismas celdas ocupadas para el admin y el docente. |
-| 2 | Limpieza de 10 min (12:05–12:15, 13:55–14:05) | ✅ | La regla permite prácticas pegadas. La franja muestra la hora real: el receso si existe, o los últimos 10 minutos de la práctica. |
+| 2 | Limpieza de 10 min (12:05–12:15, 13:55–14:05) | ✅ | La regla permite prácticas pegadas. La franja muestra la hora real: el receso si existe, o los últimos 10 minutos de la práctica. **24/11:** se comprobó 13:55–14:05 con una práctica que termina en P7 (E2E y captura al usuario). Si dos prácticas comparten el día, la hora baja a dos líneas en vez de cortarse. En 2026 hubo 60 prácticas que terminan en P7. Las de P7 a P10 (215) siguen después de las 13:55, así que su limpieza va al final. |
 | 3 | «Tuya» → nombre de la práctica | ✅ | Comprobado en el E2E: ya no aparece «Tuya». |
 | 4 | Material por periodos: de qué hora a qué hora | ✅ | Conflictos muestra la franja de cada práctica en el panel («07:35–09:25 · P1–P2») y el periodo con su hora en cada chip. |
 | 5 | Al reprogramar o reponer, que se agregue a los detalles del L-9 | ✅ | Reporte nuevo «L-9 · Reprogramaciones y reposiciones» en Reportes (Excel, filtro por gestión y fechas). Probado con datos reales de 2026-2. Cuando la Inge pase el formato oficial, se ajusta. |
@@ -37,10 +37,10 @@ Un solo lugar con **todo lo que pidió el usuario**, de cada fuente, y en qué e
 |---|---|---|---|
 | 1 | Los estudiantes reservan práctica libre (hasta 6 por laboratorio; la Inge aprueba; faltas y sanción) | ✅ | Fase 2. La migración se aplicó en EXP el 24/11. |
 | 2 | Práctica para el examen de grado (mínimo 3 veces, menú de tres tiempos, periodo de decoración) | 🚫 | El usuario lo dejó para después. |
-| 3 | Un L-3 por práctica, siempre, separado en insumos y utensilios | ❌ por revisar | La solicitud del docente tiene un solo L-3 con todos los artículos. No se separa en insumos y utensilios. |
-| 4 | Reporte de cambios del docente a su material («Pedro Guereca modificó 8 veces su material este mes»; 60 observaciones en el último mes) | ❌ | **No estaba en el plan; se agrega ahora.** El sistema no guarda el historial de esos cambios, así que hay que diseñarlo. Va después del trabajador C (usa la misma página de Reportes). |
+| 3 | Un L-3 por práctica, siempre, separado en insumos y utensilios | ⏸ | Los insumos son la comida del menú y el sistema no los tiene: están en las recetas del Excel, que el usuario dejó fuera («solo planificación»). Se hace cuando se carguen las recetas, después de limpiar esos datos con la Inge. |
+| 4 | Reporte de cambios del docente a su material («Pedro Guereca modificó 8 veces su material este mes»; 60 observaciones en el último mes) | ✅ reporte · 🔄 cambio de L-3 | **Reporte (24/11, `d0dfe01`).** Compara cada solicitud del portal con el kit escalado y descuenta los ajustes de la Inge. Separa los cambios de **cantidad** de los de **artículo**. **Llamada de atención:** 3 o más artículos agregados o quitados en una práctica. **Último momento:** menos de 7 días de anticipación. **«Pedir cambio de material» para prácticas ya aprobadas** (las 422 de 2027-1): aprobado por el usuario el 24/11. El docente ajusta su L-3 con motivo y la Inge lo aprueba. El plan se muestra antes de programarlo. |
 | 5 | Calendario por laboratorio con todas las actividades (prácticas, reprogramaciones y reservas de estudiantes) | ✅ | La grilla única muestra las prácticas de cualquier gestión, los cupos de práctica libre y las marcas de reprogramación y reposición. |
-| 6 | Misceláneos (papel absorbente y similares) en otro formulario | ❌ ⏸ | Falta saber qué formulario es y qué datos lleva. |
+| 6 | Misceláneos (papel absorbente y similares) en otro formulario | ⏸ | En el audio (pág. 14 del PDF), la Inge dice que los misceláneos (papeles absorbentes y similares) los entrega con **otro formulario**, aparte del L-3. Lo más parecido en el sistema son 16 artículos de «Material operativo» marcados como consumibles (papel film, papel aluminio, papel manteca, bolsas…), que hoy van dentro del L-3. **Falta que la Inge pase una foto de su formulario.** |
 
 ## 4. Preguntas abiertas para la Inge
 - ¿La misma letra de grupo en materias distintas son los mismos estudiantes?
@@ -84,5 +84,35 @@ Se corrieron sobre una copia de EXP, nunca sobre EXP.
 
 **Pendiente**
 - Refactorizar `GeneratorPeriodPlanner.Plan` en métodos más chicos (aviso MEDIO de la revisión).
-- Actualizar `docente_casos.mjs` para que no dependa del 27/11.
-- Puntos ❌ de la sección 3.
+- ~~Actualizar `docente_casos.mjs` para que no dependa del 27/11~~ (hecho el 24/11).
+
+## 7. Ronda del 24/11 (mañana)
+
+**Commits locales en sprint-3, sin push (el repositorio es público):**
+- `9959dd7` a `c1ddaee`: lo probado el 23 y 24/11, en 7 commits por tema.
+- `d0dfe01`: reporte de cambios de material.
+- `8c3daa1`: hora de limpieza en bloques angostos.
+- `f0e2e35`: E2E.
+
+**Pruebas (sobre una copia de EXP recién restaurada)**
+- 656/656 unitarias.
+- `docente_casos` 23/23 (ya no depende del 27/11).
+- `grilla_unica` 13/13 (con la limpieza de 13:55 y la hora visible).
+- `http_cases_planificacion` 35/35.
+- Descarga del reporte desde la app: 2 docentes, 10 solicitudes, 127 cambios; 2 filas verificadas a mano contra la base.
+
+**Bases de datos (al 24/11)**
+
+| Base | Qué es | Usuarios | Prácticas | Migraciones |
+|---|---|---|---|---|
+| REAL | La original, desde el Excel | 3 | 1.038 | 32 |
+| NUBE_20261103 | Foto de la nube del 03/11 (REAL + 3 usuarios) | 6 | 1.038 | 32 |
+| EXP | Copia del Sprint 3 | 58 | 1.643 | 37 |
+
+- EXP tiene, además: 5 migraciones (portal docente, consumibles, número de estudiantes, motivo de reposición y estudiantes), 2027-1 con 422 prácticas y 183 prácticas de prueba de 2026-2 (12–20/11).
+- Para pasar algo a REAL o a la nube no se copia EXP: se aplican las migraciones y se vuelve a importar el Excel 2027-1.
+- Las copias desechables `EXP_IMPORT_PRUEBA` y `QA_E2E` se borraron al terminar.
+
+**Siguiente**
+- Plan de «Pedir cambio de material», que el usuario debe aprobar antes de programar.
+- Opcional: en el portal docente, escribir la hora de la limpieza en la celda. Hoy es una línea naranja y la hora solo aparece al pasar el mouse.
