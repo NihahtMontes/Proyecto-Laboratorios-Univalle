@@ -3500,7 +3500,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("PlanningReviews", t =>
                         {
-                            t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 7");
+                            t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 11");
                         });
                 });
 

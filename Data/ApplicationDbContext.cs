@@ -1075,7 +1075,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<PlanningReview>().HasOne(r => r.Planning).WithMany(p => p.Reviews).HasForeignKey(r => r.PlanningId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanningReview>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanningReview>().HasIndex(r => new { r.PlanningId, r.CreatedDate });
-            modelBuilder.Entity<PlanningReview>().ToTable(t => t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 7"));
+            // 1–7: solicitud docente; 8–11: cambio de material de una práctica aprobada (migración WidenPlanningReviewActions).
+            modelBuilder.Entity<PlanningReview>().ToTable(t => t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 11"));
             modelBuilder.Entity<PlanningReviewLine>().HasOne(l => l.PlanningReview).WithMany(r => r.Lines).HasForeignKey(l => l.PlanningReviewId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<PlanningReviewLine>().HasOne(l => l.Article).WithMany().HasForeignKey(l => l.ArticleId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanningReviewLine>().HasIndex(l => new { l.PlanningReviewId, l.ArticleId }).IsUnique();

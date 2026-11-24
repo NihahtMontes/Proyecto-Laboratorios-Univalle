@@ -12,7 +12,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Aprobada")] Approved = 4,
         [Display(Name = "Aprobada con cambios")] ApprovedWithChanges = 5,
         [Display(Name = "Rechazada")] Rejected = 6,
-        [Display(Name = "Retirada por el docente")] Withdrawn = 7
+        [Display(Name = "Retirada por el docente")] Withdrawn = 7,
+
+        // Cambio de material (L-3) de una práctica YA aprobada (24/11/2026): la planificación sigue «Aprobada»;
+        // el pedido pendiente es el último de estos cuatro cuando es MaterialChangeRequested.
+        [Display(Name = "Pidió cambio de material")] MaterialChangeRequested = 8,
+        [Display(Name = "Cambio de material aprobado")] MaterialChangeApproved = 9,
+        [Display(Name = "Cambio de material rechazado")] MaterialChangeRejected = 10,
+        [Display(Name = "Pedido de cambio de material retirado")] MaterialChangeWithdrawn = 11
     }
 
     /// <summary>
