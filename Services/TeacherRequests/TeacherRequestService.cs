@@ -186,7 +186,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
             var conflicts = await _occupancy.FindConflictsAsync(lab.Id, date, start.Order, input.PeriodCount, exclude);
             if (conflicts.Count > 0)
                 issues.Add(Block("LAB_OCCUPIED", $"{lab.Code} ocupado",
-                    $"El laboratorio ya tiene práctica aprobada ({string.Join("; ", conflicts.Select(c => $"{c.PeriodsText}"))}) y entre prácticas debe quedar un periodo libre para limpieza."));
+                    $"El laboratorio ya tiene práctica aprobada en esos periodos ({string.Join("; ", conflicts.Select(c => $"{c.PeriodsText}"))})."));
 
             var students = input.StudentCount ?? group.StudentCount;
             if (PlanningAssignmentRules.CapacityError(students, lab.Capacity, lab.Code) is string capacityError)

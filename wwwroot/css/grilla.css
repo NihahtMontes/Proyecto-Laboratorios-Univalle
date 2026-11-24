@@ -251,6 +251,35 @@
 .gr-block--orange { border-left-color: #fb8c00; background: #fff4e5; }
 .gr-block--dark { border-left-color: #343a40; background: #f1f1f1; }
 
+/* Cupos de práctica libre de estudiantes: ocupan el ambiente (mismo color en todas las grillas). */
+.gr-block--slot { border-left-color: #00a5b8; background: #e2f6fa; }
+.badge-slot { background: #cdeaf1; color: #0b6e8a; border: 1px solid #a9d9e5; }
+
+/* Franja delgada de limpieza de 10 minutos al cierre de cada práctica (no bloquea periodos). */
+.gr-block__clean {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    align-self: flex-start;
+    max-width: 100%;
+    margin-top: 1px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #ffe9cc;
+    color: #8a5a00;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gr-block__clean i { font-size: 9px; }
+
+/* Celda ocupada según la fuente única de ocupación (visible cuando no hay bloque dibujado encima,
+   p. ej. planificaciones legadas con horas convertidas a periodos). */
+.gr-cell--busy { background: #fdf0f2; }
+
 /* No ocupantes (reprogramada, pendiente de reposición, repuesta): atenuados */
 .gr-block--inactive { opacity: .6; border-style: dashed; border-left-style: solid; }
 .gr-block--inactive .gr-block__title { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, .35); }
@@ -593,6 +622,14 @@ body.gr-carrying, body.gr-carrying * { cursor: move !important; }
 .gr-legend__icon--rescheduling { color: #6f42c1; font-size: 15px; }
 .gr-legend__icon--recovery { color: #fd7e14; font-size: 15px; }
 .gr-legend__note { margin-left: auto; }
+
+/* Leyenda común de ocupación (misma paleta que las grillas del docente). */
+.gr-legend__swatch--free { background: #fff; }
+.gr-legend__swatch--busy { background: #fde2e7; border-left-color: #f62d51; }
+.gr-legend__swatch--slot { background: #e2f6fa; border-left-color: #00a5b8; }
+.gr-legend__swatch--nooccupy { background: #f3f1fe; border-style: dashed; border-left-style: solid; border-left-color: #7460ee; opacity: .75; }
+.gr-legend__swatch--cleaning { height: 6px; border: 0; border-radius: 999px; background: repeating-linear-gradient(90deg, #ffe9cc, #ffe9cc 6px, #f0cf9a 6px, #f0cf9a 8px); }
+.gr-legend__swatch--offday { background: #f8f9fa; border-left-color: #ced4da; }
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 992px) {

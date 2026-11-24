@@ -85,7 +85,7 @@ public class Ej03_ReglaHorarioPracticaTests : IDisposable
 
     [Theory]
     [InlineData("C3-07", "Válido: queda un periodo libre entre prácticas (R4)", 1, 2, 4, 2, false)]
-    [InlineData("C3-08", "Inválido: prácticas contiguas sin periodo libre (R4)", 1, 2, 3, 2, true)]
+    [InlineData("C3-08", "Válido: prácticas contiguas, limpieza de 10 min en el receso (R4, regla 2026-11-23)", 1, 2, 3, 2, false)]
     [InlineData("C3-09", "Inválido: prácticas superpuestas (R4)", 1, 3, 3, 2, true)]
     [InlineData("C3-10", "Válido: bloques alejados en la jornada (R4)", 1, 2, 9, 3, false)]
     public void Separacion_minima_entre_practicas_del_mismo_ambiente(string caso, string descripcion, int aInicio, int aCant, int bInicio, int bCant, bool conflictoEsperado)

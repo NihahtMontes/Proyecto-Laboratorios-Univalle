@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Services.Occupancy;
 
@@ -11,7 +12,10 @@ namespace Proyecto_Laboratorios_Univalle.Services.Occupancy;
 /// - Planificaciones con periodo: el bloque es StartPeriod.Order + PeriodCount.
 /// - Legadas sin periodo pero con horas: se convierten al rango de periodos del catálogo que se solapan con [StartTime, EndTime)
 ///   (sin EndTime válido se toma el periodo que contiene StartTime).
-/// - Sin periodo ni horas, o sin laboratorio (AllLaboratories): no se pueden ubicar y se omiten.
+/// - Sin periodo ni horas no se pueden ubicar y se omiten.
+/// - "Todos los laboratorios" (AllLaboratories, sin ambiente propio) ocupa cada laboratorio ACTIVO: se expande a un bloque
+///   por ambiente (decisión 2026-11-23: la grilla del admin ya lo dibujaba en todos; la fuente de ocupación lo trata igual).
+/// - No filtra por gestión: lo que ocupa un ambiente es la misma verdad para todas las grillas y roles.
 /// </remarks>
 public sealed class PlanningOccupancySource : IOccupancySource
 {
@@ -28,11 +32,11 @@ public sealed class PlanningOccupancySource : IOccupancySource
 
         var plannings = _context.Plannings.AsNoTracking()
             .Where(p => !p.IsDeleted && !PlanningStatus.NonOccupying.Contains(p.Status)
-                && p.LaboratoryId != null
+                && (p.LaboratoryId != null || p.AllLaboratories)
                 && p.ScheduledDate >= from && p.ScheduledDate < toExclusive);
 
         if (query.LaboratoryIds is { Count: > 0 } labs)
-            plannings = plannings.Where(p => labs.Contains(p.LaboratoryId!.Value));
+            plannings = plannings.Where(p => p.AllLaboratories || labs.Contains(p.LaboratoryId!.Value));
         if (query.TeacherPersonIds is { Count: > 0 } teachers)
             plannings = plannings.Where(p => teachers.Contains(p.TeacherPersonId));
         if (query.ExcludePlanningIds is { Count: > 0 } excluded)
@@ -44,7 +48,8 @@ public sealed class PlanningOccupancySource : IOccupancySource
             {
                 p.Id,
                 p.Code,
-                LaboratoryId = p.LaboratoryId!.Value,
+                LaboratoryId = (int?)p.LaboratoryId,
+                p.AllLaboratories,
                 p.TeacherPersonId,
                 p.ScheduledDate,
                 StartOrder = p.StartPeriod != null ? (int?)p.StartPeriod.Order : null,
@@ -58,6 +63,27 @@ public sealed class PlanningOccupancySource : IOccupancySource
             .ToListAsync(ct);
 
         if (rows.Count == 0) return [];
+
+        // "Todos los laboratorios": ambientes activos (los mismos que muestra la grilla del admin).
+        HashSet<int>? queriedLabs = query.LaboratoryIds is { Count: > 0 } labs2 ? [.. labs2] : null;
+        List<int>? allLabIds = null;
+        if (rows.Any(r => r.AllLaboratories))
+        {
+            var active = await _context.Laboratories.AsNoTracking()
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Id)
+                .Select(l => l.Id)
+                .ToListAsync(ct);
+            allLabIds = queriedLabs is null ? active : active.Where(queriedLabs.Contains).ToList();
+        }
+
+        // Nombres de docentes en una sola consulta (evita N+1).
+        var teacherIds = rows.Select(r => r.TeacherPersonId).Where(t => t != 0).Distinct().ToList();
+        var teacherNames = teacherIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Interns.AsNoTracking()
+                .Where(i => teacherIds.Contains(i.Id))
+                .ToDictionaryAsync(i => i.Id, i => i.Name, ct);
 
         List<ClassPeriod>? catalog = null;
         var blocks = new List<OccupancyBlock>(rows.Count);
@@ -79,15 +105,37 @@ public sealed class PlanningOccupancySource : IOccupancySource
                 continue;
             }
 
-            blocks.Add(new OccupancyBlock(
-                SourceName,
-                row.Id,
-                BuildLabel(row.Id, row.Code, row.Subject ?? row.PracticeName, row.Group),
-                row.LaboratoryId,
-                row.TeacherPersonId,
-                row.ScheduledDate.Date,
-                startOrder,
-                count));
+            var blockLabs = row.AllLaboratories
+                ? allLabIds ?? []
+                : row.LaboratoryId is int labId ? [labId] : [];
+            if (blockLabs.Count == 0) continue;
+
+            var code = Pages.LaboratoryOperations.L3Codes.Format(row.Id, row.Code);
+            var detail = new
+            {
+                Code = code,
+                row.PracticeName,
+                SubjectName = row.Subject,
+                GroupName = row.Group,
+                TeacherName = teacherNames.GetValueOrDefault(row.TeacherPersonId)
+            };
+            foreach (var targetLabId in blockLabs)
+            {
+                blocks.Add(new OccupancyBlock(
+                    SourceName,
+                    row.Id,
+                    BuildLabel(row.Id, row.Code, row.Subject ?? row.PracticeName, row.Group),
+                    targetLabId,
+                    row.TeacherPersonId,
+                    row.ScheduledDate.Date,
+                    startOrder,
+                    count,
+                    detail.Code,
+                    detail.PracticeName,
+                    detail.SubjectName,
+                    detail.GroupName,
+                    detail.TeacherName));
+            }
         }
 
         return blocks;

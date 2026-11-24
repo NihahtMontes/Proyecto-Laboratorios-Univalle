@@ -157,6 +157,54 @@ internal sealed class TestDb : IDisposable
 
     public IOccupancyService Occupancy() => new OccupancyService([new PlanningOccupancySource(Context)]);
 
+    /// <summary>Fuente única de celdas por día/periodo (misma que usan la grilla admin y el portal docente).</summary>
+    public ILabWeekOccupancyService WeekOccupancy() =>
+        new LabWeekOccupancyService(Context, new OccupancyService([new PlanningOccupancySource(Context), new FreePracticeSlotOccupancySource(Context)]));
+
+    /// <summary>Grilla del admin con la misma fuente de ocupación que registra Program.cs.</summary>
+    public LaboratoryGridService Grid() => new(Context, new AcademicManagementService(Context), WeekOccupancy());
+
+    /// <summary>Agrega una planificación de OTRA gestión (mismo patrón que AddPlanning).</summary>
+    public Planning AddForeignPlanning(int id, int managementId, DateTime date, int startOrder, int count,
+        int laboratoryId = LabA, int teacherPersonId = Teacher1, string status = PlanningStatus.Approved)
+    {
+        var planning = new Planning
+        {
+            Id = id,
+            ManagementId = managementId,
+            LaboratoryId = laboratoryId,
+            TeacherPersonId = teacherPersonId,
+            PracticeName = $"Práctica {id}",
+            GroupName = "B",
+            Status = status,
+            RequestDate = date,
+            Subject = new Subject { Id = id * 10, Name = "Física" }
+        };
+        PlanningSlot.Apply(planning, date, startOrder, count, Periods());
+        Context.Plannings.Add(planning);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return planning;
+    }
+
+    /// <summary>Agrega un cupo de práctica libre abierto (periodo Id = Order, como en el catálogo sembrado).</summary>
+    public void AddFreePracticeSlot(int id, string code, DateTime date, int startOrder, int count, int capacity = 6, int laboratoryId = LabA)
+    {
+        Context.FreePracticeSlots.Add(new FreePracticeSlot
+        {
+            Id = id,
+            Code = code,
+            LaboratoryId = laboratoryId,
+            Date = date,
+            StartPeriodId = startOrder,
+            PeriodCount = count,
+            Capacity = capacity,
+            Status = FreePracticeSlotStatus.Open
+        });
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+    }
+
     public SlotValidationService Validation() => new(
         Context,
         Occupancy(),

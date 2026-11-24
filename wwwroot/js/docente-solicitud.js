@@ -269,9 +269,15 @@
                 var cell = d.cells.filter(function (c) { return c.order === p.order; })[0];
                 var selected = sel && state.date === d.date && p.order >= sel.order && p.order < sel.order + state.periodCount;
                 var cls = 'dc-cell is-' + cell.state + (selected ? ' is-selected' : '');
-                var label = selected ? 'Tu práctica' : cell.state === 'busy' ? 'Ocupado' : cell.state === 'gap' ? 'Limpieza' :
-                    cell.state === 'pending' ? 'En revisión' : cell.state === 'mine' ? 'Tuya' : cell.state === 'off' ? (d.offReason || '') : '';
-                html += '<td class="' + cls + '" data-date="' + d.date + '" data-period="' + cell.periodId + '" data-state="' + cell.state + '" title="' + esc(label) + '" role="button" tabindex="0">' + esc(label) + '</td>';
+                // La etiqueta llega del servidor: nombre de la práctica (o "Práctica libre"/"En revisión"/...).
+                var label = selected ? 'Tu práctica'
+                    : cell.label ? cell.label
+                    : cell.state === 'pending' ? 'En revisión' : cell.state === 'mine' ? 'Tu práctica'
+                    : cell.state === 'off' ? (d.offReason || '') : '';
+                var title = cell.title || label;
+                html += '<td class="' + cls + '" data-date="' + d.date + '" data-period="' + cell.periodId + '" data-state="' + cell.state + '" title="' + esc(title) + '" role="button" tabindex="0">' + esc(label);
+                if (cell.clean) html += '<span class="dc-cell__clean" title="Limpieza ' + esc(cell.clean) + ' (10 min)"></span>';
+                html += '</td>';
             });
             html += '</tr>';
         });
@@ -281,7 +287,7 @@
             var activate = function () {
                 var st = td.getAttribute('data-state');
                 if (st === 'off') { toast('info', td.getAttribute('title') || 'Día no disponible'); return; }
-                if (st === 'busy' || st === 'gap' || st === 'mine') { toast('warning', 'Ese periodo no está libre'); return; }
+                if (st === 'busy' || st === 'slot' || st === 'mine') { toast('warning', 'Ese periodo no está libre'); return; }
                 state.date = td.getAttribute('data-date');
                 state.startPeriodId = Number(td.getAttribute('data-period'));
                 Array.prototype.forEach.call(document.querySelectorAll('[data-sug]'), function (x) { x.classList.remove('is-selected'); });

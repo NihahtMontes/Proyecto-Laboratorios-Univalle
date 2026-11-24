@@ -18,12 +18,17 @@
     int? reponerRoute = mode && Model.IsRecoveryMode ? origin!.Id : null;
     // Reprogramar a mano sigue siendo exclusivo del SuperAdmin; en reposición de día alcanza con CanRecover.
     var canReschedule = (Model.IsRecoveryMode ? Model.CanRecover : Model.IsSuperAdmin) && grid is { CanAdd: true };
-    var legendStatuses = new[]
-    {
-        PlanningStatus.Planned, PlanningStatus.Approved, PlanningStatus.Finalized,
-        PlanningStatus.Rescheduled, PlanningStatus.PendingRecovery, PlanningStatus.Recovered
-    };
     var inv = CultureInfo.InvariantCulture;
+    // Leyenda común a todas las grillas (misma que Disponibilidad y NuevaSolicitud del docente).
+    var legendShared = new (string Css, string Label)[]
+    {
+        ("free", "Libre"),
+        ("busy", "Ocupado (práctica)"),
+        ("slot", "Práctica libre (cupo de estudiantes)"),
+        ("nooccupy", "No ocupa / pendiente"),
+        ("cleaning", "Limpieza 10 min"),
+        ("offday", "Día no hábil")
+    };
 }
 
 @section Styles {
@@ -390,14 +395,13 @@
                                         {
                                             var dateValue = day.Date.ToString("yyyy-MM-dd", inv);
                                             var busy = day.IsBusy(period.Order);
-                                            var buffer = day.AcceptsBlocks && day.IsBuffer(period.Order);
                                             var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
-                                            <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty) @(buffer ? "gr-cell--buffer" : string.Empty)"
+                                            <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty)"
                                                  style="grid-column: @(day.Weekday + 1); grid-row: @row;"
                                                  data-date="@dateValue" data-order="@period.Order" data-laboratory-id="@lab.Id" data-col="@(day.Weekday + 1)"
                                                  data-suspended="@(day.IsSuspended ? "true" : null)" data-out="@(day.InManagement ? null : "true")"
-                                                 title="@(buffer ? "Periodo de separación entre prácticas" : null)">
-                                                @if (grid.CanAdd && !mode && day.AcceptsBlocks && !busy && !buffer)
+                                                 title="@(busy ? "Ocupado (la limpieza de 10 minutos no bloquea periodos)" : null)">
+                                                @if (grid.CanAdd && !mode && day.AcceptsBlocks && !busy)
                                                 {
                                                     <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-date="@dateValue"
                                                        asp-route-periodId="@period.Id" asp-route-laboratoryId="@lab.Id"
@@ -433,6 +437,12 @@
                                                 <a href="@b.NextUrl" class="gr-block__open" draggable="false" aria-label="Abrir @b.Code: @b.SubjectName (@b.GroupName)"></a>
                                                 <span class="gr-block__title">@b.SubjectShort (@b.GroupName)</span>
                                                 <span class="gr-block__teacher"><i class="fas fa-user-tie mr-1"></i>@b.TeacherName</span>
+                                                @if (b.CleaningText is string cleanText)
+                                                {
+                                                    <span class="gr-block__clean" title="Limpieza de 10 minutos al cierre de la práctica">
+                                                        <i class="far fa-clock" aria-hidden="true"></i> Limpieza @cleanText
+                                                    </span>
+                                                }
                                                 @if (hasTags)
                                                 {
                                                     <span class="gr-block__conflicts">
@@ -510,19 +520,18 @@
                         </section>
                     }
 
-                    <!-- Leyenda de estados -->
+                    <!-- Leyenda común de ocupación (igual en todas las grillas) + marcas propias del admin -->
                     <div class="card border-0 shadow-sm rounded-lg mb-4 gr-legend-card">
                         <div class="card-body py-3">
                             <div class="d-flex flex-wrap align-items-center gr-legend">
-                                <span class="font-weight-bold text-dark mr-2">Estados:</span>
-                                @foreach (var status in legendStatuses)
+                                <span class="font-weight-bold text-dark mr-2">Ocupación:</span>
+                                @foreach (var (css, label) in legendShared)
                                 {
-                                    var css = PlanningStatusView.Css(status);
                                     <span class="gr-legend__item">
-                                        <span class="gr-legend__swatch gr-block--@css @(PlanningStatus.Occupies(status) ? string.Empty : "gr-block--inactive")"></span>
-                                        @PlanningStatus.Label(status)
+                                        <span class="gr-legend__swatch gr-legend__swatch--@css" aria-hidden="true"></span>@label
                                     </span>
                                 }
+                                <span class="font-weight-bold text-dark mr-2 ml-2">Marcas:</span>
                                 <span class="gr-legend__item">
                                     <span class="gr-legend__swatch gr-legend__swatch--rescheduling"></span>
                                     <i class="mdi mdi-calendar-clock gr-legend__icon--rescheduling" aria-hidden="true"></i> Reprogramada desde otra fecha
@@ -546,7 +555,7 @@
                                         <span class="gr-legend__swatch gr-legend__swatch--group-busy"></span> Clase de otra materia del grupo
                                     </span>
                                 }
-                                <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el laboratorio; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
+                                <span class="gr-legend__note text-muted small">Lo ocupado es igual para todos los roles (incluye otras gestiones y cupos de práctica libre); los bloques punteados no ocupan el laboratorio; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
                             </div>
                         </div>
                     </div>

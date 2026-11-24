@@ -71,25 +71,35 @@ public sealed record GridWeek(int Number, DateTime StartDate, DateTime EndDate, 
 }
 
 /// <param name="InManagement">False si la fecha no tiene día académico (fuera de la gestión).</param>
-public sealed record GridDay(int Weekday, string Name, DateTime Date, bool InManagement, bool IsSuspended, string? Reason, IReadOnlyList<GridBlock> Blocks)
+/// <param name="OccupiedOrders">Periodos ocupados según la fuente única de ocupación (cualquier gestión y cupos de práctica libre).</param>
+public sealed record GridDay(int Weekday, string Name, DateTime Date, bool InManagement, bool IsSuspended, string? Reason, IReadOnlyList<GridBlock> Blocks, IReadOnlySet<int>? OccupiedOrders = null)
 {
     /// <summary>Solo los días habilitados de la gestión aceptan bloques.</summary>
     public bool AcceptsBlocks => InManagement && !IsSuspended;
 
-    /// <summary>True si algún bloque posicionado cubre el periodo indicado.</summary>
-    public bool IsBusy(int order) => Blocks.Any(b => b.StartOrder is int s && order >= s && order <= b.EndOrder);
+    /// <summary>
+    /// True si la celda está ocupada según <see cref="Occupancy.IOccupancyService"/> (la misma verdad para admin,
+    /// docentes y reprogramación): planificaciones de cualquier gestión que ocupen y cupos de práctica libre.
+    /// Las solicitudes pendientes y otros estados que no ocupan NO marcan la celda.
+    /// </summary>
+    public bool IsBusy(int order) => OccupiedOrders is { } orders
+        ? orders.Contains(order)
+        : Blocks.Any(b => b.Occupies && b.StartOrder is int s && order >= s && order <= b.EndOrder);
 
     /// <summary>
-    /// True si el periodo está libre pero contiguo a algún bloque con periodo inicial:
-    /// es el periodo de separación que debe quedar libre entre prácticas del ambiente.
+    /// True si el periodo está libre pero dentro de la separación exigida entre prácticas del ambiente
+    /// (<see cref="PlanningSlot.CleaningGapPeriods"/>). Con la limpieza de 10 minutos (separación 0) nunca lo es.
     /// </summary>
     public bool IsBuffer(int order)
-        => !IsBusy(order)
-        && Blocks.Any(b => b.Occupies && b.StartOrder is int s && (order == s - 1 || order == b.EndOrder + 1));
+        => PlanningSlot.CleaningGapPeriods > 0
+            && !IsBusy(order)
+            && Blocks.Any(b => b.Occupies && b.StartOrder is int s
+                && order >= s - PlanningSlot.CleaningGapPeriods && order <= b.EndOrder + PlanningSlot.CleaningGapPeriods);
 }
 
 /// <param name="StartOrder">Orden del periodo inicial (null = planificación legada sin periodo).</param>
 /// <param name="LaneIndex">Carril (0..LaneCount-1) cuando hay bloques solapados en el mismo día.</param>
+/// <param name="CleaningText">Franja de limpieza de 10 minutos del bloque ("12:05–12:15"); null si no aplica.</param>
 public sealed record GridBlock(
     int PlanningId,
     string Code,
@@ -111,6 +121,7 @@ public sealed record GridBlock(
     string TimeText,
     int LaneIndex = 0,
     int LaneCount = 1,
+    string? CleaningText = null,
     GridRelocation? Relocation = null)
 {
     public int EndOrder => StartOrder is int s ? PlanningSlot.LastOrder(s, PeriodCount) : 0;
@@ -118,8 +129,12 @@ public sealed record GridBlock(
     /// <summary>Se puede reprogramar (individualmente) desde la grilla: Planificada, Aprobada o Finalizada con periodos.</summary>
     public bool IsReschedulable => StartOrder.HasValue && GridRelocation.ReschedulableStatuses.Contains(Status);
 
+    /// <summary>True si es un cupo de práctica libre de estudiantes (no una planificación).</summary>
+    public bool IsFreePracticeSlot => StatusCss == "slot";
+
     public string Tooltip =>
         $"{Code} · {PracticeName}\nMateria: {SubjectName}\nGrupo: {GroupName}\nDocente: {TeacherName}\nHorario: {Date:dd/MM/yyyy} · {TimeText}\nEstado: {StatusLabel}"
+        + (CleaningText is string clean ? $"\nLimpieza 10 min: {clean}" : string.Empty)
         + (Relocation is null ? string.Empty : $"\n{Relocation.Text}");
 }
 
@@ -183,11 +198,14 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
 
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
+    private readonly Occupancy.ILabWeekOccupancyService _weekOccupancy;
 
-    public LaboratoryGridService(ApplicationDbContext context, IAcademicManagementService managements)
+    public LaboratoryGridService(ApplicationDbContext context, IAcademicManagementService managements,
+        Occupancy.ILabWeekOccupancyService weekOccupancy)
     {
         _context = context;
         _managements = managements;
+        _weekOccupancy = weekOccupancy;
     }
 
     public async Task<LaboratoryGrid?> BuildAsync(int? managementId, int? laboratoryId, int? weekNumber, string? date, bool twoWeeks)
@@ -234,10 +252,11 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
         var from = visibleWeeks[0].StartDate.Date;
         var to = visibleWeeks[^1].EndDate.Date.AddDays(1);
 
-        // Planificaciones de todos los laboratorios en el rango (permite elegir el laboratorio por defecto
-        // y contar planificaciones por ambiente sin consultas adicionales).
+        // Planificaciones de todos los laboratorios en el rango, de CUALQUIER gestión (la ocupación es global:
+        // lo que ocupa un ambiente debe verse igual para todos los roles y gestiones). La gestión elegida solo
+        // decide lo que no ocupa (pendientes/borradores) y los conteos del selector de laboratorios.
         var plannings = await _context.Plannings.AsNoTracking()
-            .Where(p => p.ManagementId == management.Id && !p.IsDeleted && p.Status != PlanningStatus.Cancelled && p.Status != PlanningStatus.Rejected
+            .Where(p => !p.IsDeleted && p.Status != PlanningStatus.Cancelled && p.Status != PlanningStatus.Rejected
                 && p.ScheduledDate >= from && p.ScheduledDate < to
                 && (p.LaboratoryId != null || p.AllLaboratories))
             .OrderBy(p => p.ScheduledDate)
@@ -245,6 +264,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
             {
                 p.Id,
                 p.Code,
+                p.ManagementId,
                 p.LaboratoryId,
                 p.AllLaboratories,
                 p.ScheduledDate,
@@ -260,20 +280,57 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
             })
             .ToListAsync();
 
+        var ownPlannings = plannings.Where(p => p.ManagementId == management.Id).ToList();
         var countByLab = labs.ToDictionary(
             l => l.Id,
-            l => plannings.Count(p => p.AllLaboratories || p.LaboratoryId == l.Id));
+            l => ownPlannings.Count(p => p.AllLaboratories || p.LaboratoryId == l.Id));
 
-        // Laboratorio: el pedido → el primero con planificaciones en la semana elegida → el primero por código.
+        // Laboratorio: el pedido → el primero con planificaciones propias en la semana elegida → el primero por código.
         var selectedWeekEnd = selected.EndDate.Date.AddDays(1);
         var lab = labs.FirstOrDefault(l => l.Id == laboratoryId)
-            ?? labs.FirstOrDefault(l => plannings.Any(p => p.LaboratoryId == l.Id
+            ?? labs.FirstOrDefault(l => ownPlannings.Any(p => p.LaboratoryId == l.Id
                 && p.ScheduledDate >= selected.StartDate.Date && p.ScheduledDate < selectedWeekEnd))
             ?? labs.FirstOrDefault();
 
+        // Se dibuja lo que ocupa la gestión elegida y también lo que ocupa cualquier otra gestión;
+        // lo que NO ocupa (pendientes, borradores) solo se dibuja si es de la gestión elegida.
+        // De otras gestiones solo entra lo posicionable (con periodo): una legada sin periodo de otra
+        // gestión no aporta nada a esta grilla (sus horas igual ocupan las celdas vía la fuente de ocupación).
         var labPlannings = lab is null
             ? []
-            : plannings.Where(p => p.AllLaboratories || p.LaboratoryId == lab.Id).ToList();
+            : plannings.Where(p => (p.AllLaboratories || p.LaboratoryId == lab.Id)
+                && (p.ManagementId == management.Id
+                    || (PlanningStatus.Occupies(p.Status) && p.StartOrder != null))).ToList();
+
+        // Fuente única de ocupación del ambiente elegido: planificaciones de cualquier gestión + cupos de práctica libre.
+        Occupancy.LabWeekOccupancy? occupancy = null;
+        var occupiedByDate = new Dictionary<DateTime, HashSet<int>>();
+        if (lab is not null)
+        {
+            occupancy = await _weekOccupancy.GetAsync(lab.Id, from, to.AddDays(-1), management.Id);
+            foreach (var day in occupancy.Days)
+            {
+                var orders = new HashSet<int>();
+                for (var i = 0; i < day.Cells.Count && i < occupancy.Periods.Count; i++)
+                    if (day.Cells[i].IsBusy) orders.Add(occupancy.Periods[i].Order);
+                occupiedByDate[day.Date] = orders;
+            }
+        }
+
+        // Franja de limpieza de 10 min de cada bloque que ocupa (con las horas reales del catálogo).
+        var cleaningByKey = new Dictionary<(string Source, int Id), string>();
+        if (occupancy is not null)
+        {
+            foreach (var block in occupancy.Blocks)
+            {
+                var key = block.IsFreePracticeSlot
+                    ? (block.Source, block.FreePracticeSlotId ?? 0)
+                    : (block.Source, block.PlanningId ?? 0);
+                if (cleaningByKey.ContainsKey(key)) continue;
+                if (Occupancy.LabWeekOccupancyService.CleaningAfter(occupancy.Periods, block.LastOrder)?.Text is { } text)
+                    cleaningByKey[key] = text;
+            }
+        }
 
         var teacherIds = labPlannings.Select(p => p.TeacherPersonId).Distinct().ToList();
         var teachers = teacherIds.Count == 0
@@ -312,13 +369,43 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
                     p.Status,
                     PlanningStatus.Label(p.Status),
                     PlanningStatusView.Css(p.Status),
-                    PlanningStatus.Occupies(p.Status),
+                    // Ocupa si la fuente de ocupación lo dice (no solo por estado: legadas con horas también ocupan).
+                    occupancy?.Blocks.Any(b => b.PlanningId == p.Id) ?? PlanningStatus.Occupies(p.Status),
                     PlanningStatusView.NextUrl(p.Id, p.Status, p.HasRequirements),
                     PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate),
+                    CleaningText: cleaningByKey.TryGetValue((Occupancy.PlanningOccupancySource.SourceName, p.Id), out var planningClean) ? planningClean : null,
                     Relocation: relocations.TryGetValue(p.Id, out var relocation) ? relocation : null);
             })
-            .Where(b => b.Weekday >= 1) // los domingos no existen en el calendario académico
-            .ToList();
+            .Where(b => b.Weekday >= 1); // los domingos no existen en el calendario académico
+
+        // Cupos de práctica libre de estudiantes: ocupan el ambiente y se dibujan como bloque propio.
+        var slotBlocks = occupancy is null
+            ? []
+            : occupancy.Blocks
+                .Where(b => b.Source == Occupancy.FreePracticeSlotOccupancySource.SourceName && b.FreePracticeSlotId.HasValue)
+                .Select(b => new GridBlock(
+                    -b.FreePracticeSlotId!.Value,
+                    b.Code ?? $"Cupo {-b.FreePracticeSlotId.Value}",
+                    lab!.Id,
+                    b.Date.Date,
+                    AcademicWeekGenerator.WeekdayOf(b.Date),
+                    b.StartOrder,
+                    b.PeriodCount,
+                    "PRÁC. LIBRE",
+                    "Cupos de práctica para estudiantes",
+                    b.Capacity is int capacity ? $"cupo {capacity}" : "—",
+                    "—",
+                    "Práctica libre",
+                    Occupancy.FreePracticeSlotOccupancySource.SourceName,
+                    "Práctica libre",
+                    "slot",
+                    true,
+                    "/PracticaLibre/Cupos",
+                    SlotTimeText(occupancy.Periods, b.StartOrder, b.PeriodCount),
+                    CleaningText: cleaningByKey.TryGetValue((b.Source, b.FreePracticeSlotId ?? 0), out var slotClean) ? slotClean : null))
+                .Where(b => b.Weekday >= 1);
+
+        blocks = blocks.Concat(slotBlocks).ToList();
 
         var gridWeeks = visibleWeeks.Select(w =>
         {
@@ -336,11 +423,11 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
                     .OrderBy(b => b.StartOrder).ThenBy(b => b.Occupies ? 1 : 0).ThenBy(b => b.PlanningId)
                     .ToList();
                 return new GridDay(d, AcademicWeekGenerator.WeekdayNames[d], dayDate, exists, suspended,
-                    suspended ? day!.Reason : null, AssignLanes(positioned));
+                    suspended ? day!.Reason : null, AssignLanes(positioned), occupiedByDate.GetValueOrDefault(dayDate));
             }).ToList();
 
             var unscheduled = weekBlocks
-                .Where(b => !b.StartOrder.HasValue)
+                .Where(b => !b.StartOrder.HasValue && b.PlanningId > 0)
                 .OrderBy(b => b.Date).ThenBy(b => b.PlanningId)
                 .ToList();
 
@@ -407,6 +494,16 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
 
     private static List<GridLaboratoryOption> ToOptions(List<GridLaboratory> labs, IReadOnlyDictionary<int, int> counts) =>
         labs.Select(l => new GridLaboratoryOption(l.Id, l.Code, l.Name, counts.TryGetValue(l.Id, out var n) ? n : 0)).ToList();
+
+    /// <summary>"Periodos 5–6 · 11:15–13:05" para un bloque de cupo, con las horas reales del catálogo.</summary>
+    private static string SlotTimeText(IReadOnlyList<Occupancy.LabPeriod> periods, int startOrder, int periodCount)
+    {
+        var first = periods.FirstOrDefault(p => p.Order == startOrder);
+        var last = periods.FirstOrDefault(p => p.Order == PlanningSlot.LastOrder(startOrder, periodCount));
+        var hours = first is not null && last is not null ? $"{first.StartTime:hh\\:mm}–{last.EndTime:hh\\:mm}" : null;
+        var text = PlanningSlot.PeriodsText(startOrder, periodCount);
+        return hours is null ? text : $"{text} · {hours}";
+    }
 
     private static GridWeekOption SelectWeek(List<GridWeekOption> weeks, int? weekNumber, string? date)
     {

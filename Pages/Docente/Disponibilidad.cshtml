@@ -81,13 +81,15 @@
                 </div>
                 <div class="dc-legend mt-1">
                     <span><i style="background:#f1f5f9;"></i>Libre</span>
-                    <span><i style="background:#fde2e7;"></i>Ocupado</span>
-                    <span><i style="background:#ffe9cc;"></i>Limpieza entre prácticas</span>
-                    <span><i style="background:#e6e1fd;"></i>Solicitud de otro docente en revisión</span>
+                    <span><i style="background:#fde2e7;"></i>Ocupado (práctica)</span>
+                    <span><i style="background:#e2f6fa;"></i>Práctica libre (cupo de estudiantes)</span>
+                    <span><i style="background:#f3f1fe; border:1px dashed #b9aef5;"></i>No ocupa / pendiente</span>
+                    <span><i style="height:6px; border-radius:999px; background:repeating-linear-gradient(90deg,#ffe9cc,#ffe9cc 5px,#f0cf9a 5px,#f0cf9a 7px);"></i>Limpieza 10 min</span>
+                    <span><i style="background:#f8f9fa;"></i>Día no hábil</span>
                     <span><i style="background:#e8f8f4;"></i>Tus prácticas</span>
                     <span><i style="background:#cfe8ff;"></i>Tu solicitud en revisión</span>
                 </div>
-                <div class="small text-muted mt-2"><i class="fas fa-hand-pointer mr-1"></i>Toca una celda libre para solicitar ese horario, o una tuya para abrirla. De las prácticas de otros docentes solo se ve que el espacio está ocupado.</div>
+                <div class="small text-muted mt-2"><i class="fas fa-hand-pointer mr-1"></i>Toca una celda libre para solicitar ese horario, o una tuya para abrirla. Lo ocupado es lo mismo que ve el administrador.</div>
             </div>
         </form>
 
@@ -125,7 +127,8 @@
                                         @foreach (var d in lab.Days)
                                         {
                                             var cell = d.Cells[i];
-                                            var label = DisponibilidadModel.CellLabel(cell.State);
+                                            var label = cell.Label ?? DisponibilidadModel.CellLabel(cell.State);
+                                            var title = cell.Title ?? label;
                                             @if (cell.State == "free" && Model.Window.Contains(d.Date))
                                             {
                                                 <td class="dc-cell is-free p-0">
@@ -136,12 +139,21 @@
                                             else if (cell.State is "mine" or "minepending" && cell.PlanningId is int planningId)
                                             {
                                                 <td class="dc-cell is-@cell.State p-0">
-                                                    <a class="dv-link" asp-page="./Solicitud" asp-route-id="@planningId" title="Abrir tu práctica">@label</a>
+                                                    <a class="dv-link" asp-page="./Solicitud" asp-route-id="@planningId" title="@title">@label</a>
+                                                    @if (cell.Clean != null)
+                                                    {
+                                                        <span class="dc-cell__clean" title="Limpieza @cell.Clean (10 min)"></span>
+                                                    }
                                                 </td>
                                             }
                                             else
                                             {
-                                                <td class="dc-cell is-@cell.State" style="cursor:default;" title="@(cell.State == "off" ? d.Note : label)">@label</td>
+                                                <td class="dc-cell is-@cell.State" style="cursor:default;" title="@(cell.State == "off" ? d.Note : title)">@label
+                                                    @if (cell.Clean != null)
+                                                    {
+                                                        <span class="dc-cell__clean" title="Limpieza @cell.Clean (10 min)"></span>
+                                                    }
+                                                </td>
                                             }
                                         }
                                     </tr>
@@ -233,8 +245,14 @@ else
                                 <th class="dc-grid__period"><span class="text-dark">@lab.Code</span><small class="d-block text-muted text-truncate">@lab.Name</small></th>
                                 @foreach (var cell in lab.Cells)
                                 {
-                                    var label = cell switch { "busy" => "Ocupado", "gap" => "Limpieza", "pending" => "Revisión", "mine" => "Tuya", "off" => "Sin clases", _ => "" };
-                                    <td class="dc-cell is-@cell" style="cursor:default;" title="@label">@label</td>
+                                    var label = cell.State == "off" ? "Sin clases" : cell.Label ?? DisponibilidadModel.CellLabel(cell.State);
+                                    var title = cell.Title ?? label;
+                                    <td class="dc-cell is-@cell.State" style="cursor:default;" title="@title">@label
+                                        @if (cell.Clean != null)
+                                        {
+                                            <span class="dc-cell__clean" title="Limpieza @cell.Clean (10 min)"></span>
+                                        }
+                                    </td>
                                 }
                                 <td class="text-center font-weight-bold @(lab.FreeCount > 0 ? "text-success" : "text-muted")">@lab.FreeCount</td>
                             </tr>
@@ -244,9 +262,11 @@ else
             </div>
             <div class="dc-legend mt-2">
                 <span><i style="background:#f1f5f9;"></i>Libre</span>
-                <span><i style="background:#fde2e7;"></i>Ocupado</span>
-                <span><i style="background:#ffe9cc;"></i>Limpieza entre prácticas</span>
-                <span><i style="background:#e6e1fd;"></i>Solicitud en revisión</span>
+                <span><i style="background:#fde2e7;"></i>Ocupado (práctica)</span>
+                <span><i style="background:#e2f6fa;"></i>Práctica libre (cupo de estudiantes)</span>
+                <span><i style="background:#f3f1fe; border:1px dashed #b9aef5;"></i>No ocupa / pendiente</span>
+                <span><i style="height:6px; border-radius:999px; background:repeating-linear-gradient(90deg,#ffe9cc,#ffe9cc 5px,#f0cf9a 5px,#f0cf9a 7px);"></i>Limpieza 10 min</span>
+                <span><i style="background:#f8f9fa;"></i>Día no hábil</span>
                 <span><i style="background:#e8f8f4;"></i>Tus prácticas</span>
             </div>
             @if (Model.Window.Contains(Model.Date))

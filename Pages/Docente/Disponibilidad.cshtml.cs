@@ -10,15 +10,16 @@ using Proyecto_Laboratorios_Univalle.Services.TeacherRequests;
 namespace Proyecto_Laboratorios_Univalle.Pages.Docente;
 
 /// <summary>
-/// Consulta (solo lectura) de disponibilidad: mapa de laboratorios × periodos de un día y stock libre de artículos
-/// en un horario. No muestra datos de prácticas de otros docentes, solo "ocupado".
+/// Consulta ( solo lectura) de disponibilidad: mapa de laboratorios × periodos de un día y stock libre de artículos
+/// en un horario. Las celdas salen de la misma fuente de ocupación que la grilla del administrador
+/// (<see cref="ILabWeekOccupancyService"/>): lo ocupado coincide para todos los roles, con el nombre de la práctica.
 /// </summary>
 public class DisponibilidadModel : TeacherPageBase
 {
-    private readonly IOccupancyService _occupancy;
+    private readonly ILabWeekOccupancyService _week;
 
-    public DisponibilidadModel(ApplicationDbContext db, ITeacherRequestService requests, IOccupancyService occupancy) : base(db, requests)
-        => _occupancy = occupancy;
+    public DisponibilidadModel(ApplicationDbContext db, ITeacherRequestService requests, ILabWeekOccupancyService week) : base(db, requests)
+        => _week = week;
 
     public DateTime Date { get; private set; }
     public List<ClassPeriod> Periods { get; private set; } = [];
@@ -42,24 +43,30 @@ public class DisponibilidadModel : TeacherPageBase
     {
         public string Label => $"Semana {Number} · {Start:dd/MM} al {End:dd/MM}";
     }
-    /// <summary>State: free, busy, gap, pending, mine, minepending, off. PlanningId solo en las celdas propias.</summary>
-    public sealed record WeekCell(int PeriodId, string State, int? PlanningId);
-    public sealed record WeekDay(DateTime Date, bool Enabled, string? Note, IReadOnlyList<WeekCell> Cells);
+
+    /// <summary>
+    /// Estado visible de una celda: free, busy, slot (práctica libre de estudiantes), pending, mine, minepending, off.
+    /// <paramref name="PlanningId"/> solo en las celdas propias; Label/Title llevan el nombre de la práctica y su detalle.
+    /// </summary>
+    public sealed record CellInfo(int PeriodId, string State, int? PlanningId = null, string? Label = null, string? Title = null, string? Clean = null);
+
+    public sealed record WeekDay(DateTime Date, bool Enabled, string? Note, IReadOnlyList<CellInfo> Cells);
     public sealed record WeekLab(int Id, string Code, string Name, IReadOnlyList<WeekDay> Days)
     {
         public int FreeCount => Days.Sum(d => d.Cells.Count(c => c.State == "free"));
         public int MineCount => Days.Sum(d => d.Cells.Count(c => c.State is "mine" or "minepending"));
     }
 
+    /// <summary>Etiqueta de reserva cuando la celda no trae nombre propio.</summary>
     public static string CellLabel(string state) => state switch
     {
-        "busy" => "Ocupado", "gap" => "Limpieza", "pending" => "Revisión", "mine" => "Tuya",
+        "busy" => "Ocupado", "slot" => "Práctica libre", "pending" => "En revisión", "mine" => "Tu práctica",
         "minepending" => "Tu solicitud", "off" => "", _ => "Libre"
     };
 
-    public sealed record LabRow(int Id, string Code, string Name, string?[] Cells)
+    public sealed record LabRow(int Id, string Code, string Name, IReadOnlyList<CellInfo> Cells)
     {
-        public int FreeCount => Cells.Count(c => c == "free");
+        public int FreeCount => Cells.Count(c => c.State == "free");
     }
 
     public async Task OnGetAsync(DateTime? date, int? fromPeriodId, int? periodCount, string? term, string? view, int? week, int? labId)
@@ -89,23 +96,15 @@ public class DisponibilidadModel : TeacherPageBase
             .OrderBy(l => l.Code)
             .Select(l => new { l.Id, l.Code, l.Name })
             .ToListAsync();
-        var blocks = await _occupancy.GetAsync(new OccupancyQuery(Date, Date));
-        var pending = await Db.Plannings.AsNoTracking()
-            .Where(p => !p.IsDeleted && PlanningStatus.PendingReview.Contains(p.Status) && p.ScheduledDate >= Date && p.ScheduledDate < Date.AddDays(1)
-                && p.LaboratoryId != null && p.StartPeriod != null && p.PeriodCount != null)
-            .Select(p => new { LabId = p.LaboratoryId!.Value, Start = p.StartPeriod!.Order, Count = p.PeriodCount!.Value })
-            .ToListAsync();
+        var occupancy = await _week.GetAsync(labs.Select(l => l.Id).ToList(), Date, Date, managementId);
+        var pending = await LoadPendingAsync(Date, Date);
 
-        Labs = labs.Select(l => new LabRow(l.Id, l.Code, l.Name, Periods.Select(p =>
+        Labs = labs.Select(l =>
         {
-            if (DayNote != null) return "off";
-            var labBlocks = blocks.Where(b => b.LaboratoryId == l.Id).ToList();
-            if (labBlocks.Any(b => b.TeacherPersonId == Teacher.PersonId && p.Order >= b.StartOrder && p.Order <= b.LastOrder)) return "mine";
-            if (labBlocks.Any(b => p.Order >= b.StartOrder && p.Order <= b.LastOrder)) return "busy";
-            if (labBlocks.Any(b => p.Order == b.StartOrder - 1 || p.Order == b.LastOrder + 1)) return "gap";
-            if (pending.Any(x => x.LabId == l.Id && p.Order >= x.Start && p.Order < x.Start + x.Count)) return "pending";
-            return "free";
-        }).ToArray<string?>())).ToList();
+            var labDay = occupancy[l.Id].Days.FirstOrDefault();
+            var cells = BuildCells(occupancy[l.Id], labDay, pending.Where(x => x.AllLaboratories || x.LabId == l.Id).ToList());
+            return new LabRow(l.Id, l.Code, l.Name, cells);
+        }).ToList();
 
         if (Term != null && FromPeriodId is int startId)
         {
@@ -119,8 +118,8 @@ public class DisponibilidadModel : TeacherPageBase
     }
 
     /// <summary>
-    /// Semana académica de la gestión: por cada laboratorio solicitable, lunes a sábado × periodos con el estado de cada
-    /// celda. De las prácticas ajenas solo se sabe que el espacio está ocupado; las propias llevan a su solicitud.
+    /// Semana académica de la gestión: por cada laboratorio solicitable, lunes a sábado × periodos con el estado
+    /// de cada celda desde la fuente única de ocupación (igual que la grilla del admin), con el nombre de la práctica.
     /// </summary>
     private async Task BuildWeekAsync(int? weekNumber, DateTime? date, int? labId)
     {
@@ -148,49 +147,95 @@ public class DisponibilidadModel : TeacherPageBase
         LabId = labs.Any(l => l.Id == labId) ? labId : null;
         var shown = LabId is int only ? labs.Where(l => l.Id == only).ToList() : labs;
 
-        var from = Week.Start;
-        var to = Week.End;
-        var days = await Db.AcademicDays.AsNoTracking()
-            .Where(d => d.AcademicWeek.ManagementId == managementId && d.Date >= from && d.Date <= to)
-            .Select(d => new { d.Date, d.Status, d.Reason })
-            .ToListAsync();
-        var blocks = await _occupancy.GetAsync(new OccupancyQuery(from, to));
-        var end = to.AddDays(1);
-        var pending = await Db.Plannings.AsNoTracking()
-            .Where(p => !p.IsDeleted && PlanningStatus.PendingReview.Contains(p.Status) && p.ScheduledDate >= from && p.ScheduledDate < end
-                && p.LaboratoryId != null && p.StartPeriod != null && p.PeriodCount != null)
-            .Select(p => new { p.Id, p.TeacherPersonId, p.ScheduledDate, LabId = p.LaboratoryId!.Value, Start = p.StartPeriod!.Order, Count = p.PeriodCount!.Value })
-            .ToListAsync();
+        var occupancy = await _week.GetAsync(shown.Select(l => l.Id).ToList(), Week.Start, Week.End, managementId);
+        var pending = await LoadPendingAsync(Week.Start, Week.End);
 
-        var dates = Enumerable.Range(0, (to - from).Days + 1).Select(i => from.AddDays(i))
+        var dates = Enumerable.Range(0, (Week.End - Week.Start).Days + 1).Select(i => Week.Start.AddDays(i))
             .Where(d => d.DayOfWeek != DayOfWeek.Sunday).ToList();
         foreach (var lab in shown)
         {
             var labDays = new List<WeekDay>();
             foreach (var d in dates)
             {
-                var info = days.FirstOrDefault(x => x.Date.Date == d);
-                var enabled = info != null && info.Status == AcademicDayStatus.Enabled;
-                var note = info == null ? "Sin clases"
-                    : info.Status != AcademicDayStatus.Enabled ? (string.IsNullOrWhiteSpace(info.Reason) ? "Suspendido" : "Suspendido: " + info.Reason.Trim())
-                    : null;
-                var dayBlocks = blocks.Where(b => b.LaboratoryId == lab.Id && b.Date.Date == d).ToList();
-                var dayPending = pending.Where(x => x.LabId == lab.Id && x.ScheduledDate.Date == d).ToList();
-                var cells = Periods.Select(p =>
-                {
-                    if (!enabled) return new WeekCell(p.Id, "off", null);
-                    var mine = dayBlocks.FirstOrDefault(b => b.TeacherPersonId == Teacher.PersonId && p.Order >= b.StartOrder && p.Order <= b.LastOrder);
-                    if (mine != null) return new WeekCell(p.Id, "mine", mine.PlanningId);
-                    if (dayBlocks.Any(b => p.Order >= b.StartOrder && p.Order <= b.LastOrder)) return new WeekCell(p.Id, "busy", null);
-                    var myPending = dayPending.FirstOrDefault(x => x.TeacherPersonId == Teacher.PersonId && p.Order >= x.Start && p.Order < x.Start + x.Count);
-                    if (myPending != null) return new WeekCell(p.Id, "minepending", myPending.Id);
-                    if (dayBlocks.Any(b => p.Order == b.StartOrder - 1 || p.Order == b.LastOrder + 1)) return new WeekCell(p.Id, "gap", null);
-                    if (dayPending.Any(x => p.Order >= x.Start && p.Order < x.Start + x.Count)) return new WeekCell(p.Id, "pending", null);
-                    return new WeekCell(p.Id, "free", null);
-                }).ToList();
-                labDays.Add(new WeekDay(d, enabled, note, cells));
+                var labDay = occupancy[lab.Id].Day(d);
+                var cells = BuildCells(occupancy[lab.Id], labDay, pending.Where(x => x.Date == d && (x.AllLaboratories || x.LabId == lab.Id)).ToList());
+                labDays.Add(new WeekDay(d, labDay?.Enabled ?? false, labDay?.Note, cells));
             }
             WeekLabs.Add(new WeekLab(lab.Id, lab.Code, lab.Name, labDays));
         }
+    }
+
+    /// <summary>Solicitudes en revisión (no ocupan): avisan el interés por el horario.</summary>
+    private async Task<List<PendingRow>> LoadPendingAsync(DateTime from, DateTime to)
+    {
+        var end = to.Date.AddDays(1);
+        return await Db.Plannings.AsNoTracking()
+            .Where(p => !p.IsDeleted && PlanningStatus.PendingReview.Contains(p.Status) && p.ScheduledDate >= from && p.ScheduledDate < end
+                && (p.LaboratoryId != null || p.AllLaboratories) && p.StartPeriod != null && p.PeriodCount != null)
+            .Select(p => new PendingRow(
+                p.Id, p.LaboratoryId, p.AllLaboratories, p.TeacherPersonId, p.ScheduledDate.Date, p.StartPeriod!.Order, p.PeriodCount!.Value))
+            .ToListAsync();
+    }
+
+    // Registrado como tipo concreto para poder proyectarlo en EF.
+    public sealed record PendingRow(int Id, int? LabId, bool AllLaboratories, int TeacherPersonId, DateTime Date, int Start, int Count);
+
+    /// <summary>
+    /// Convierte un día de la fuente de ocupación en celdas de la vista: ocupado/práctica libre/tu práctica con su
+    /// nombre y detalle, pendientes (tuyas o de otros) solo cuando la celda está libre, y la franja de limpieza
+    /// de 10 minutos en el último periodo de cada bloque.
+    /// </summary>
+    private List<CellInfo> BuildCells(LabWeekOccupancy week, LabWeekDay? day, List<PendingRow> dayPending)
+    {
+        if (day is null) return Periods.Select(p => new CellInfo(p.Id, "off")).ToList();
+
+        var cleanByOrder = new Dictionary<int, string>();
+        foreach (var block in week.Blocks.Where(b => b.Date == day.Date))
+        {
+            if (cleanByOrder.ContainsKey(block.LastOrder)) continue;
+            if (LabWeekOccupancyService.CleaningAfter(week.Periods, block.LastOrder)?.Text is { } text)
+                cleanByOrder[block.LastOrder] = text;
+        }
+
+        var cells = new List<CellInfo>(Periods.Count);
+        for (var i = 0; i < Periods.Count; i++)
+        {
+            var period = Periods[i];
+            var cell = day.Cells.ElementAtOrDefault(i);
+            if (!day.Enabled || cell is null || cell.State == LabCellState.Off)
+            {
+                cells.Add(new CellInfo(period.Id, "off"));
+                continue;
+            }
+
+            if (cell.State == LabCellState.Busy && cell.OccupiedBy is { } block)
+            {
+                var clean = block.LastOrder == period.Order && cleanByOrder.TryGetValue(block.LastOrder, out var strip) ? strip : null;
+                if (block.IsFreePracticeSlot)
+                {
+                    cells.Add(new CellInfo(period.Id, "slot", null, "Práctica libre",
+                        $"Cupo de práctica libre para estudiantes{(block.Capacity is int cap ? $" · cupo {cap}" : "")}{(string.IsNullOrWhiteSpace(block.Code) ? "" : " · " + block.Code.Trim())} · {block.PeriodsText}"));
+                    continue;
+                }
+
+                var label = block.ShortLabel();
+                var detail = block.Detail();
+                cells.Add(block.TeacherPersonId == Teacher.PersonId
+                    ? new CellInfo(period.Id, "mine", block.PlanningId, label == "Ocupado" ? "Tu práctica" : label, $"Tu práctica · {detail}", clean)
+                    : new CellInfo(period.Id, "busy", null, label, detail, clean));
+                continue;
+            }
+
+            // Libre: las solicitudes en revisión no ocupan, solo avisan.
+            var covering = dayPending.Where(x => period.Order >= x.Start && period.Order < x.Start + x.Count).ToList();
+            var mine = covering.FirstOrDefault(x => x.TeacherPersonId == Teacher.PersonId);
+            if (mine != null)
+                cells.Add(new CellInfo(period.Id, "minepending", mine.Id, "Tu solicitud", "Tu solicitud en revisión: aún no reserva el laboratorio"));
+            else if (covering.Count > 0)
+                cells.Add(new CellInfo(period.Id, "pending", null, "En revisión", "Solicitud de otro docente en revisión: aún no reserva el laboratorio"));
+            else
+                cells.Add(new CellInfo(period.Id, "free"));
+        }
+        return cells;
     }
 }

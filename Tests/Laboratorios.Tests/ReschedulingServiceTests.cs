@@ -272,8 +272,7 @@ public class ReschedulingServiceTests
         Assert.Equal(1, db.Context.Reschedulings.AsNoTracking().Single().DayRecoveryId);
         Assert.Equal(DayRecoveryStatus.InProgress, db.Context.DayRecoveries.AsNoTracking().Single().Status);
 
-        // P4–5 y no P3–4: debe quedar un periodo libre entre prácticas del ambiente y la primera
-        // reposición ya ocupa P1–2 ese jueves.
+        // P4–5: la primera reposición ya ocupa P1–2 ese jueves (los bloques contiguos también se permiten).
         var second = await Service(db).ExecuteAsync(Command(thursday, 4, dayRecoveryId: 1, planningId: SecondId));
 
         Assert.True(second.Ok, second.Message);

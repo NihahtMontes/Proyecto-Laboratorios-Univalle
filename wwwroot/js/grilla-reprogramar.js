@@ -279,10 +279,11 @@
     }
 
     /**
-     * Regla local de separación: el destino no puede quedar solapado ni contiguo a otro bloque
-     * del mismo ambiente y día (el bloque de origen se excluye porque "se levanta" de la grilla).
+     * Regla local del ambiente: el destino no puede solaparse con otro bloque del mismo ambiente y día
+     * (el bloque de origen se excluye porque "se levanta" de la grilla). Los bloques contiguos sí se permiten:
+     * la limpieza es de 10 minutos y se hace en el receso entre periodos.
      */
-    function bufferProblem(d) {
+    function overlapProblem(d) {
         var start = d.order;
         var end = lastOrderOf(start);
         var blocks = document.querySelectorAll('.gr-block[data-date="' + d.date + '"][data-laboratory-id="' + d.labId + '"]');
@@ -295,7 +296,7 @@
             var c = parseInt(block.getAttribute('data-period-count'), 10);
             if (!s || !c) continue;   // legado sin periodos
             var otherEnd = s + c - 1;
-            if (start <= otherEnd + 1 && end >= s - 1) return true;   // solapa o queda contiguo
+            if (start <= otherEnd && end >= s) return true;   // se solapa
         }
         return false;
     }
@@ -306,7 +307,7 @@
         var cell = cellFor(d);
         if (cell && cell.getAttribute('data-suspended') === 'true') return 'El día está suspendido.';
         if (cell && cell.getAttribute('data-out') === 'true') return 'El día está fuera de la gestión.';
-        if (bufferProblem(d)) return 'Debe quedar un periodo libre entre prácticas.';
+        if (overlapProblem(d)) return 'El laboratorio ya tiene otra práctica en esos periodos.';
         var groupSubject = groupConflict(d.date, d.order);
         if (groupSubject) return 'El grupo ' + groupName + ' tiene clase de ' + groupSubject + ' en ese horario.';
         return null;
