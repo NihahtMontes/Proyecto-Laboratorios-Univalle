@@ -38,7 +38,7 @@ Un solo lugar con **todo lo que pidió el usuario**, de cada fuente, y en qué e
 | 1 | Los estudiantes reservan práctica libre (hasta 6 por laboratorio; la Inge aprueba; faltas y sanción) | ✅ | Fase 2. La migración se aplicó en EXP el 24/11. |
 | 2 | Práctica para el examen de grado (mínimo 3 veces, menú de tres tiempos, periodo de decoración) | 🚫 | El usuario lo dejó para después. |
 | 3 | Un L-3 por práctica, siempre, separado en insumos y utensilios | ⏸ | Los insumos son la comida del menú y el sistema no los tiene: están en las recetas del Excel, que el usuario dejó fuera («solo planificación»). Se hace cuando se carguen las recetas, después de limpiar esos datos con la Inge. |
-| 4 | Reporte de cambios del docente a su material («Pedro Guereca modificó 8 veces su material este mes»; 60 observaciones en el último mes) | ✅ reporte · 🔄 cambio de L-3 | **Reporte (24/11, `d0dfe01`).** Compara cada solicitud del portal con el kit escalado y descuenta los ajustes de la Inge. Separa los cambios de **cantidad** de los de **artículo**. **Llamada de atención:** 3 o más artículos agregados o quitados en una práctica. **Último momento:** menos de 7 días de anticipación. **«Pedir cambio de material» para prácticas ya aprobadas** (las 422 de 2027-1): aprobado por el usuario el 24/11. El docente ajusta su L-3 con motivo y la Inge lo aprueba. El plan se muestra antes de programarlo. |
+| 4 | Reporte de cambios del docente a su material («Pedro Guereca modificó 8 veces su material este mes»; 60 observaciones en el último mes) | ✅ | **Reporte (24/11, `d0dfe01`).** Compara cada solicitud del portal con el kit escalado y descuenta los ajustes de la Inge. Separa los cambios de **cantidad** de los de **artículo**. **Llamada de atención:** 3 o más artículos agregados o quitados en una práctica. **Último momento:** menos de 7 días de anticipación. **«Pedir cambio de material» (24/11, `21b8304`…`84509bb`).** El docente pide cambiar el L-3 de una práctica aprobada (las 422 de 2027-1 incluidas) con un motivo y la Inge aprueba o rechaza desde «Cambios de material». La práctica sigue aprobada, todo queda en el historial y el reporte muestra los pedidos como «Cambio de L-3». Migración mínima `WidenPlanningReviewActions` aplicada en EXP con respaldo `EXP_PRE_CAMBIO_MATERIAL_20261124.bak`. |
 | 5 | Calendario por laboratorio con todas las actividades (prácticas, reprogramaciones y reservas de estudiantes) | ✅ | La grilla única muestra las prácticas de cualquier gestión, los cupos de práctica libre y las marcas de reprogramación y reposición. |
 | 6 | Misceláneos (papel absorbente y similares) en otro formulario | ⏸ | En el audio (pág. 14 del PDF), la Inge dice que los misceláneos (papeles absorbentes y similares) los entrega con **otro formulario**, aparte del L-3. Lo más parecido en el sistema son 16 artículos de «Material operativo» marcados como consumibles (papel film, papel aluminio, papel manteca, bolsas…), que hoy van dentro del L-3. **Falta que la Inge pase una foto de su formulario.** |
 
@@ -107,12 +107,49 @@ Se corrieron sobre una copia de EXP, nunca sobre EXP.
 |---|---|---|---|---|
 | REAL | La original, desde el Excel | 3 | 1.038 | 32 |
 | NUBE_20261103 | Foto de la nube del 03/11 (REAL + 3 usuarios) | 6 | 1.038 | 32 |
-| EXP | Copia del Sprint 3 | 58 | 1.643 | 37 |
+| EXP | Copia del Sprint 3 | 58 | 1.643 | 38 (desde el mediodía del 24/11) |
 
 - EXP tiene, además: 5 migraciones (portal docente, consumibles, número de estudiantes, motivo de reposición y estudiantes), 2027-1 con 422 prácticas y 183 prácticas de prueba de 2026-2 (12–20/11).
 - Para pasar algo a REAL o a la nube no se copia EXP: se aplican las migraciones y se vuelve a importar el Excel 2027-1.
 - Las copias desechables `EXP_IMPORT_PRUEBA` y `QA_E2E` se borraron al terminar.
 
-**Siguiente**
-- Plan de «Pedir cambio de material», que el usuario debe aprobar antes de programar.
+## 8. «Pedir cambio de material» (24/11, mediodía)
+
+**Commits locales en sprint-3, sin push:**
+- `21b8304`: acciones 8-11 y migración mínima.
+- `b1bb350`: servicio y pruebas.
+- `7dc4306`: el reporte suma los cambios de L-3.
+- `918dcac`: pantallas del docente y de la Inge.
+- `84509bb`: E2E.
+
+**Quién lo hizo**
+- El backend lo hizo GLM-5.3 y las pantallas GLM-5.3-Flash; Claude revisó, corrigió e hizo la migración y el E2E.
+- Correcciones de Claude:
+  - un «agregado» cuyo artículo ya está en el L-3 ajusta la cantidad en vez de duplicar la línea;
+  - el estado real queda en el historial al retirar o rechazar;
+  - el resumen en vivo del docente leía la cantidad vigente de la celda y no de la fila, y contaba todo como agregado;
+  - un artículo agregado desde el buscador arrancaba en 0;
+  - se usaba un icono que no existe en Font Awesome 5.0.9.
+
+**Pruebas**
+- 678/678 unitarias, con las de aprobación de antes sin cambios.
+- E2E `cambio_material` 20/20:
+  - pedido con aumento, quitado y agregado;
+  - número del menú y bandeja;
+  - aprobación, también con faltantes;
+  - rechazo y retiro;
+  - carrera aprobar/rechazar con una sola decisión;
+  - reporte.
+- Regresión: `docente_casos` 23/23, `grilla_unica` 13/13 y `http_cases_planificacion` 35/35.
+
+**Bases**
+- EXP quedó con 38 migraciones; la regla de acciones del historial ahora acepta 1–11.
+- REAL sigue con 32 migraciones.
+- La copia QA_E2E se borró al terminar.
+
+**Siguiente / observaciones**
+- Al pasar todo a REAL o a la nube, aplicar las 6 migraciones que EXP tiene y REAL no: las 5 de antes más `WidenPlanningReviewActions`.
+- Ya existía: el icono `fa-check-double` no está en el Font Awesome del tema y se ve vacío en 12 pantallas (Notificaciones, Kardex, Mantenimientos…). Conviene cambiarlo por uno que exista.
+- Ya existía: el aviso flotante «Tienes N avisos que requieren atención» tapa 7 s los botones de arriba a la derecha y se queda fijo con el mouse encima.
+- Ya existía: `docente_casos.mjs` tiene escritas las claves de las cuentas de prueba. Pasarlas a variables de entorno, como `cambio_material.mjs`.
 - Opcional: en el portal docente, escribir la hora de la limpieza en la celda. Hoy es una línea naranja y la hora solo aparece al pasar el mouse.
