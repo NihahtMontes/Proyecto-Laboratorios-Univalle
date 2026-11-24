@@ -312,6 +312,15 @@ public sealed class PlanningImportService : IPlanningImportService
         }
         using (package)
         {
+            // Generador de la Inge (.xlsm con CONFIG, MATERIAS y PLANIFICA): se convierte a las mismas filas de la
+            // plantilla, con los periodos ya repartidos, y sigue la misma revisión y carga.
+            if (GeneratorWorkbookReader.IsGenerator(package.Workbook))
+            {
+                file.Generator = GeneratorWorkbookReader.Read(package.Workbook);
+                file.Rows.AddRange(FromGenerator(file.Generator));
+                return file;
+            }
+
             var sheet = package.Workbook.Worksheets.FirstOrDefault(w => Norm(w.Name) == Norm(SheetRows))
                 ?? throw new ImportFileException($"El archivo no tiene la hoja «{SheetRows}». Descargue la plantilla y llénela sin cambiar los nombres de las hojas.");
             if (sheet.Dimension == null)
@@ -418,6 +427,48 @@ public sealed class PlanningImportService : IPlanningImportService
         return file;
     }
 
+    /// <summary>
+    /// Filas del generador → filas de la plantilla. El generador no trae horas: los periodos se reparten con
+    /// <see cref="GeneratorPeriodPlanner"/> y cada decisión queda como aviso de la fila.
+    /// </summary>
+    public static List<ImportRawRow> FromGenerator(GeneratorWorkbook generator)
+    {
+        // Semanas cuyo rango en CONFIG repite el de otra anterior (en 1-2027 la 6 copia la 3): sus fechas son dudosas,
+        // así que esas prácticas se omiten hasta que la Inge corrija el Excel (decisión del usuario, 2026-11-23).
+        var repeated = generator.Weeks.Where(w => w.Start != null)
+            .GroupBy(w => w.Start).SelectMany(g => g.OrderBy(w => w.Number).Skip(1)
+                .Select(w => (w.Number, First: g.Min(x => x.Number)))).ToDictionary(x => x.Number, x => x.First);
+        bool Doubtful(GeneratorRow r) => r.Week is int week && repeated.ContainsKey(week);
+
+        // Solo se evita el choque de docente: la misma letra de grupo en materias distintas no identifica a los mismos
+        // estudiantes (la Inge pone hasta 4 materias del mismo semestre y letra el mismo día), así que no se usa.
+        var inputs = generator.Rows.Where(r => r.Date != null && !Doubtful(r)).Select(r => new GeneratorPeriodPlanner.Input(
+            r.RowNumber, r.Date!.Value, r.Laboratory, NormPerson(r.Teacher), "", Norm(r.SubjectCode) + "|" + Norm(r.Group)));
+        var plan = GeneratorPeriodPlanner.Plan(inputs);
+        string Num(int? n) => n?.ToString(CultureInfo.InvariantCulture) ?? "";
+        return generator.Rows.Select(r =>
+        {
+            var p = plan.GetValueOrDefault(r.RowNumber);
+            return new ImportRawRow
+            {
+                RowNumber = r.RowNumber,
+                Subject = r.SubjectCode,
+                Group = r.Group,
+                Practice = r.Practice,
+                Date = r.Date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
+                StartPeriod = Num(p?.Slot?.Start),
+                PeriodCount = Num(p?.Slot?.Count),
+                Laboratory = r.Laboratory,
+                Teacher = r.Teacher,
+                Students = Num(r.Students),
+                Notes = [.. (r.Week is int week && repeated.TryGetValue(week, out var first)
+                    ? [$"Se omite: es de la semana {week} del Excel y en CONFIG esa semana tiene las mismas fechas que la semana {first}. Cuando la Inge la corrija, vuelva a subir el archivo y se agregará sin duplicar lo ya cargado."]
+                    : Array.Empty<string>()), .. p?.Notes ?? []],
+                DefaultDecision = Doubtful(r) ? ImportDecisions.Skip : ""
+            };
+        }).ToList();
+    }
+
     // ───────────────────────────────────────────────────────────── revisión
 
     private sealed record ExistingPlanning(int Id, string? Code, string Status, int ScheduleId, DateTime Date, int? StartOrder,
@@ -470,18 +521,27 @@ public sealed class PlanningImportService : IPlanningImportService
             .Select(d => d.PlanningId!.Value).Distinct().ToListAsync(ct)).ToHashSet();
         var teacherNames = teachers.ToDictionary(t => t.Id, t => t.Name);
 
+        var generator = file.Generator;
+        if (generator != null && generator.ManagementCode.Length > 0 && Norm(generator.ManagementCode) != Norm(management.Code))
+            throw new ImportFileException($"El archivo es de la gestión {generator.ManagementCode} y se está cargando la gestión {management.Code}.");
+
         var analysis = new ImportAnalysis { ManagementId = management.Id, ManagementCode = management.Code, FileName = file.FileName };
         if (management.Status is not (ManagementStatus.Active or ManagementStatus.Inactive))
             analysis.ExtraSheetIssues.Add(AcademicManagementService.ReadOnlyMessage);
+        if (generator != null)
+            analysis.FileNotices.AddRange(generator.Notices);
 
         // ── 1) Cada fila contra los catálogos
         foreach (var raw in file.Rows)
         {
-            var row = new ImportRow { Raw = raw, Decision = decisions.GetValueOrDefault(raw.RowNumber, "") };
+            var row = new ImportRow { Raw = raw, Decision = decisions.GetValueOrDefault(raw.RowNumber, raw.DefaultDecision) };
             analysis.Rows.Add(row);
             void Error(string column, string message) => row.Issues.Add(new ImportIssue(ImportIssueLevel.Error, column, message));
             void Clash(string column, string message) => row.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, column, message));
             void Warn(string column, string message) => row.Issues.Add(new ImportIssue(ImportIssueLevel.Warning, column, message));
+
+            foreach (var note in raw.Notes)
+                Warn("Horario", note);
 
             if (!string.IsNullOrWhiteSpace(raw.Management) && Norm(raw.Management) != Norm(management.Code))
                 Error("Gestión", $"La fila dice «{raw.Management}» y se está cargando la gestión {management.Code}. Borre el dato o corrija la gestión.");
@@ -661,7 +721,8 @@ public sealed class PlanningImportService : IPlanningImportService
                     {
                         row.TeacherId = contained[0].Id;
                         row.TeacherName = contained[0].Name;
-                        Warn("Docente", $"«{raw.Teacher}» se interpretó como {contained[0].Name}. Si no es esa persona, corrija el nombre.");
+                        if (generator == null)
+                            Warn("Docente", $"«{raw.Teacher}» se interpretó como {contained[0].Name}. Si no es esa persona, corrija el nombre.");
                     }
                     else
                     {
@@ -765,6 +826,18 @@ public sealed class PlanningImportService : IPlanningImportService
                 row.State = ImportRowState.Identical;
         }
 
+        // Generador: al volver a importar se actualiza lo que se puede y lo que ya tiene movimientos no se toca.
+        if (generator != null)
+        {
+            foreach (var row in analysis.Rows.Where(r => r.State == ImportRowState.Existing && r.Decision.Length == 0))
+            {
+                row.Decision = row.CanOverwrite ? ImportDecisions.Overwrite : ImportDecisions.Skip;
+                if (!row.CanOverwrite)
+                    row.Issues.Add(new ImportIssue(ImportIssueLevel.Warning, "Práctica",
+                        $"Ya está cargada ({row.ExistingCode}) y {row.OverwriteBlockReason}: no se actualiza."));
+            }
+        }
+
         // Filas que participan (no omitidas, y las ya cargadas solo si se van a sobrescribir).
         bool Active(ImportRow r) => r.Decision != ImportDecisions.Skip && r.State != ImportRowState.Identical
             && (r.State == ImportRowState.New || (r.Decision == ImportDecisions.Overwrite && r.CanOverwrite));
@@ -805,7 +878,7 @@ public sealed class PlanningImportService : IPlanningImportService
                 {
                     if (b.LaboratoryId == row.LaboratoryId && PlanningSlot.OverlapsWithGap(b.StartOrder, b.PeriodCount, start, count))
                         row.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Laboratorio",
-                            $"El laboratorio {row.LaboratoryLabel} ya está ocupado (o no queda un periodo libre entre prácticas) por {b.Label}, {b.PeriodsText.ToLowerInvariant()}."));
+                            $"El laboratorio {row.LaboratoryLabel} ya está ocupado por {b.Label}, {b.PeriodsText.ToLowerInvariant()}."));
                     if (row.TeacherId is int teacherId && b.TeacherPersonId == teacherId && PlanningSlot.Overlaps(b.StartOrder, b.PeriodCount, start, count))
                         row.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Docente",
                             $"{row.TeacherName} ya tiene otra práctica en ese horario: {b.Label}, {b.PeriodsText.ToLowerInvariant()}."));
@@ -825,8 +898,8 @@ public sealed class PlanningImportService : IPlanningImportService
                         if (a.LaboratoryId == b.LaboratoryId
                             && PlanningSlot.OverlapsWithGap(a.StartOrder.Value, a.PeriodCount.Value, b.StartOrder.Value, b.PeriodCount.Value))
                         {
-                            a.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Laboratorio", $"Choca con la fila {b.RowNumber}: mismo laboratorio ({a.LaboratoryLabel}) en periodos seguidos o superpuestos."));
-                            b.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Laboratorio", $"Choca con la fila {a.RowNumber}: mismo laboratorio ({b.LaboratoryLabel}) en periodos seguidos o superpuestos."));
+                            a.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Laboratorio", $"Choca con la fila {b.RowNumber}: mismo laboratorio ({a.LaboratoryLabel}) en periodos superpuestos."));
+                            b.Issues.Add(new ImportIssue(ImportIssueLevel.Clash, "Laboratorio", $"Choca con la fila {a.RowNumber}: mismo laboratorio ({b.LaboratoryLabel}) en periodos superpuestos."));
                         }
                         if (overlap && a.TeacherId != null && a.TeacherId == b.TeacherId)
                         {

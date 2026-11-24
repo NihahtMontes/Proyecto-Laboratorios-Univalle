@@ -68,6 +68,70 @@
             <p class="text-muted mb-0">Active una gestión semestral y genere su calendario académico antes de cargar la planificación.</p>
         </div></div>
     }
+    else if (Model.Setup is { } setup && (setup.Error != null || setup.HasChanges))
+    {
+        <!-- Generador de la Inge: preparar la gestión antes de revisar las prácticas -->
+        <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="im-setup-title"><div class="card-body p-4">
+            <h5 id="im-setup-title" class="font-weight-bold text-dark mb-1"><i class="fas fa-tools mr-2" style="color:#7460ee;"></i>Preparar la gestión @setup.ManagementCode</h5>
+            <p class="text-muted small mb-3">
+                El archivo es el generador de la Inge (@Model.Generator?.Rows.Count práctica(s), @Model.Generator?.Groups.Count grupo(s) habilitado(s)).
+                Antes de revisar las prácticas hay que dejar lista la gestión en el sistema. No se carga ninguna práctica en este paso.
+            </p>
+            @if (setup.Error != null)
+            {
+                <div class="alert alert-danger border-0 mb-3" role="alert"><i class="fas fa-exclamation-circle mr-1"></i>@setup.Error</div>
+            }
+            else
+            {
+                @if (setup.ManagementChanges.Count > 0)
+                {
+                    <h6 class="font-weight-bold mt-2">Gestión</h6>
+                    <ul class="small mb-3">
+                        @foreach (var change in setup.ManagementChanges) { <li>@change</li> }
+                    </ul>
+                }
+                @if (setup.CalendarNeeded)
+                {
+                    <h6 class="font-weight-bold">Calendario académico</h6>
+                    <p class="small mb-3">@setup.CalendarText</p>
+                }
+                @if (setup.GroupsToCreate.Count > 0)
+                {
+                    <details class="mb-2">
+                        <summary class="font-weight-bold small">Grupos que se crean (@setup.GroupsToCreate.Count)</summary>
+                        <ul class="small mt-2 mb-0">@foreach (var g in setup.GroupsToCreate) { <li>@g</li> }</ul>
+                    </details>
+                }
+                @if (setup.GroupsToUpdate.Count > 0)
+                {
+                    <details class="mb-2">
+                        <summary class="font-weight-bold small">Grupos que se actualizan (@setup.GroupsToUpdate.Count)</summary>
+                        <ul class="small mt-2 mb-0">@foreach (var g in setup.GroupsToUpdate) { <li>@g</li> }</ul>
+                    </details>
+                }
+            }
+            @if (setup.Notices.Count > 0)
+            {
+                <details class="mb-3" open="@(setup.Error != null)">
+                    <summary class="font-weight-bold small text-warning">Avisos (@setup.Notices.Count)</summary>
+                    <ul class="small mt-2 mb-0">@foreach (var n in setup.Notices) { <li>@n</li> }</ul>
+                </details>
+            }
+            <div class="d-flex flex-wrap align-items-center mt-3">
+                @if (setup.Error == null)
+                {
+                    <form method="post" asp-page-handler="Setup" asp-route-token="@Model.Token" class="mr-2 mb-2">
+                        <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4" id="im-setup-apply">
+                            <i class="fas fa-check mr-1"></i> Preparar la gestión y seguir
+                        </button>
+                    </form>
+                }
+                <form method="post" asp-page-handler="Cancel" asp-route-token="@Model.Token" class="mb-2">
+                    <button type="submit" class="btn btn-light border btn-rounded"><i class="fas fa-times mr-1"></i> Subir otro archivo</button>
+                </form>
+            </div>
+        </div></section>
+    }
     else if (a == null)
     {
         <!-- Paso 1 -->
@@ -87,9 +151,9 @@
                     <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" id="im-upload-form">
                         <input type="hidden" name="ManagementId" value="@Model.ManagementId" />
                         <div class="im-drop mb-3">
-                            <label for="im-file" class="font-weight-bold d-block mb-2">Archivo de la gestión @Model.Management.Code (.xlsx)</label>
-                            <input type="file" id="im-file" name="Upload" accept=".xlsx" class="form-control-file" required />
-                            <small class="text-muted d-block mt-2">Subir el archivo no guarda nada todavía: primero verá la revisión completa.</small>
+                            <label for="im-file" class="font-weight-bold d-block mb-2">Archivo de la gestión @Model.Management.Code (.xlsx) o generador de la Inge (.xlsm)</label>
+                            <input type="file" id="im-file" name="Upload" accept=".xlsx,.xlsm" class="form-control-file" required aria-describedby="im-file-help" />
+                            <small id="im-file-help" class="text-muted d-block mt-2">Subir el archivo no guarda nada todavía: primero verá la revisión completa. El generador de la Inge se reconoce solo y su gestión se toma del archivo.</small>
                         </div>
                         <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
                             <i class="fas fa-search mr-1"></i> Revisar el archivo
@@ -144,6 +208,10 @@
             </form>
         </div></div>
 
+        @foreach (var notice in a.FileNotices)
+        {
+            <div class="alert alert-warning border-0 shadow-sm small"><i class="fas fa-info-circle mr-1"></i>@notice</div>
+        }
         @foreach (var issue in a.ExtraSheetIssues)
         {
             <div class="alert alert-danger border-0 shadow-sm"><i class="fas fa-exclamation-circle mr-1"></i>@issue</div>

@@ -22,14 +22,16 @@ public class ImportarModel : PageModel
     private static readonly TimeSpan Lifetime = TimeSpan.FromHours(1);
 
     private readonly IPlanningImportService _import;
+    private readonly IGeneratorSetupService _setup;
     private readonly IAcademicManagementService _managements;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ImportarModel> _logger;
 
-    public ImportarModel(IPlanningImportService import, IAcademicManagementService managements, IMemoryCache cache,
-        ILogger<ImportarModel> logger)
+    public ImportarModel(IPlanningImportService import, IGeneratorSetupService setup, IAcademicManagementService managements,
+        IMemoryCache cache, ILogger<ImportarModel> logger)
     {
         _import = import;
+        _setup = setup;
         _managements = managements;
         _cache = cache;
         _logger = logger;
@@ -38,7 +40,8 @@ public class ImportarModel : PageModel
     /// <summary>Lo que se guarda entre pasos: el archivo leído, la gestión y las decisiones por fila.</summary>
     private sealed class Draft
     {
-        public int ManagementId { get; init; }
+        /// <summary>Gestión elegida; con el generador de la Inge se toma la del archivo.</summary>
+        public int ManagementId { get; set; }
         public required ImportFile File { get; init; }
         public Dictionary<int, string> Decisions { get; } = [];
     }
@@ -53,6 +56,9 @@ public class ImportarModel : PageModel
     public IReadOnlyList<AcademicManagementSummary> Managements { get; private set; } = [];
     public ImportAnalysis? Analysis { get; private set; }
     public bool HasCalendar { get; private set; } = true;
+    /// <summary>Generador de la Inge: lo que falta preparar (gestión, calendario, grupos) antes de revisar las prácticas.</summary>
+    public GeneratorSetupPlan? Setup { get; private set; }
+    public GeneratorWorkbook? Generator { get; private set; }
 
     private string CacheKey(string token) => $"PlanImport:{User.FindFirstValue(ClaimTypes.NameIdentifier)}:{token}";
 
@@ -79,7 +85,24 @@ public class ImportarModel : PageModel
             TempData.Warning("La revisión expiró. Suba el archivo otra vez.");
             return RedirectToPage(new { managementId = ManagementId });
         }
+        if (draft?.File.Generator is GeneratorWorkbook generator)
+        {
+            Generator = generator;
+            Setup = await _setup.PlanAsync(generator);
+            if (Setup.ManagementId is int targetId) draft.ManagementId = targetId;
+            if (Setup.Error != null || Setup.HasChanges)
+            {
+                // Primero hay que preparar la gestión: todavía no se revisan las prácticas.
+                await LoadManagementAsync(draft.ManagementId);
+                return Page();
+            }
+        }
         await LoadManagementAsync(draft?.ManagementId ?? ManagementId);
+        if (draft != null && Management != null && Management.Id != draft.ManagementId)
+        {
+            TempData.Error("La gestión del archivo no está disponible para planificar.");
+            return RedirectToPage(new { managementId = Management.Id });
+        }
         if (draft != null && Management != null)
         {
             try
@@ -121,9 +144,11 @@ public class ImportarModel : PageModel
             TempData.Error("Seleccione el archivo Excel (.xlsx) de la planificación.");
             return RedirectToPage(new { managementId = Management.Id });
         }
-        if (!Upload.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) || Upload.Length > 10 * 1024 * 1024)
+        var extension = Path.GetExtension(Upload.FileName);
+        if (!(extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase) || extension.Equals(".xlsm", StringComparison.OrdinalIgnoreCase))
+            || Upload.Length > 10 * 1024 * 1024)
         {
-            TempData.Error("El archivo debe ser .xlsx y pesar menos de 10 MB.");
+            TempData.Error("El archivo debe ser .xlsx (plantilla) o .xlsm (generador de la Inge) y pesar menos de 10 MB.");
             return RedirectToPage(new { managementId = Management.Id });
         }
 
@@ -148,6 +173,21 @@ public class ImportarModel : PageModel
         var token = Guid.NewGuid().ToString("N");
         SaveDraft(token, new Draft { ManagementId = Management.Id, File = file });
         return RedirectToPage(new { token });
+    }
+
+    /// <summary>Generador de la Inge: prepara la gestión (estado y fechas), el calendario y los grupos.</summary>
+    public async Task<IActionResult> OnPostSetupAsync()
+    {
+        var draft = LoadDraft();
+        if (draft?.File.Generator is not GeneratorWorkbook generator)
+        {
+            TempData.Warning("La revisión expiró. Suba el archivo otra vez.");
+            return RedirectToPage(new { managementId = ManagementId });
+        }
+        var result = await _setup.ApplyAsync(generator);
+        if (result.Ok) TempData.Success(result.Message);
+        else TempData.Error(result.Message);
+        return RedirectToPage(new { token = Token });
     }
 
     /// <summary>

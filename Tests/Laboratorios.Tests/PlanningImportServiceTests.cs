@@ -176,12 +176,12 @@ public class PlanningImportServiceTests
     }
 
     [Fact]
-    public async Task RowsInFile_ClashByLaboratoryGap_AndByTeacher()
+    public async Task RowsInFile_ClashByLaboratoryOverlap_AndByTeacher()
     {
         using var db = Seed();
-        // Mismo laboratorio en periodos seguidos (3–4 y 5–6): no queda un periodo libre entre prácticas.
+        // Mismo laboratorio en periodos superpuestos (3–4 y 4–5).
         var a = Row(2, start: "3", count: "2");
-        var b = Row(3, group: "B1", teacher: "Luis Rojas", start: "5", count: "2");
+        var b = Row(3, group: "B1", teacher: "Luis Rojas", start: "4", count: "2");
         // Mismo docente a la vez en otro laboratorio.
         var c = Row(4, practice: "PAN-P2", lab: "LAB-B", start: "3", count: "2");
 

@@ -119,7 +119,10 @@ builder.Services.AddScoped<IAcademicManagementService, AcademicManagementService
 builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
 builder.Services.AddScoped<ILaboratoryGridService, LaboratoryGridService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancySource, Proyecto_Laboratorios_Univalle.Services.Occupancy.PlanningOccupancySource>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancySource, Proyecto_Laboratorios_Univalle.Services.Occupancy.FreePracticeSlotOccupancySource>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.StudentPractice.StudentPracticeService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancyService, Proyecto_Laboratorios_Univalle.Services.Occupancy.OccupancyService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.ILabWeekOccupancyService, Proyecto_Laboratorios_Univalle.Services.Occupancy.LabWeekOccupancyService>();
 builder.Services.AddScoped<IGroupScheduleService, GroupScheduleService>();
 builder.Services.AddScoped<ICourseGroupPurgeService, CourseGroupPurgeService>();
 builder.Services.AddScoped<IStudentGroupService, StudentGroupService>();
@@ -127,6 +130,7 @@ builder.Services.AddScoped<ISlotValidationService, SlotValidationService>();
 builder.Services.AddScoped<IPlanningLock, SqlServerPlanningLock>();
 builder.Services.AddScoped<IReschedulingService, ReschedulingService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.PlanningImport.IPlanningImportService, Proyecto_Laboratorios_Univalle.Services.PlanningImport.PlanningImportService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.PlanningImport.IGeneratorSetupService, Proyecto_Laboratorios_Univalle.Services.PlanningImport.GeneratorSetupService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.ManagementPlans.IManagementPlanBackfillService, Proyecto_Laboratorios_Univalle.Services.ManagementPlans.ManagementPlanBackfillService>();
 builder.Services.AddScoped<IDayRecoveryService, DayRecoveryService>();
 builder.Services.AddScoped<RequirementPickerService>();
@@ -227,6 +231,7 @@ app.UseAuthentication();
 // El rol de cierre de prácticas solo ve su módulo (Cierre, L-3, L-5); antes de la autorización para redirigir siempre a /Cierre.
 app.UsePracticeClosureScope();
 app.UseTeacherScope();
+app.UseStudentScope();
 app.UseAuthorization();
 
 app.MapRazorPages();

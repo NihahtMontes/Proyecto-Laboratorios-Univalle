@@ -29,6 +29,10 @@ public sealed class ImportRawRow
     public string Teacher { get; set; } = "";
     public string Students { get; set; } = "";
     public string Observations { get; set; } = "";
+    /// <summary>Avisos generados al leer (p. ej. cómo se repartieron los periodos del generador): se muestran como avisos de la fila.</summary>
+    public List<string> Notes { get; set; } = [];
+    /// <summary>Decisión inicial si la persona no eligió otra (p. ej. omitir las prácticas del generador con fecha dudosa).</summary>
+    public string DefaultDecision { get; set; } = "";
 }
 
 /// <summary>Fila de la hoja Material_extra: material fuera de la receta para una fila de Programacion.</summary>
@@ -47,6 +51,8 @@ public sealed class ImportFile
     public string Sha256 { get; set; } = "";
     public List<ImportRawRow> Rows { get; set; } = [];
     public List<ImportRawExtra> Extras { get; set; } = [];
+    /// <summary>Datos del generador de la Inge si el archivo es ese formato (null para la plantilla del sistema).</summary>
+    public GeneratorWorkbook? Generator { get; set; }
 }
 
 public enum ImportRowState
@@ -151,6 +157,8 @@ public sealed class ImportAnalysis
     public List<ImportRow> Rows { get; init; } = [];
     /// <summary>Problemas de la hoja Material_extra que no se pudieron atribuir a una fila.</summary>
     public List<string> ExtraSheetIssues { get; init; } = [];
+    /// <summary>Avisos del archivo completo que no bloquean (p. ej. semanas repetidas en el generador).</summary>
+    public List<string> FileNotices { get; init; } = [];
 
     public int Count(ImportRowAction action) => Rows.Count(r => r.Action == action);
     public int CreateCount => Count(ImportRowAction.Create);
