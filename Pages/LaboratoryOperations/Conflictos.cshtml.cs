@@ -131,6 +131,17 @@ public class ConflictosModel : PageModel
         _ => "sin existencias"
     };
 
+    /// <summary>
+    /// Texto compacto de los periodos que cubre una práctica en el panel: "P2–P5" si son
+    /// contiguos, "P2, P4" si hay huecos; "Sin periodos" si la práctica no tiene horario.
+    /// </summary>
+    public static string PeriodosTexto(IReadOnlyList<int> orders)
+    {
+        if (orders.Count == 0) return "Sin periodos";
+        var contiguos = orders[^1] - orders[0] + 1 == orders.Count;
+        return contiguos ? $"P{orders[0]}–P{orders[^1]}" : string.Join(", ", orders.Select(o => $"P{o}"));
+    }
+
     /// <summary>Clase Font Awesome de una acción ("mdi …" ya trae su prefijo).</summary>
     public static string IconClass(string icon) => icon.StartsWith("mdi", StringComparison.Ordinal) ? icon : $"fas {icon}";
 }

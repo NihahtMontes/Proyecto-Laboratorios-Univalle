@@ -41,6 +41,8 @@ public static class UiTerms
     public const string AcademicTerm = "Semestre académico";                   // antes «Gestión académica»
     public const string Laboratory = "Laboratorio";                            // antes «Ambiente»
     public const string ClassPeriod = "Periodo de clase";
+    public const string ReschedulingReport = "Informe de reprogramaciones y reposiciones"; // L-9 (nuevo)
+    public const string ReschedulingReportShort = "L9 · Reprogramaciones y reposiciones";  // L-9 en tarjetas y menú
 
     // Generales
     public const string ErrorTitle = "No se pudo completar";                  // antes «¡Ups!»

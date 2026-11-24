@@ -160,6 +160,40 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
         }
 
+        /// <summary>
+        /// Informe L-9 de reprogramaciones y reposiciones de la gestión académica. El rango opcional
+        /// (from/to) filtra por la fecha original de la práctica, no por la fecha de registro.
+        /// </summary>
+        [HttpGet("download/l9")]
+        public async Task<IActionResult> DownloadL9(int managementId, DateTime? from = null, DateTime? to = null)
+        {
+            try
+            {
+                if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
+                    return BadRequest("El rango de fechas no es válido: la fecha inicial supera la final.");
+
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+
+                var bytes = await _reportService.GenerateL9ReprogramacionesExcel(managementId, from, to);
+                var rango = from.HasValue || to.HasValue
+                    ? $"_{from?.ToString("yyyyMMdd") ?? "inicio"}-{to?.ToString("yyyyMMdd") ?? "hoy"}"
+                    : string.Empty;
+                return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"Informe_L9_{management.Code}{rango}.xlsx");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo generar L-9. ManagementId={ManagementId}; From={From}; To={To}", managementId, from, to);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-9. Intente nuevamente o contacte al administrador.");
+            }
+        }
+
         [HttpGet("download/l7")]
         public async Task<IActionResult> DownloadL7(int? requestId)
         {

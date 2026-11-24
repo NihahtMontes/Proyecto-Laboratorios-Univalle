@@ -94,6 +94,38 @@
                     </form>
                 </div>
 
+                @if (Model.SelectedManagement != null)
+                {
+                    <!-- L-9 · Informe de reprogramaciones y reposiciones de la planificación académica -->
+                    <div class="bg-light p-3 mb-4 rounded border-left border-primary">
+                        <div class="d-md-flex align-items-center">
+                            <div class="mr-md-3">
+                                <h5 class="font-weight-bold text-dark mb-1">
+                                    <i class="fas fa-random text-primary mr-2"></i>@Proyecto_Laboratorios_Univalle.Helpers.UiTerms.ReschedulingReportShort
+                                </h5>
+                                <small class="text-muted d-block">
+                                    Cada práctica movida de su tramo original y cada reposición de día suspendido de la gestión:
+                                    horario de origen y de destino con horas reales, motivo, docente y quien la registró.
+                                </small>
+                                <small class="text-muted d-block mt-1">
+                                    Rango opcional por fecha original de la práctica; sin rango incluye toda la gestión.
+                                </small>
+                            </div>
+                            <div class="ml-auto mt-3 mt-md-0 d-flex flex-wrap align-items-center">
+                                <label class="sr-only" for="l9-from">Fecha original desde</label>
+                                <input type="date" id="l9-from" class="form-control form-control-sm mr-2 mb-1" title="Fecha original desde" />
+                                <label class="sr-only" for="l9-to">Fecha original hasta</label>
+                                <input type="date" id="l9-to" class="form-control form-control-sm mr-2 mb-1" title="Fecha original hasta" />
+                                <a href="#" data-base-url="/api/reports/download/l9" data-management-id="@Model.ManagementId"
+                                   class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold px-3 shadow-sm js-report-download js-l9-download"
+                                   title="Descargar el informe de reprogramaciones y reposiciones (Excel)">
+                                    <i class="fas fa-file-excel mr-1"></i> Descargar L-9
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 @if (Model.SelectedLabId.HasValue && Model.SelectedLaboratory != null)
                 {
                     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
@@ -283,6 +315,19 @@
 
  @section Scripts {
      <script>
+         // L-9: antes de que el descargador genérico lea el href, el enlace se arma con la gestión
+         // y el rango de fechas elegido (por fecha original de la práctica).
+         $(document).on('click', '.js-l9-download', function () {
+             var params = new URLSearchParams();
+             params.set('managementId', this.getAttribute('data-management-id') || '');
+             var desde = document.getElementById('l9-from');
+             var hasta = document.getElementById('l9-to');
+             if (desde && desde.value) params.set('from', desde.value);
+             if (hasta && hasta.value) params.set('to', hasta.value);
+             var base = this.getAttribute('data-base-url') || '/api/reports/download/l9';
+             this.setAttribute('href', base + '?' + params.toString());
+         });
+
          // Descarga de reportes (tabla y consolidados): al pulsar, el botón muestra "Generando…"
          // deshabilitado hasta que llega el archivo; si el servidor rechaza (no 200), se informa
          // con SweetAlert en lugar de navegar a una página de texto.

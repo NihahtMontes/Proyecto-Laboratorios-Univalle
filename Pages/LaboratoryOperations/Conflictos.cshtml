@@ -233,7 +233,7 @@
                                                asp-route-selDate="@day.Date.ToString("yyyy-MM-dd", inv)"
                                                asp-route-articleId="@articleId"
                                                class="cf-chip cf-chip--@type.Css @(isSel ? "is-selected" : selectedKey != null ? "is-dimmed" : "")"
-                                               title="@($"{m.Tag} · {m.ArticleName} · {type.Label} · {m.Load.ToString("0.##", cultura)} pedidos / {m.Available?.ToString("0.##", cultura) ?? "—"} en stock")">
+                                               title="@($"{m.Tag} · {m.ArticleName} · {type.Label} · {m.Load.ToString("0.##", cultura)} pedidos / {m.Available?.ToString("0.##", cultura) ?? "—"} en stock · P{period.Order} ({period.Label})")">
                                                 <strong class="cf-chip__tag">@m.Tag</strong>
                                                 <span class="cf-chip__name">@m.ArticleName</span>
                                                 <span class="cf-chip__qty">@m.Load.ToString("0.##", cultura)/@(m.Available?.ToString("0.##", cultura) ?? "—")</span>
@@ -368,6 +368,7 @@
                                                 <small class="text-muted d-block text-truncate" title="@(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")">
                                                     @(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")
                                                 </small>
+                                                <small class="text-muted d-block">@rowP.Practice.TimeText · @ConflictosModel.PeriodosTexto(rowP.PeriodOrders)</small>
                                                 <span class="small">@rowP.Quantity.ToString("0.##", cultura) pedido(s)</span>
                                                 <span class="badge badge-light border cf-mini__status">@rowP.StatusLabel</span>
                                                 @if (rowP.SuggestedMove)
