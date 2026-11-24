@@ -255,26 +255,29 @@
 .gr-block--slot { border-left-color: #00a5b8; background: #e2f6fa; }
 .badge-slot { background: #cdeaf1; color: #0b6e8a; border: 1px solid #a9d9e5; }
 
-/* Franja delgada de limpieza de 10 minutos al cierre de cada práctica (no bloquea periodos). */
+/* Franja delgada de limpieza de 10 minutos al cierre de cada práctica (no bloquea periodos).
+   En bloques angostos (dos prácticas el mismo día) baja a dos líneas en vez de cortarse: la hora
+   nunca se recorta ni se parte (guía de web moderna: el texto no se trunca con «…»). */
 .gr-block__clean {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 3px;
+    column-gap: 3px;
     align-self: flex-start;
     max-width: 100%;
+    min-inline-size: 0;
     margin-top: 1px;
     padding: 1px 6px;
-    border-radius: 999px;
+    border-radius: 8px;
     background: #ffe9cc;
     color: #8a5a00;
     font-size: 9.5px;
     font-weight: 700;
     line-height: 1.35;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: break-word;
 }
 .gr-block__clean i { font-size: 9px; }
+.gr-block__clean-time { white-space: nowrap; }
 
 /* Celda ocupada según la fuente única de ocupación (visible cuando no hay bloque dibujado encima,
    p. ej. planificaciones legadas con horas convertidas a periodos). */
