@@ -243,13 +243,20 @@ try {
   }
 
   // ───── 7. Práctica programada y control semanal ─────
-  // Práctica futura del cronograma sin solicitud vigente: en la copia se cancela la planificación histórica del 27/11.
-  sql(`UPDATE Plannings SET Status='Cancelada' WHERE PracticeScheduleId IN (SELECT Id FROM PracticeSchedules WHERE CourseGroupId=${A.group} AND ExecutionDate='2026-11-27')`);
+  // Práctica futura del cronograma sin solicitud vigente. En la copia se toma la próxima programación del grupo A
+  // desde hoy (no una fecha fija, que queda atrás o no existe en otra copia), se marca Programada y se cancela su
+  // solicitud vigente, si la tiene, para que vuelva a «por solicitar».
+  const nextSchedule = sql(`SELECT TOP 1 Id FROM PracticeSchedules WHERE CourseGroupId=${A.group} AND IsDeleted=0 AND ExecutionDate >= CAST(GETDATE() AS date) ORDER BY ExecutionDate, Id`);
+  if (nextSchedule) {
+    sql(`UPDATE PracticeSchedules SET Status=0 WHERE Id=${nextSchedule}`);
+    sql(`UPDATE Plannings SET Status='Cancelada' WHERE PracticeScheduleId=${nextSchedule} AND IsDeleted=0 AND Status NOT IN ('Rechazada','Cancelada')`);
+  }
   await teacherA.goto(`${BASE}/Docente?tab=solicitar`);
   await shot(teacherA, "04_inicio_programadas");
   const solicitar = teacherA.locator('a:has-text("Solicitar")[href*="scheduleId"]').first();
   const hasProgrammed = await solicitar.count() > 0;
-  check("El inicio del docente lista prácticas programadas por solicitar", hasProgrammed);
+  check("El inicio del docente lista prácticas programadas por solicitar", hasProgrammed,
+    nextSchedule ? `programación ${nextSchedule}` : "el grupo A no tiene programaciones futuras en esta copia");
   if (hasProgrammed) {
     await solicitar.click();
     await settle(teacherA);

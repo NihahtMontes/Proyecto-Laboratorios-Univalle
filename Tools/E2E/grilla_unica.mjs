@@ -1,6 +1,7 @@
 // Grilla única (2026-11-24): un laboratorio debe verse IGUAL de ocupado para el administrador (Grilla) y para el
 // docente (Disponibilidad, vista semana), incluidos los cupos de práctica libre. Además: sin «Tuya», sin periodos
-// completos de «Limpieza» y con la franja de limpieza de 10 minutos con su hora real.
+// completos de «Limpieza» y con la franja de limpieza de 10 minutos con su hora real, incluida la de 13:55–14:05
+// de una práctica que termina en P7 (capturas 03 y 04).
 // Escribe en la base (abre un cupo de práctica libre), así que solo corre contra una COPIA.
 //
 // Uso: E2E_BASE=http://localhost:5099 E2E_DB=DB_Laboratorios_Univalle_EXP_QA E2E_CRED_FILE=<archivo de Tools/QaTestUsers> \
@@ -75,7 +76,8 @@ try {
   const adminText = await admin.locator("body").innerText();
   check("Grilla admin: hay celdas ocupadas en la semana", adminBusy.size > 0, `${adminBusy.size} celdas`);
   check("Grilla admin: dibuja el cupo de práctica libre", /Práctica libre|PRÁC\. LIBRE/i.test(adminText));
-  check("Grilla admin: franja de limpieza con hora real", /Limpieza \d\d:\d\d–\d\d:\d\d/.test(adminText));
+  // «Limpieza» y la hora son dos piezas: en bloques angostos la hora baja a otra línea (\s+ acepta el salto).
+  check("Grilla admin: franja de limpieza con hora real", /Limpieza\s+\d\d:\d\d–\d\d:\d\d/.test(adminText));
   check("Grilla admin: no marca periodos completos de separación", (await admin.locator(".gr-cell--buffer").count()) === 0);
 
   // ── Disponibilidad del docente (vista semana del mismo laboratorio)
@@ -122,6 +124,28 @@ try {
   check(`Mismas celdas ocupadas en ${labCode} para admin y docente (${common.size} días)`, common.size > 0 && onlyAdmin.length === 0 && onlyTeacher.length === 0,
     `admin ${a.length} · docente ${t.length} · solo admin [${onlyAdmin.slice(0, 6).join(" ")}] · solo docente [${onlyTeacher.slice(0, 6).join(" ")}]`);
   check(`El cupo del ${wed} P7–P8 está ocupado en ambas`, a.includes(`${wed}#7`) && t.includes(`${wed}#7`));
+
+  // ── Limpieza de 13:55: una práctica que termina en P7 (13:55) limpia en el receso 13:55–14:05.
+  // Se busca en la copia la próxima práctica que ocupa y termina en P7, desde E2E_DATE, en cualquier laboratorio.
+  const p7End = sql(`SELECT TOP 1 CONCAT(p.LaboratoryId,'|',CONVERT(varchar(10),p.ScheduledDate,120)) FROM Plannings p JOIN ClassPeriods sp ON sp.Id=p.StartPeriodId WHERE p.IsDeleted=0 AND p.LaboratoryId IS NOT NULL AND sp.[Order]+p.PeriodCount-1=7 AND p.Status NOT IN ('Cancelada','Reprogramada','PendienteReposicion','Repuesta','Solicitada','Observada','Rechazada') AND p.ScheduledDate >= '${DATE}' ORDER BY p.ScheduledDate, p.Id`);
+  if (!p7End) {
+    check("Hay una práctica que termina en P7 para revisar la limpieza de 13:55", false, `ninguna desde ${DATE} en esta copia`);
+  } else {
+    const [cleanLab, cleanDate] = p7End.split("|");
+    await admin.goto(`${BASE}/LaboratoryOperations/Grilla?laboratoryId=${cleanLab}&date=${cleanDate}`);
+    await admin.waitForLoadState("networkidle");
+    const strip = admin.locator(".gr-block__clean", { hasText: "13:55–14:05" }).first();
+    const found = await strip.count() > 0;
+    check(`Práctica que termina en P7 (laboratorio ${cleanLab}, ${cleanDate}): franja «Limpieza 13:55–14:05»`, found);
+    // La hora debe VERSE entera, no solo estar en el HTML: su caja no puede quedar cortada por la franja.
+    const timeBox = found ? await strip.locator(".gr-block__clean-time").boundingBox() : null;
+    const stripBox = found ? await strip.boundingBox() : null;
+    check("La hora de la limpieza se ve completa aunque el bloque sea angosto",
+      !!timeBox && !!stripBox && timeBox.x + timeBox.width <= stripBox.x + stripBox.width + 0.5,
+      timeBox && stripBox ? `hora ${Math.round(timeBox.width)}px · franja ${Math.round(stripBox.width)}px` : "");
+    await admin.screenshot({ path: resolve(OUT, "03_limpieza_1355.png"), fullPage: true });
+    if (found) await admin.locator(".gr-block", { has: strip }).first().screenshot({ path: resolve(OUT, "04_limpieza_1355_bloque.png") });
+  }
   check("Sin errores de JavaScript", jsErrors.length === 0, jsErrors.slice(0, 3).join(" | "));
 } catch (e) {
   check("El recorrido terminó sin excepciones", false, e.message);
