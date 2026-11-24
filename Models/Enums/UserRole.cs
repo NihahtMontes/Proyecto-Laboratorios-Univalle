@@ -18,6 +18,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Docente")]
         Docente = 4,
 
+        /// <summary>Estudiante que se registró solo: reserva cupos de práctica libre (2026-11-23).</summary>
+        [Display(Name = "Estudiante")]
+        Estudiante = 5,
+
         [Display(Name = "Super Administrador")]
         SuperAdmin = 99
     }

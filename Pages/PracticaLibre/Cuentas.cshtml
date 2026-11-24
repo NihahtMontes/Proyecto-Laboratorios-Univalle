@@ -1,0 +1,87 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.PracticaLibre.CuentasModel
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Services.StudentPractice
+@{
+    ViewData["Title"] = "Cuentas de estudiantes";
+    ViewData["Section"] = "Práctica libre";
+    ViewData["HidePageTitle"] = true;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Práctica libre</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Cuentas de estudiantes</h2>
+    <p class="text-muted small mb-0">Verifique que el correo institucional, el nombre y los datos sean de una persona real antes de aprobar.</p>
+</div>
+
+<div class="container-fluid">
+    <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="ct-pending"><div class="card-body p-0">
+        <h5 id="ct-pending" class="font-weight-bold text-dark p-4 mb-0">Nuevas cuentas por revisar <span class="badge badge-pill badge-warning">@Model.Pending.Count</span></h5>
+        @if (Model.Pending.Count == 0)
+        {
+            <p class="text-muted px-4 pb-4 mb-0">No hay registros pendientes.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="thead-light"><tr><th>Estudiante</th><th>Correo</th><th>Carrera</th><th>Celular</th><th>Registro</th><th class="text-right">Decisión</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Pending)
+                        {
+                            <tr>
+                                <td class="font-weight-bold">@r.Name</td><td>@r.Email</td><td>@r.Career · @(r.Semester).º</td><td>@r.Phone</td>
+                                <td class="small">@r.CreatedDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-right">
+                                    <form method="post" asp-page-handler="Review" asp-route-id="@r.Id" asp-route-approve="true" class="d-inline"
+                                          data-confirm="¿Aprobar la cuenta de @r.Name?">
+                                        <button type="submit" class="btn btn-sm btn-success btn-rounded mb-1">Aprobar</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Review" asp-route-id="@r.Id" asp-route-approve="false" class="form-inline justify-content-end"
+                                          data-confirm="¿Rechazar la cuenta de @r.Name?">
+                                        <label class="sr-only" for="rej-@r.Id">Motivo</label>
+                                        <input id="rej-@r.Id" name="note" class="form-control form-control-sm mr-1" placeholder="Motivo del rechazo" required maxlength="300" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded">Rechazar</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+
+    <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="ct-all"><div class="card-body p-0">
+        <h5 id="ct-all" class="font-weight-bold text-dark p-4 mb-0">Estudiantes</h5>
+        @if (Model.Others.Count == 0)
+        {
+            <p class="text-muted px-4 pb-4 mb-0">Todavía no hay estudiantes revisados.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light"><tr><th>Estudiante</th><th>Correo</th><th>Carrera</th><th>Cuenta</th><th>Reservas</th><th>Faltas</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Others)
+                        {
+                            <tr>
+                                <td><a asp-page="./Ficha" asp-route-id="@r.Id" class="font-weight-bold">@r.Name</a></td>
+                                <td>@r.Email</td><td>@r.Career · @(r.Semester).º</td>
+                                <td>@StudentPracticeService.Label(r.Status)
+                                    @if (r.SuspendedUntil is DateTime until && until >= DateTime.Today) { <span class="badge badge-danger">Suspendido hasta @until.ToString("dd/MM")</span> }</td>
+                                <td>@r.Reservations</td>
+                                <td>@if (r.Incidents > 0) { <span class="badge badge-danger">@r.Incidents</span> } else { <span class="text-muted">0</span> }</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

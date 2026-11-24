@@ -468,6 +468,13 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<DepartureReturn> DepartureReturns { get; set; } = null!;
         public DbSet<DepartureReturnItem> DepartureReturnItems { get; set; } = null!;
 
+        // Práctica libre de estudiantes (2026-11-23)
+        public DbSet<StudentProfile> StudentProfiles { get; set; } = null!;
+        public DbSet<FreePracticeSlot> FreePracticeSlots { get; set; } = null!;
+        public DbSet<SlotReservation> SlotReservations { get; set; } = null!;
+        public DbSet<SlotReservationItem> SlotReservationItems { get; set; } = null!;
+        public DbSet<StudentIncident> StudentIncidents { get; set; } = null!;
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -536,6 +543,21 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             // Horario semanal del grupo: un registro por (grupo, día, periodo).
             modelBuilder.Entity<CourseGroupScheduleSlot>().HasIndex(s => new { s.CourseGroupId, s.Weekday, s.ClassPeriodId }).IsUnique();
+
+            // Práctica libre de estudiantes: todo con Restrict (sin cascadas múltiples) y sin borrados físicos desde la app.
+            modelBuilder.Entity<StudentProfile>().HasIndex(p => p.UserId).IsUnique();
+            modelBuilder.Entity<StudentProfile>().HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<FreePracticeSlot>().HasIndex(s => s.Code).IsUnique();
+            modelBuilder.Entity<FreePracticeSlot>().HasIndex(s => new { s.Date, s.LaboratoryId });
+            modelBuilder.Entity<FreePracticeSlot>().HasOne(s => s.Laboratory).WithMany().HasForeignKey(s => s.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<FreePracticeSlot>().HasOne(s => s.StartPeriod).WithMany().HasForeignKey(s => s.StartPeriodId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SlotReservation>().HasOne(r => r.Slot).WithMany(s => s.Reservations).HasForeignKey(r => r.FreePracticeSlotId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SlotReservation>().HasOne(r => r.Student).WithMany(p => p.Reservations).HasForeignKey(r => r.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SlotReservation>().HasIndex(r => new { r.StudentProfileId, r.Status });
+            modelBuilder.Entity<SlotReservationItem>().HasOne(i => i.Reservation).WithMany(r => r.Items).HasForeignKey(i => i.SlotReservationId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SlotReservationItem>().HasOne(i => i.Article).WithMany().HasForeignKey(i => i.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<StudentIncident>().HasOne(i => i.Student).WithMany(p => p.Incidents).HasForeignKey(i => i.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<StudentIncident>().HasOne(i => i.Reservation).WithMany().HasForeignKey(i => i.SlotReservationId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<CourseGroupScheduleSlot>().HasOne(s => s.CourseGroup).WithMany(g => g.ScheduleSlots)
                 .HasForeignKey(s => s.CourseGroupId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<CourseGroupScheduleSlot>().HasOne(s => s.ClassPeriod).WithMany()
@@ -1040,7 +1062,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             modelBuilder.Entity<User>().ToTable("Users", table =>
             {
-                table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 99)");
+                table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 5, 99)");
                 // Un docente siempre está vinculado a su persona del catálogo.
                 table.HasCheckConstraint("CK_Users_TeacherPerson", "[Role] <> 4 OR [PersonId] IS NOT NULL");
                 table.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");

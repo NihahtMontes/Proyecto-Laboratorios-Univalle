@@ -1,0 +1,110 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.PracticaLibre.FichaModel
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Services.StudentPractice
+@{
+    var p = Model.Profile!;
+    var u = p.User!;
+    ViewData["Title"] = "Ficha de " + u.FullName;
+    ViewData["Section"] = "Práctica libre";
+    ViewData["HidePageTitle"] = true;
+    var active = p.AccountStatus == StudentAccountStatus.Approved;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Práctica libre · Ficha del estudiante</h4>
+    <h2 class="font-weight-bold text-dark mb-0">@u.FullName</h2>
+    <p class="text-muted small mb-0">@u.Email · @u.PhoneNumber · @p.Career @(p.Semester).º semestre · Cuenta: <strong>@StudentPracticeService.Label(p.AccountStatus)</strong>
+        @if (p.IsSuspended) { <span class="badge badge-danger ml-1">Suspendido hasta @p.SuspendedUntil!.Value.ToString("dd/MM/yyyy")</span> }</p>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mb-3">
+            <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="fi-inc"><div class="card-body p-0">
+                <h5 id="fi-inc" class="font-weight-bold text-dark p-4 mb-0">Faltas <span class="badge badge-pill badge-@(Model.Incidents.Count > 0 ? "danger" : "light")">@Model.Incidents.Count</span></h5>
+                @if (Model.Incidents.Count == 0) { <p class="text-muted px-4 pb-4 mb-0">Sin faltas registradas.</p> }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var i in Model.Incidents)
+                        {
+                            <li class="list-group-item"><strong>@StudentPracticeService.Label(i.Type)</strong> · <span class="small text-muted">@i.Date.ToLocalTime().ToString("dd/MM/yyyy HH:mm") @(i.By != null ? "· " + i.By : "")</span>
+                                @if (!string.IsNullOrWhiteSpace(i.Note)) { <div class="small">@i.Note</div> }</li>
+                        }
+                    </ul>
+                }
+            </div></section>
+            <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="fi-res"><div class="card-body p-0">
+                <h5 id="fi-res" class="font-weight-bold text-dark p-4 mb-0">Reservas</h5>
+                @if (Model.Reservations.Count == 0) { <p class="text-muted px-4 pb-4 mb-0">Todavía no reservó.</p> }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="thead-light"><tr><th>Cupo</th><th>Cuándo</th><th>Práctica</th><th>Estado</th></tr></thead>
+                            <tbody>
+                                @foreach (var r in Model.Reservations)
+                                {
+                                    <tr><td>@r.SlotCode · @r.Lab</td><td>@r.Date.ToString("dd/MM/yyyy") · @r.Periods</td><td class="small">@r.Purpose</td>
+                                        <td>@StudentPracticeService.Label(r.Status) @if (!string.IsNullOrWhiteSpace(r.Note)) { <div class="small text-muted">@r.Note</div> }</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div></section>
+        </div>
+        <div class="col-lg-4 mb-3">
+            <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="fi-add"><div class="card-body p-4">
+                <h5 id="fi-add" class="font-weight-bold text-dark">Registrar falta</h5>
+                <form method="post" asp-page-handler="Incident" asp-route-id="@Model.Id" data-confirm="¿Registrar la falta en la ficha?">
+                    <label for="fi-type" class="sr-only">Tipo</label>
+                    <select id="fi-type" name="type" class="custom-select mb-2">
+                        @foreach (var t in Enum.GetValues<StudentIncidentType>()) { <option value="@t">@StudentPracticeService.Label(t)</option> }
+                    </select>
+                    <label for="fi-note" class="sr-only">Qué pasó</label>
+                    <textarea id="fi-note" name="note" class="form-control mb-2" rows="2" placeholder="Qué pasó" required maxlength="500"></textarea>
+                    <button type="submit" class="btn btn-outline-danger btn-rounded btn-sm">Registrar falta</button>
+                </form>
+            </div></section>
+            <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="fi-sus"><div class="card-body p-4">
+                <h5 id="fi-sus" class="font-weight-bold text-dark">Suspensión</h5>
+                @if (p.IsSuspended)
+                {
+                    <p class="small">Suspendido hasta el <strong>@p.SuspendedUntil!.Value.ToString("dd/MM/yyyy")</strong>: @p.SuspensionReason</p>
+                    <form method="post" asp-page-handler="Lift" asp-route-id="@Model.Id" data-confirm="¿Levantar la suspensión?">
+                        <button type="submit" class="btn btn-outline-success btn-rounded btn-sm">Levantar suspensión</button>
+                    </form>
+                }
+                else if (active)
+                {
+                    <form method="post" asp-page-handler="Suspend" asp-route-id="@Model.Id" data-confirm="¿Suspender a @u.FullName?" data-confirm-text="No podrá reservar hasta esa fecha.">
+                        <label for="fi-until" class="small font-weight-bold">Hasta</label>
+                        <input id="fi-until" type="date" name="until" class="form-control mb-2" required min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <label for="fi-reason" class="sr-only">Motivo</label>
+                        <input id="fi-reason" name="reason" class="form-control mb-2" placeholder="Motivo" required maxlength="300" />
+                        <button type="submit" class="btn btn-warning btn-rounded btn-sm">Suspender</button>
+                    </form>
+                }
+                else { <p class="small text-muted mb-0">La cuenta no está activa.</p> }
+            </div></section>
+            @if (p.AccountStatus != StudentAccountStatus.Deactivated)
+            {
+                <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="fi-off"><div class="card-body p-4">
+                    <h5 id="fi-off" class="font-weight-bold text-dark">Dar de baja</h5>
+                    <p class="small text-muted">La cuenta queda inactiva y se cancelan sus reservas futuras. El historial se conserva.</p>
+                    <form method="post" asp-page-handler="Deactivate" asp-route-id="@Model.Id" data-confirm="¿Dar de baja a @u.FullName?" data-confirm-text="No podrá iniciar sesión.">
+                        <label for="fi-off-reason" class="sr-only">Motivo</label>
+                        <input id="fi-off-reason" name="reason" class="form-control mb-2" placeholder="Motivo" required maxlength="300" />
+                        <button type="submit" class="btn btn-danger btn-rounded btn-sm">Dar de baja</button>
+                    </form>
+                </div></section>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

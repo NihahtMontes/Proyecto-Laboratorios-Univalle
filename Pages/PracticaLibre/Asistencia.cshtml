@@ -1,0 +1,73 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.PracticaLibre.AsistenciaModel
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Services.StudentPractice
+@{
+    ViewData["Title"] = "Asistencia de práctica libre";
+    ViewData["Section"] = "Práctica libre";
+    ViewData["HidePageTitle"] = true;
+    var dateValue = Model.Date!.Value.ToString("yyyy-MM-dd");
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Práctica libre</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Asistencia</h2>
+    <p class="text-muted small mb-0">Marque quién vino. «No se presentó» y «Mal uso» quedan como falta en la ficha del estudiante.</p>
+</div>
+
+<div class="container-fluid">
+    <form method="get" class="form-inline mb-3">
+        <label for="as-date" class="font-weight-bold mr-2">Día</label>
+        <input id="as-date" type="date" name="date" value="@dateValue" class="form-control form-control-sm mr-2" />
+        <button type="submit" class="btn btn-sm btn-light border">Ver</button>
+    </form>
+
+    <section class="card border-0 shadow-sm rounded-lg" aria-label="Reservas del día"><div class="card-body p-0">
+        @if (Model.Rows.Count == 0)
+        {
+            <p class="text-muted p-4 mb-0">No hay reservas aprobadas para el @Model.Date.Value.ToString("dd/MM/yyyy").</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="thead-light"><tr><th>Estudiante</th><th>Cupo</th><th>Práctica</th><th>Estado</th><th class="text-right">Marcar</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr>
+                                <td class="font-weight-bold">@r.Student</td>
+                                <td class="small">@r.SlotCode · @r.Lab · @r.Periods</td>
+                                <td class="small">@r.Purpose</td>
+                                <td><span class="badge badge-@(r.Status == SlotReservationStatus.Attended ? "success" : r.Status == SlotReservationStatus.Approved ? "info" : "danger")">@StudentPracticeService.Label(r.Status)</span>
+                                    @if (!string.IsNullOrWhiteSpace(r.Note)) { <div class="small text-muted">@r.Note</div> }</td>
+                                <td class="text-right">
+                                    <form method="post" asp-page-handler="Mark" asp-route-id="@r.Id" asp-route-date="@dateValue" class="d-inline">
+                                        <input type="hidden" name="result" value="@SlotReservationStatus.Attended" />
+                                        <button type="submit" class="btn btn-sm btn-success btn-rounded mb-1">Asistió</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Mark" asp-route-id="@r.Id" asp-route-date="@dateValue" class="d-inline"
+                                          data-confirm="¿Marcar que @r.Student no se presentó?" data-confirm-text="Queda como falta en su ficha.">
+                                        <input type="hidden" name="result" value="@SlotReservationStatus.NoShow" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded mb-1">No se presentó</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Mark" asp-route-id="@r.Id" asp-route-date="@dateValue" class="form-inline justify-content-end"
+                                          data-confirm="¿Registrar mal uso de @r.Student?" data-confirm-text="Queda como falta en su ficha.">
+                                        <input type="hidden" name="result" value="@SlotReservationStatus.Misuse" />
+                                        <label class="sr-only" for="misuse-@r.Id">Qué pasó</label>
+                                        <input id="misuse-@r.Id" name="note" class="form-control form-control-sm mr-1" placeholder="Qué pasó" required maxlength="300" />
+                                        <button type="submit" class="btn btn-sm btn-danger btn-rounded">Mal uso</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,105 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.RegistroModel
+@using Proyecto_Laboratorios_Univalle.Services.StudentPractice
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registro de estudiantes | Laboratorios Univalle</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
+    <link href="~/dist/css/style.min.css" rel="stylesheet">
+    <style>
+        body { background: #f2f4f8; }
+        .reg-card { max-width: 640px; margin: 40px auto; }
+        .reg-brand { color: #7460ee; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="card border-0 shadow-sm rounded-lg reg-card">
+            <div class="card-body p-4 p-md-5">
+                <p class="text-uppercase font-weight-bold small reg-brand mb-1">Laboratorios Univalle</p>
+                <h1 class="h3 font-weight-bold text-dark">Cuenta de estudiante</h1>
+                @if (Model.Sent)
+                {
+                    <div class="alert alert-success border-0 mt-3" role="status">
+                        <strong>¡Registro enviado!</strong> Un administrador revisará tus datos. Cuando aprueben tu cuenta podrás
+                        iniciar sesión con tu correo institucional y reservar cupos de práctica libre.
+                    </div>
+                    <a asp-page="/Login" class="btn btn-primary btn-rounded">Ir al inicio de sesión</a>
+                }
+                else
+                {
+                    <p class="text-muted">Para reservar laboratorios de práctica libre. Tu cuenta queda pendiente hasta que un administrador la apruebe.</p>
+                    <form method="post" novalidate>
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0" role="alert"></div>
+                        <div class="form-group">
+                            <label asp-for="Input.Email" class="font-weight-bold"></label>
+                            <input asp-for="Input.Email" class="form-control" autocomplete="email" placeholder="nombre@est.univalle.edu" aria-describedby="email-help" />
+                            <small id="email-help" class="form-text text-muted">Solo se aceptan correos @@est.univalle.edu.</small>
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.FirstName" class="font-weight-bold"></label>
+                                <input asp-for="Input.FirstName" class="form-control" autocomplete="given-name" />
+                                <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.LastName" class="font-weight-bold"></label>
+                                <input asp-for="Input.LastName" class="form-control" autocomplete="family-name" />
+                                <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.SecondLastName"></label>
+                                <input asp-for="Input.SecondLastName" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-5">
+                                <label asp-for="Input.Career" class="font-weight-bold"></label>
+                                <select asp-for="Input.Career" class="custom-select">
+                                    <option value="">Elija…</option>
+                                    <option value="LGS">LGS · Gastronomía</option>
+                                    <option value="LCG">LCG · Ciencias gastronómicas</option>
+                                    <option value="LND">LND · Nutrición y dietética</option>
+                                    <option value="LTH">LTH · Turismo y hotelería</option>
+                                </select>
+                                <span asp-validation-for="Input.Career" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label asp-for="Input.Semester" class="font-weight-bold"></label>
+                                <input asp-for="Input.Semester" type="number" min="1" max="10" class="form-control" />
+                                <span asp-validation-for="Input.Semester" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.Phone" class="font-weight-bold"></label>
+                                <input asp-for="Input.Phone" class="form-control" inputmode="numeric" autocomplete="tel-national" placeholder="71234567" />
+                                <span asp-validation-for="Input.Phone" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.Password" class="font-weight-bold"></label>
+                                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+                                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.ConfirmPassword" class="font-weight-bold"></label>
+                                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                                <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">Enviar registro</button>
+                        <a asp-page="/Login" class="btn btn-link">Ya tengo cuenta</a>
+                    </form>
+                }
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -40,7 +40,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             [EmailAddress(ErrorMessage = "Email inválido")]
             public string? Email { get; set; }
 
-            [Phone(ErrorMessage = "Teléfono inválido")]
+            [RegularExpression(BolivianIdentity.PhonePattern, ErrorMessage = BolivianIdentity.PersonPhoneError)]
             public string? PhoneNumber { get; set; }
 
             public GeneralStatus Status { get; set; }
@@ -117,7 +117,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
 
             // Update common fields
             personToUpdate.Email = Input.Email?.Trim().ToLower();
-            personToUpdate.PhoneNumber = Input.PhoneNumber?.Trim();
+            personToUpdate.PhoneNumber = BolivianIdentity.NormalizePhone(Input.PhoneNumber);
             personToUpdate.Status = Input.Status;
 
             if (personToUpdate is Intern i)

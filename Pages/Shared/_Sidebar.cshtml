@@ -4,6 +4,7 @@
 @{
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
     var teacherOnly = TeacherAccess.IsTeacherOnly(User);
+    var studentOnly = StudentAccess.IsStudentOnly(User);
     var isReviewer = !closureOnly && !teacherOnly && (User.IsInRole(AuthorizationHelper.RoleSupervisor)
         || User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin));
     // Contadores del menú: solicitudes por revisar (revisores) y observadas por corregir (docente).
@@ -65,6 +66,19 @@
                         <a asp-page="/Docente/Disponibilidad" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-magnify"></i>
                             <span class="hide-menu">Consultar disponibilidad</span>
+                        </a>
+                    </li>
+                }
+                else if (studentOnly)
+                {
+                    <li class="nav-small-cap">
+                        <i class="mdi mdi-dots-horizontal"></i>
+                        <span class="hide-menu">Portal estudiante</span>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Estudiante/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-chef-hat"></i>
+                            <span class="hide-menu">Práctica libre</span>
                         </a>
                     </li>
                 }
@@ -172,6 +186,40 @@
                             <a asp-page="/Catalogs/Practices/Index" class="sidebar-link waves-effect waves-dark">
                                 <i class="mdi mdi-flask-outline"></i>
                                 <span class="hide-menu">Prácticas</span>
+                            </a>
+                        </li>
+                    }
+
+                    <li class="nav-small-cap sidebar-section">
+                        <button type="button" class="sidebar-section-toggle" aria-expanded="false" data-section="Práctica libre">
+                            <i class="mdi mdi-chevron-down sidebar-section-chevron" aria-hidden="true"></i>
+                            <span class="hide-menu">Práctica libre</span>
+                        </button>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/PracticaLibre/Cupos" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-calendar-plus"></i>
+                            <span class="hide-menu">Cupos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/PracticaLibre/Reservas" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-account-check-outline"></i>
+                            <span class="hide-menu">Reservas de estudiantes</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/PracticaLibre/Asistencia" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-clipboard-account-outline"></i>
+                            <span class="hide-menu">Asistencia</span>
+                        </a>
+                    </li>
+                    @if (isAdminMenu)
+                    {
+                        <li class="sidebar-item">
+                            <a asp-page="/PracticaLibre/Cuentas" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-account-plus-outline"></i>
+                                <span class="hide-menu">Cuentas de estudiantes</span>
                             </a>
                         </li>
                     }
@@ -347,6 +395,12 @@
                         <a asp-page="/Cierre/Index" class="sidebar-link waves-effect waves-dark active">
                             <i class="mdi mdi-clipboard-check"></i>
                             <span class="hide-menu">Cierre de práctica</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/PracticaLibre/Asistencia" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-clipboard-account-outline"></i>
+                            <span class="hide-menu">Asistencia de práctica libre</span>
                         </a>
                     </li>
                 }

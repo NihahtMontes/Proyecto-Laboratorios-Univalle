@@ -57,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             [Required(ErrorMessage = "El documento de identidad es obligatorio")]
             [StringLength(10)]
-            [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
+            [RegularExpression(BolivianIdentity.CiPattern, ErrorMessage = BolivianIdentity.CiError)]
             [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
@@ -79,7 +79,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             [Display(Name = "Fecha de Alta")]
             public DateTime? HireDate { get; set; }
 
-            [Phone(ErrorMessage = "Formato de teléfono inválido")]
+            [RegularExpression(BolivianIdentity.PhonePattern, ErrorMessage = BolivianIdentity.UserPhoneError)]
             [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
 
@@ -413,7 +413,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             user.Position = Input.Position?.Clean();
             user.Department = Input.Department?.Clean();
             user.HireDate = Input.HireDate;
-            user.PhoneNumber = Input.PhoneNumber?.Trim();
+            user.PhoneNumber = BolivianIdentity.NormalizePhone(Input.PhoneNumber);
             user.Email = normalizedEmail;
             user.NormalizedEmail = _userManager.NormalizeEmail(normalizedEmail);
             // El vínculo con la persona solo aplica al rol Docente; al cambiar de rol se libera.

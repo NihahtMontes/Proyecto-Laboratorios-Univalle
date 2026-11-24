@@ -17,7 +17,7 @@ public static class PracticeClosureAccess
     /// <summary>Rutas que el rol de cierre puede abrir (prefijos, sin distinguir mayúsculas).</summary>
     private static readonly string[] AllowedPrefixes =
     [
-        "/Cierre", "/LaboratoryOperations/L3", "/LaboratoryOperations/L5",
+        "/Cierre", "/LaboratoryOperations/L3", "/LaboratoryOperations/L5", "/PracticaLibre/Asistencia",
         "/Login", "/Logout", "/Error", "/Api/Notifications", "/Notifications",
         "/AccesoDenegado", "/Ayuda", "/Account/Profile"
     ];

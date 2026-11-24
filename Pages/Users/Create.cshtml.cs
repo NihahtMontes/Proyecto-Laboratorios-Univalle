@@ -60,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             [Required(ErrorMessage = "El documento de identidad es obligatorio")]
             [StringLength(10)]
-            [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
+            [RegularExpression(BolivianIdentity.CiPattern, ErrorMessage = BolivianIdentity.CiError)]
             [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
@@ -80,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public DateTime? HireDate { get; set; }
 
             [Required(ErrorMessage = "El teléfono es obligatorio")]
-            [Phone(ErrorMessage = "Formato de teléfono inválido")]
+            [RegularExpression(BolivianIdentity.PhonePattern, ErrorMessage = BolivianIdentity.UserPhoneError)]
             [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
 
@@ -188,7 +188,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 Position = Input.Position?.Clean(),
                 Department = Input.Department?.Clean(),
                 HireDate = Input.HireDate ?? DateTime.UtcNow,
-                PhoneNumber = Input.PhoneNumber?.Trim(),
+                PhoneNumber = BolivianIdentity.NormalizePhone(Input.PhoneNumber),
                 Status = GeneralStatus.Activo,
                 EmailConfirmed = true,
                 PersonId = Input.Role == UserRole.Docente ? Input.PersonId : null,

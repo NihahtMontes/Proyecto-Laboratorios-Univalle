@@ -1,0 +1,98 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Estudiante.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Services.StudentPractice
+@{
+    ViewData["Title"] = "Práctica libre";
+    ViewData["Section"] = "Portal estudiante";
+    ViewData["HidePageTitle"] = true;
+    var p = Model.Profile;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Portal estudiante</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Práctica libre en laboratorio</h2>
+    <p class="text-muted small mb-0">Reserva un lugar en los cupos que abre la Inge (máximo @StudentPracticeService.WeeklyLimit por semana). Puedes cancelar hasta 24 horas antes; si no te presentas, cuenta como falta.</p>
+</div>
+
+<div class="container-fluid">
+    @if (p?.IsSuspended == true)
+    {
+        <div class="alert alert-danger border-0 shadow-sm" role="alert">
+            <strong>Estás suspendido hasta el @p.SuspendedUntil!.Value.ToString("dd/MM/yyyy").</strong> Motivo: @p.SuspensionReason. No puedes reservar hasta esa fecha.
+        </div>
+    }
+
+    <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="es-mine"><div class="card-body p-0">
+        <h5 id="es-mine" class="font-weight-bold text-dark p-4 mb-0">Mis reservas</h5>
+        @if (Model.Mine.Count == 0)
+        {
+            <p class="text-muted px-4 pb-4 mb-0">Todavía no tienes reservas.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="thead-light"><tr><th>Cupo</th><th>Cuándo</th><th>Qué practicas</th><th>Estado</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Mine)
+                        {
+                            <tr>
+                                <td>@r.SlotCode · @r.Lab</td>
+                                <td>@r.StartsAt.ToString("ddd dd/MM") · @r.TimeText</td>
+                                <td class="small">@r.Purpose @if (r.Items > 0) { <span class="text-muted">(@r.Items artículo(s))</span> }</td>
+                                <td><span class="badge badge-@(r.Status switch { SlotReservationStatus.Approved or SlotReservationStatus.Attended => "success", SlotReservationStatus.Pending => "warning", SlotReservationStatus.Cancelled => "secondary", _ => "danger" })">@StudentPracticeService.Label(r.Status)</span>
+                                    @if (!string.IsNullOrWhiteSpace(r.Note)) { <div class="small text-muted">@r.Note</div> }</td>
+                                <td class="text-right">
+                                    @if (r.CanCancel)
+                                    {
+                                        <form method="post" asp-page-handler="Cancel" asp-route-id="@r.Id" data-confirm="¿Cancelar tu reserva del @r.StartsAt.ToString("dd/MM")?">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded">Cancelar</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+
+    <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="es-slots"><div class="card-body p-0">
+        <h5 id="es-slots" class="font-weight-bold text-dark p-4 mb-0">Cupos disponibles (próximos 60 días)</h5>
+        @if (Model.Slots.Count == 0)
+        {
+            <p class="text-muted px-4 pb-4 mb-0">No hay cupos con lugar libre por ahora. Vuelve a revisar más tarde.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light"><tr><th>Cuándo</th><th>Laboratorio</th><th>Lugares libres</th><th>Nota</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var s in Model.Slots)
+                        {
+                            <tr>
+                                <td class="font-weight-bold">@s.Date.ToString("dddd dd/MM") · @s.TimeText</td>
+                                <td>@s.LaboratoryCode · @s.LaboratoryName</td>
+                                <td><span class="badge badge-success">@s.Free de @s.Capacity</span></td>
+                                <td class="small text-muted">@s.Notes</td>
+                                <td class="text-right">
+                                    @if (p?.IsSuspended != true)
+                                    {
+                                        <a asp-page="./Reservar" asp-route-slotId="@s.Id" class="btn btn-sm btn-primary btn-rounded">Reservar</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

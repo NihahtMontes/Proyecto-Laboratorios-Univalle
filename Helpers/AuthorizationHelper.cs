@@ -14,6 +14,10 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         public const string RolePracticeClosure = "PracticeClosure";
         /// <summary>Docente: solicita prácticas y ve solo las suyas.</summary>
         public const string RoleTeacher = "Teacher";
+        /// <summary>Estudiante: reserva cupos de práctica libre y ve solo lo suyo.</summary>
+        public const string RoleStudent = "Student";
+        /// <summary>Quien toma asistencia de la práctica libre: el encargado de cierre y la gestión.</summary>
+        public const string AttendanceRoles = ClosureRoles;
         /// <summary>Quienes revisan (aprueban, observan, rechazan) solicitudes de docentes.</summary>
         public const string ReviewerRoles = ManagementRoles;
 
@@ -30,7 +34,8 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
             RoleAdministrator,
             RoleSuperAdmin,
             RolePracticeClosure,
-            RoleTeacher
+            RoleTeacher,
+            RoleStudent
         };
 
         public static string ToIdentityRole(UserRole role)
@@ -42,6 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
                 UserRole.SuperAdmin => RoleSuperAdmin,
                 UserRole.PracticeClosure => RolePracticeClosure,
                 UserRole.Docente => RoleTeacher,
+                UserRole.Estudiante => RoleStudent,
                 _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Rol de usuario no soportado.")
             };
         }

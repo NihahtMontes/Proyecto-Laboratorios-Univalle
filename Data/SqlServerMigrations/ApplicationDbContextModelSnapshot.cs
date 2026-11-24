@@ -1877,6 +1877,61 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.FreePracticeSlot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LaboratoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("PeriodCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StartPeriodId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("LaboratoryId");
+
+                    b.HasIndex("StartPeriodId");
+
+                    b.HasIndex("Date", "LaboratoryId");
+
+                    b.ToTable("FreePracticeSlots");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Group", b =>
                 {
                     b.Property<int>("Id")
@@ -4030,6 +4085,89 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.SlotReservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AttendanceById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("AttendanceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AttendanceNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FreePracticeSlotId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ReviewedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReviewedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentProfileId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FreePracticeSlotId");
+
+                    b.HasIndex("StudentProfileId", "Status");
+
+                    b.ToTable("SlotReservations");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.SlotReservationItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("SlotReservationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId");
+
+                    b.HasIndex("SlotReservationId");
+
+                    b.ToTable("SlotReservationItems");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentGroup", b =>
                 {
                     b.Property<int>("Id")
@@ -4105,6 +4243,92 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                             t.HasCheckConstraint("CK_StudentGroups_Status", "[Status] BETWEEN 0 AND 2");
                         });
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentIncident", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("SlotReservationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentProfileId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SlotReservationId");
+
+                    b.HasIndex("StudentProfileId");
+
+                    b.ToTable("StudentIncidents");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Career")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ReviewedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReviewedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Semester")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SuspendedUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentProfiles");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Subject", b =>
@@ -4506,7 +4730,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("Users", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 99)");
+                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 5, 99)");
 
                             t.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");
 
@@ -5523,6 +5747,25 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("ModifiedBy");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.FreePracticeSlot", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
+                        .WithMany()
+                        .HasForeignKey("LaboratoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.ClassPeriod", "StartPeriod")
+                        .WithMany()
+                        .HasForeignKey("StartPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Laboratory");
+
+                    b.Navigation("StartPeriod");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.HistoricalVerificationQuarantine", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.ImportBatch", "ImportBatch")
@@ -6330,6 +6573,44 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("OriginTeacherPerson");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.SlotReservation", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.FreePracticeSlot", "Slot")
+                        .WithMany("Reservations")
+                        .HasForeignKey("FreePracticeSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.StudentProfile", "Student")
+                        .WithMany("Reservations")
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Slot");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.SlotReservationItem", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Article", "Article")
+                        .WithMany()
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.SlotReservation", "Reservation")
+                        .WithMany("Items")
+                        .HasForeignKey("SlotReservationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+
+                    b.Navigation("Reservation");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentGroup", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Career", "Career")
@@ -6354,6 +6635,35 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Laboratory");
 
                     b.Navigation("Management");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentIncident", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.SlotReservation", "Reservation")
+                        .WithMany()
+                        .HasForeignKey("SlotReservationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.StudentProfile", "Student")
+                        .WithMany("Incidents")
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentProfile", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Subject", b =>
@@ -6650,6 +6960,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Laboratories");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.FreePracticeSlot", b =>
+                {
+                    b.Navigation("Reservations");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.ImportBatch", b =>
                 {
                     b.Navigation("DataQualityIssues");
@@ -6751,9 +7066,21 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("MaintenanceLinks");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.SlotReservation", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentGroup", b =>
                 {
                     b.Navigation("Subjects");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentProfile", b =>
+                {
+                    b.Navigation("Incidents");
+
+                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3Request", b =>
