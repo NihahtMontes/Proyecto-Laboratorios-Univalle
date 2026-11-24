@@ -18,6 +18,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable, DateTime? sessionDate = null, int? unitId = null);
         Task<byte[]> GenerateL3SalidaExcel(int departureId);
         Task<byte[]> GenerateL9ReprogramacionesExcel(int managementId, DateTime? originFrom = null, DateTime? originTo = null);
+        Task<byte[]> GenerateMaterialChangesExcel(int managementId, DateTime? from = null, DateTime? to = null, int? teacherPersonId = null);
     }
 
     public partial class ReportService : IReportService

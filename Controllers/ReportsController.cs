@@ -194,6 +194,40 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
         }
 
+        /// <summary>
+        /// Reporte de cambios de material del docente: compara cada solicitud enviada con el kit de la
+        /// práctica. El rango opcional (from/to) filtra por la fecha local de la primera solicitud enviada.
+        /// </summary>
+        [HttpGet("download/cambios-material")]
+        public async Task<IActionResult> DownloadMaterialChanges(int managementId, DateTime? from = null, DateTime? to = null, int? teacherPersonId = null)
+        {
+            try
+            {
+                if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
+                    return BadRequest("El rango de fechas no es válido: la fecha inicial supera la final.");
+
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+
+                var bytes = await _reportService.GenerateMaterialChangesExcel(managementId, from, to, teacherPersonId);
+                var rango = from.HasValue || to.HasValue
+                    ? $"_{from?.ToString("yyyyMMdd") ?? "inicio"}-{to?.ToString("yyyyMMdd") ?? "hoy"}"
+                    : string.Empty;
+                return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"Cambios_material_{management.Code}{rango}.xlsx");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo generar el reporte de cambios de material. ManagementId={ManagementId}; From={From}; To={To}; TeacherPersonId={TeacherPersonId}", managementId, from, to, teacherPersonId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte de cambios de material. Intente nuevamente o contacte al administrador.");
+            }
+        }
+
         [HttpGet("download/l7")]
         public async Task<IActionResult> DownloadL7(int? requestId)
         {

@@ -26,6 +26,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         public bool HasAdquisicion => AcquisitionRequestId.HasValue;
     }
 
+    /// <summary>Docente con solicitudes en la gestión (Id y nombre visible) para el filtro del reporte de cambios de material.</summary>
+    public sealed record MaterialTeacherOption(int Id, string Name);
+
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class IndexModel : PageModel
     {
@@ -69,6 +72,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         public string CurrentUserFullName { get; set; } = "";
         public string PrintDate { get; set; } = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
+        /// <summary>Valores iniciales del rango del reporte de cambios de material (hora de Bolivia).</summary>
+        public DateTime MaterialFrom { get; private set; }
+        public DateTime MaterialTo { get; private set; }
+
+        /// <summary>Docentes con solicitudes en la gestión seleccionada (una consulta, solo si hay gestión).</summary>
+        public IReadOnlyList<MaterialTeacherOption> MaterialTeachers { get; private set; } = [];
+
         public async Task OnGetAsync()
         {
             try
@@ -80,6 +90,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
                 ManagementId = SelectedManagement?.Id;
                 ViewData["ManagementId"] = SelectedManagement?.Id;
                 ViewData["ManagementType"] = SelectedManagement?.Type.ToString();
+
+                // Reporte de cambios de material: rango inicial (primer día del mes → hoy, hora de Bolivia)
+                // y docentes con solicitudes en la gestión, en UNA consulta.
+                if (SelectedManagement != null)
+                {
+                    var hoyBolivia = BoliviaTime.ToLocal(DateTime.UtcNow).Date;
+                    MaterialFrom = new DateTime(hoyBolivia.Year, hoyBolivia.Month, 1);
+                    MaterialTo = hoyBolivia;
+                    MaterialTeachers = await _context.Interns.AsNoTracking()
+                        .Where(i => _context.Plannings.Any(p => !p.IsDeleted && p.ManagementId == SelectedManagement.Id
+                            && p.TeacherPersonId == i.Id
+                            && p.Reviews.Any(r => r.Action == PlanningReviewAction.Submitted)))
+                        .OrderBy(i => i.Name)
+                        .Select(i => new MaterialTeacherOption(i.Id, i.Name))
+                        .ToListAsync();
+                }
 
                 if (_currentUser.UserId.HasValue)
                 {

@@ -43,6 +43,8 @@ public static class UiTerms
     public const string ClassPeriod = "Periodo de clase";
     public const string ReschedulingReport = "Informe de reprogramaciones y reposiciones"; // L-9 (nuevo)
     public const string ReschedulingReportShort = "L9 · Reprogramaciones y reposiciones";  // L-9 en tarjetas y menú
+    public const string MaterialChangesReport = "Cambios de material del docente";         // pedido del docente vs kit
+    public const string MaterialChangesReportShort = "Cambios de material del docente";    // en tarjetas y menú
 
     // Generales
     public const string ErrorTitle = "No se pudo completar";                  // antes «¡Ups!»

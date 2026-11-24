@@ -221,19 +221,17 @@ public class NuevaSolicitudModel : TeacherPageBase
             })
             .ToListAsync();
         var studentCount = students ?? group.StudentCount;
-        var lines = kit.GroupBy(k => k.ArticleId).Select(g =>
-        {
-            var first = g.First();
-            decimal total = 0;
-            string? note = null;
-            foreach (var line in g)
+        var escalado = RequirementPickerService.ScaleKit(
+            kit.Select(k => new RequirementPickerService.KitLine(k.ArticleId, k.Quantity, k.IsScalable)),
+            studentCount, group.ScalingFactor);
+        var infoPorArticulo = kit.GroupBy(k => k.ArticleId).ToDictionary(g => g.Key, g => g.First());
+        var lines = escalado
+            .OrderBy(kv => infoPorArticulo[kv.Key].Name)
+            .Select(kv =>
             {
-                var (qty, n) = RequirementPickerService.Scale(line.Quantity, line.IsScalable, studentCount, group.ScalingFactor);
-                total += qty ?? 1;
-                note ??= n;
-            }
-            return new { articleId = first.ArticleId, code = first.Code, name = first.Name, category = first.Category, unit = first.Unit, quantity = total, note };
-        }).OrderBy(l => l.name);
+                var first = infoPorArticulo[kv.Key];
+                return new { articleId = first.ArticleId, code = first.Code, name = first.Name, category = first.Category, unit = first.Unit, quantity = kv.Value.Quantity, note = kv.Value.Note };
+            });
         return new JsonResult(lines);
     }
 
