@@ -12,7 +12,7 @@
 |---|---|
 | ¿Lo importado sigue **fiel** al Excel? | **Sí.** 27 hojas, 23.542 filas y 44.743 celdas comparadas: **0 diferencias** y 0 violaciones de integridad. |
 | ¿Es idéntica en cantidad de filas? | **No del todo.** El verificador informa 4 tablas con filas de más. Son registros creados desde la aplicación el 26/10, después de la importación. |
-| ¿Está **completa**? | **No todavía.** Siguen faltando fechas de adquisición, capacidades, existencias y prácticas de catálogo. |
+| ¿Está **completa**? | **No todavía.** Las existencias generales están cargadas. Siguen faltando fechas de adquisición, capacidades, existencias de artículos de recetas y prácticas de catálogo. |
 | ¿Está al día con el código? | **No.** Tiene 32 migraciones y el código tiene 36. El circuito docente todavía no puede usarse sobre esta base. |
 | ¿`BaseGastronomia_v2.xlsx` trae datos nuevos? | **No.** Agrega 3 hojas con encabezados, pero sin filas. |
 
@@ -105,7 +105,8 @@ Además, la lista de equipos por gestión sigue sin reconstruirse en la base rea
 | Valor de adquisición | 536 / 644 | Valor contable completo |
 | Número de serie | 69 / 644 | Identificar por serie |
 | Capacidad de los laboratorios | **0 / 24** | Activar el control de aforo |
-| Existencias de insumos de recetas | **30 / 493** artículos | Confiar en el semáforo de material; 463 no tienen existencia |
+| Existencias generales | **702** registros de 611 artículos, 598 con cantidad ✅ | — |
+| Existencias de artículos usados en recetas | **30 / 493** artículos | Confiar en el semáforo de material: 463 tienen código propio sin existencia. Por nombre, solo 3 coinciden y 22 se parecen |
 | Prácticas de catálogo por materia | 19 / 41 materias | Solicitar o editar con catálogo en las otras 22 |
 | Vínculo artículo ↔ equipo | 0 / 1.374 | Relacionar un incidente con el equipo exacto |
 | Grupos de estudiantes | 0 | Completar la reforma de grupos «A1» |
@@ -140,7 +141,7 @@ Cada dato dudoso se registró en lugar de corregirse en silencio. Hay **7.459 ob
 
 1. **Fechas de adquisición** o de fabricación de las 644 unidades.
 2. **Capacidad** de los 24 laboratorios.
-3. **Inventario físico** de los 463 artículos de recetas sin existencia.
+3. **Inventario físico o equivalencia** de los 463 artículos de recetas sin existencia.
 4. **Prácticas del catálogo** de las 22 materias que no tienen.
 5. **Datos para las 3 hojas nuevas** de `BaseGastronomia_v2.xlsx`, si existen.
 6. **Confirmación de los valores «por confirmar»**.

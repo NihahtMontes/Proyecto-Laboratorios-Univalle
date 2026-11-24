@@ -89,6 +89,28 @@ Además: equipos y unidades (644), artículos (1.374) y existencias por laborato
 
 Raíz: `C:\Users\monte\OneDrive\Desktop\Presentar Sprint\Proyecto-Laboratorios-Univalle`. Shell: Git Bash.
 
+### Preparar el equipo antes de empezar (sesiones largas)
+Para que el equipo no se suspenda, no hiberne ni apague la pantalla mientras un agente trabaja durante mucho rato (evaluaciones, QA, E2E, importaciones). El agente lo comprueba al inicio y aplica solo lo que falte. Configurado por última vez el 2026-11-15 en el plan «Equilibrado».
+
+```powershell
+# Comprobar (todos los valores "actual" deben ser 0x00000000 = Nunca)
+powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE
+powercfg /query SCHEME_CURRENT SUB_SLEEP HIBERNATEIDLE
+powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE
+
+# Aplicar: suspender, hibernar y pantalla en "Nunca", enchufado (ac) y con batería (dc)
+powercfg /change standby-timeout-ac 0;   powercfg /change standby-timeout-dc 0
+powercfg /change hibernate-timeout-ac 0; powercfg /change hibernate-timeout-dc 0
+powercfg /change monitor-timeout-ac 0;   powercfg /change monitor-timeout-dc 0
+# Cerrar la tapa = no hacer nada (este equipo no muestra ese ajuste en powercfg /query;
+# si importa, revisarlo en Panel de control > Opciones de energía > Comportamiento del cierre de la tapa)
+powercfg /setacvalueindex SCHEME_CURRENT 4f971e89-eebd-4455-a8de-9e59040e7347 5ca83367-6e45-459f-a27b-476b1d01c936 0
+powercfg /setdcvalueindex SCHEME_CURRENT 4f971e89-eebd-4455-a8de-9e59040e7347 5ca83367-6e45-459f-a27b-476b1d01c936 0
+powercfg /setactive SCHEME_CURRENT
+```
+
+Para revertir: el único valor distinto de «Nunca» que había antes era hibernar con batería a las 6 h (`powercfg /change hibernate-timeout-dc 360`).
+
 ### Compilar y testear
 ```bash
 dotnet build -m:1 "Proyecto Laboratorios Univalle.csproj"
