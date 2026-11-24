@@ -555,41 +555,47 @@ public class MaterialChangesReportTests
 
         Assert.Equal("Docente", resumen.Cells[3, 1].Text);
         Assert.Equal("Solicitudes", resumen.Cells[3, 2].Text);
-        Assert.Equal("Con cambios", resumen.Cells[3, 3].Text);
-        Assert.Equal("Solo cantidades", resumen.Cells[3, 4].Text);
-        Assert.Equal("Cambió artículos", resumen.Cells[3, 5].Text);
-        Assert.Equal("Llamadas de atención (3+ artículos)", resumen.Cells[3, 6].Text);
-        Assert.Equal("A último momento (menos de 7 días)", resumen.Cells[3, 7].Text);
-        Assert.Equal("Artículos cambiados", resumen.Cells[3, 8].Text);
-        Assert.Equal("Aumentos", resumen.Cells[3, 9].Text);
-        Assert.Equal("Disminuciones", resumen.Cells[3, 10].Text);
-        Assert.Equal("Agregados", resumen.Cells[3, 11].Text);
-        Assert.Equal("Quitados", resumen.Cells[3, 12].Text);
-        Assert.Equal("Reenvíos", resumen.Cells[3, 13].Text);
+        Assert.Equal("Pedidos de cambio de L-3", resumen.Cells[3, 3].Text);
+        Assert.Equal("Con cambios", resumen.Cells[3, 4].Text);
+        Assert.Equal("Solo cantidades", resumen.Cells[3, 5].Text);
+        Assert.Equal("Cambió artículos", resumen.Cells[3, 6].Text);
+        Assert.Equal("Llamadas de atención (3+ artículos)", resumen.Cells[3, 7].Text);
+        Assert.Equal("A último momento (menos de 7 días)", resumen.Cells[3, 8].Text);
+        Assert.Equal("Artículos cambiados", resumen.Cells[3, 9].Text);
+        Assert.Equal("Aumentos", resumen.Cells[3, 10].Text);
+        Assert.Equal("Disminuciones", resumen.Cells[3, 11].Text);
+        Assert.Equal("Agregados", resumen.Cells[3, 12].Text);
+        Assert.Equal("Quitados", resumen.Cells[3, 13].Text);
+        Assert.Equal("Reenvíos", resumen.Cells[3, 14].Text);
         Assert.Equal("Ana Torres", resumen.Cells[4, 1].Text);
         Assert.Equal(1, Convert.ToInt32(resumen.Cells[4, 2].Value));
-        Assert.Equal(4, Convert.ToInt32(resumen.Cells[4, 8].Value));
+        Assert.Equal(0, Convert.ToInt32(resumen.Cells[4, 3].Value));   // sin pedidos de cambio de L-3
+        Assert.Equal(4, Convert.ToInt32(resumen.Cells[4, 9].Value));
 
-        Assert.Equal("Fecha de solicitud", detalle.Cells[3, 1].Text);
-        Assert.Equal("Fecha de práctica", detalle.Cells[3, 2].Text);
-        Assert.Equal("Días de anticipación", detalle.Cells[3, 3].Text);
-        Assert.Equal("Docente", detalle.Cells[3, 4].Text);
-        Assert.Equal("Kit", detalle.Cells[3, 10].Text);
-        Assert.Equal("Pedido", detalle.Cells[3, 11].Text);
-        Assert.Equal("Diferencia", detalle.Cells[3, 12].Text);
-        Assert.Equal("Cambio", detalle.Cells[3, 13].Text);
-        Assert.Equal("Tipo", detalle.Cells[3, 14].Text);
-        Assert.Equal("Alerta", detalle.Cells[3, 15].Text);
-        Assert.Equal("Estado", detalle.Cells[3, 16].Text);
-        Assert.Equal("Observación del docente", detalle.Cells[3, 17].Text);
-        Assert.Equal("COD-1 · Reactivo X", detalle.Cells[4, 8].Text);
-        Assert.Equal("Aumentó", detalle.Cells[4, 13].Text);
-        Assert.Equal("Cantidad", detalle.Cells[4, 14].Text);
-        Assert.Equal(2, Convert.ToInt32(detalle.Cells[4, 3].Value));   // 03/11 → 05/11
-        Assert.Equal("Último momento", detalle.Cells[4, 15].Text);      // 2 días < 7; solo 2 artículos: no es llamada
+        Assert.Equal("Origen", detalle.Cells[3, 1].Text);
+        Assert.Equal("Fecha de solicitud", detalle.Cells[3, 2].Text);
+        Assert.Equal("Fecha de práctica", detalle.Cells[3, 3].Text);
+        Assert.Equal("Días de anticipación", detalle.Cells[3, 4].Text);
+        Assert.Equal("Docente", detalle.Cells[3, 5].Text);
+        Assert.Equal("Kit", detalle.Cells[3, 11].Text);
+        Assert.Equal("Pedido", detalle.Cells[3, 12].Text);
+        Assert.Equal("Diferencia", detalle.Cells[3, 13].Text);
+        Assert.Equal("Cambio", detalle.Cells[3, 14].Text);
+        Assert.Equal("Tipo", detalle.Cells[3, 15].Text);
+        Assert.Equal("Alerta", detalle.Cells[3, 16].Text);
+        Assert.Equal("Estado", detalle.Cells[3, 17].Text);
+        Assert.Equal("Estado del cambio", detalle.Cells[3, 18].Text);
+        Assert.Equal("Observación del docente", detalle.Cells[3, 19].Text);
+        Assert.Equal("Solicitud", detalle.Cells[4, 1].Text);            // fila de solicitud: origen «Solicitud»
+        Assert.Equal("—", detalle.Cells[4, 18].Text);                   // y sin estado de cambio
+        Assert.Equal("COD-1 · Reactivo X", detalle.Cells[4, 9].Text);
+        Assert.Equal("Aumentó", detalle.Cells[4, 14].Text);
+        Assert.Equal("Cantidad", detalle.Cells[4, 15].Text);
+        Assert.Equal(2, Convert.ToInt32(detalle.Cells[4, 4].Value));   // 03/11 → 05/11
+        Assert.Equal("Último momento", detalle.Cells[4, 16].Text);      // 2 días < 7; solo 2 artículos: no es llamada
 
         // Columnas autoajustadas con tope: ninguna pasa de 60.
-        for (var c = 1; c <= 17; c++)
+        for (var c = 1; c <= 19; c++)
             Assert.True(detalle.Column(c).Width <= 60);
     }
 
@@ -606,8 +612,207 @@ public class MaterialChangesReportTests
         var detalle = package.Workbook.Worksheets["Detalle"];
         Assert.Equal("Docente", resumen.Cells[3, 1].Text);
         Assert.Contains("Sin solicitudes de docentes en el rango", resumen.Cells[4, 1].Text);
-        Assert.Equal("Fecha de solicitud", detalle.Cells[3, 1].Text);
+        Assert.Equal("Origen", detalle.Cells[3, 1].Text);
         Assert.Contains("Sin solicitudes de docentes en el rango", detalle.Cells[4, 1].Text);
+    }
+
+    // ==================== (i) Segunda fuente: pedidos de cambio de L-3 de prácticas aprobadas ====================
+
+    /// <summary>Práctica aprobada por importación (sin review «Enviada») con un pedido de cambio (review 8).</summary>
+    private static void SembrarPedidoCambio(TestDb db, int planningId, int docenteId, DateTime utcPedido,
+        int subjectId, string materia, int practiceId, int scheduleId, DateTime fechaPractica, int reviewId,
+        string? motivo = null, params (int ArticuloId, decimal? Previo, decimal? Nueva)[] lineas)
+    {
+        SembrarSolicitud(db, planningId, docenteId, utcPedido,
+            subjectId: subjectId, materia: materia, practiceId: practiceId, scheduleId: scheduleId,
+            status: PlanningStatus.Approved, fechaPractica: fechaPractica);
+        var review = new PlanningReview
+        {
+            Id = reviewId, PlanningId = planningId, Action = PlanningReviewAction.MaterialChangeRequested,
+            FromStatus = PlanningStatus.Approved, ToStatus = PlanningStatus.Approved,
+            Comment = motivo, UserId = 1, CreatedDate = utcPedido
+        };
+        foreach (var linea in lineas)
+            review.Lines.Add(new PlanningReviewLine { ArticleId = linea.ArticuloId, PreviousQuantity = linea.Previo, NewQuantity = linea.Nueva });
+        db.Context.PlanningReviews.Add(review);
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task Cambio_de_L3_agrega_filas_con_origen_y_kit_previo_contra_pedido_nuevo()
+    {
+        using var db = new TestDb();
+        db.AddIntern(TestDb.Teacher1, "Ana Torres");
+        db.Context.Practices.Add(new Practice { Id = 90, Code = "P-90", Name = "Volumetría", SubjectId = 540 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        SembrarArticulo(db, 40, "CAM-1", "Bureta");
+        SembrarArticulo(db, 41, "CAM-2", "Soporte universal");
+        SembrarArticulo(db, 42, "CAM-3", "Pipeta Pasteur");
+
+        // Práctica aprobada sin «Enviada» (importada): su pedido de cambio del 10/11 (local) es la única fuente.
+        SembrarPedidoCambio(db, 300, TestDb.Teacher1, new DateTime(2026, 11, 10, 15, 0, 0),
+            subjectId: 540, materia: "Química Analítica", practiceId: 90, scheduleId: 1100,
+            fechaPractica: new DateTime(2026, 11, 20), reviewId: 2701,
+            motivo: "Cambio por número de estudiantes",
+            (40, 5m, 8m),      // Aumentó
+            (41, 2m, 1m),      // Disminuyó
+            (42, null, 3m));   // Agregó
+
+        var reporte = await Servicio(db).GetMaterialChangesAsync(TestDb.ManagementId);
+
+        Assert.Equal(3, reporte.Rows.Count);
+        Assert.All(reporte.Rows, f => Assert.Equal("Cambio de L-3", f.Origen));
+        Assert.All(reporte.Rows, f => Assert.Equal("Pendiente", f.EstadoCambio));   // sin review posterior
+        var bureta = reporte.Rows.Single(f => f.Articulo.Contains("CAM-1"));
+        Assert.Equal(5m, bureta.Kit);                     // Kit = Previous (lo vigente)
+        Assert.Equal(8m, bureta.Pedido);                  // Pedido = New (lo que pidió ahora)
+        Assert.Equal(3m, bureta.Diferencia);
+        Assert.Equal("Aumentó", bureta.Cambio);
+        Assert.Equal(MaterialChangeRules.QuantityKind, bureta.Tipo);
+        var soporte = reporte.Rows.Single(f => f.Articulo.Contains("CAM-2"));
+        Assert.Equal("Disminuyó", soporte.Cambio);
+        Assert.Equal(2m, soporte.Kit);
+        Assert.Equal(1m, soporte.Pedido);
+        var pipeta = reporte.Rows.Single(f => f.Articulo.Contains("CAM-3"));
+        Assert.Equal("Agregó", pipeta.Cambio);
+        Assert.Equal(0m, pipeta.Kit);
+        Assert.Equal(3m, pipeta.Pedido);
+        Assert.Equal("Cambio por número de estudiantes", pipeta.Observacion);   // el motivo del pedido
+
+        // Fecha de la fila = fecha local del pedido; días de anticipación = práctica − pedido.
+        Assert.Equal(BoliviaTime.ToLocal(new DateTime(2026, 11, 10, 15, 0, 0)).Date, bureta.FechaSolicitud);
+        Assert.Equal(10, bureta.DiasAnticipacion);
+        Assert.False(bureta.UltimoMomento);
+        Assert.Equal(PlanningStatus.Approved, bureta.Estado);
+
+        // Resumen: la docente solo tiene pedidos de cambio → 0 solicitudes, 1 cambio de L-3 que sí suma en cambios.
+        var ana = Assert.Single(reporte.Summaries);
+        Assert.Equal("Ana Torres", ana.Docente);
+        Assert.Equal(0, ana.Solicitudes);
+        Assert.Equal(1, ana.CambiosL3);
+        Assert.Equal(1, ana.ConCambios);
+        Assert.Equal(1, ana.CambioArticulos);      // la pipeta agregada
+        Assert.Equal(0, ana.SoloCantidades);
+        Assert.Equal(3, ana.ArticulosCambiados);
+        Assert.Equal(1, ana.Aumentos);
+        Assert.Equal(1, ana.Disminuciones);
+        Assert.Equal(1, ana.Agregados);
+        Assert.Equal(0, ana.Quitados);
+        Assert.Equal(0, ana.Reenvios);
+    }
+
+    [Fact]
+    public async Task Estado_del_cambio_por_el_siguiente_review_9_10_u_11()
+    {
+        using var db = new TestDb();
+        db.AddIntern(TestDb.Teacher1, "Ana Torres");
+        db.Context.Practices.Add(new Practice { Id = 91, Code = "P-91", Name = "Cromatografía", SubjectId = 541 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        SembrarArticulo(db, 43, "CAM-4", "Cromo");
+
+        var pedido = new DateTime(2026, 11, 12, 15, 0, 0);
+        var cierre = new DateTime(2026, 11, 13, 15, 0, 0);
+        SembrarPedidoCambio(db, 301, TestDb.Teacher1, pedido, 541, "Química", 91, 1110, new DateTime(2026, 11, 25), 2710, lineas: [(43, 1m, 2m)]);
+        SembrarPedidoCambio(db, 302, TestDb.Teacher1, pedido, 542, "Química", 91, 1111, new DateTime(2026, 11, 25), 2711, lineas: [(43, 1m, 2m)]);
+        SembrarPedidoCambio(db, 303, TestDb.Teacher1, pedido, 543, "Química", 91, 1112, new DateTime(2026, 11, 25), 2712, lineas: [(43, 1m, 2m)]);
+        SembrarPedidoCambio(db, 304, TestDb.Teacher1, pedido, 544, "Química", 91, 1113, new DateTime(2026, 11, 25), 2713, lineas: [(43, 1m, 2m)]);
+        // Cierres posteriores: 301 aprobado, 302 rechazado, 303 retirado; 304 queda pendiente.
+        SembrarReview(db, 2801, 301, PlanningReviewAction.MaterialChangeApproved, cierre);
+        SembrarReview(db, 2802, 302, PlanningReviewAction.MaterialChangeRejected, cierre);
+        SembrarReview(db, 2803, 303, PlanningReviewAction.MaterialChangeWithdrawn, cierre);
+
+        var reporte = await Servicio(db).GetMaterialChangesAsync(TestDb.ManagementId);
+
+        Assert.Equal("Aprobado", reporte.Rows.Single(f => f.Practica == "Práctica 301").EstadoCambio);
+        Assert.Equal("Rechazado", reporte.Rows.Single(f => f.Practica == "Práctica 302").EstadoCambio);
+        Assert.Equal("Retirado", reporte.Rows.Single(f => f.Practica == "Práctica 303").EstadoCambio);
+        Assert.Equal("Pendiente", reporte.Rows.Single(f => f.Practica == "Práctica 304").EstadoCambio);
+        Assert.Equal(4, Assert.Single(reporte.Summaries).CambiosL3);
+    }
+
+    [Fact]
+    public async Task Cambios_de_L3_alertas_ultimo_momento_y_no_suman_en_solicitudes()
+    {
+        using var db = new TestDb();
+        db.AddIntern(TestDb.Teacher1, "Ana Torres");
+        db.AddIntern(TestDb.Teacher2, "Beto Vargas");
+        db.Context.Practices.Add(new Practice { Id = 92, Code = "P-92", Name = "Destilación", SubjectId = 545 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        for (var id = 44; id <= 47; id++) SembrarArticulo(db, id, $"CAM-{id}", $"Artículo {id}");
+        SembrarKit(db, 92, 44, cantidad: 2, escalable: false);
+
+        // Ana: solicitud sin cambios (kit igual al pedido) + un pedido de cambio con 3 agregados → llamada de atención.
+        SembrarSolicitud(db, 310, TestDb.Teacher1, new DateTime(2026, 11, 3, 14, 0, 0),
+            subjectId: 545, materia: "Química", practiceId: 92, scheduleId: 1120);
+        SembrarReview(db, 2810, 310, PlanningReviewAction.Submitted, new DateTime(2026, 11, 3, 14, 0, 0));
+        db.AddRequirement(310, 44, 2);
+        SembrarPedidoCambio(db, 311, TestDb.Teacher1, new DateTime(2026, 11, 12, 15, 0, 0),
+            546, "Química", 92, 1121, new DateTime(2026, 11, 25), 2811, motivo: null,
+            (45, null, 1m), (46, null, 2m), (47, null, 3m));
+
+        // Beto: SOLO un pedido de cambio, pedido a último momento (22/11 → 25/11, 3 días).
+        SembrarPedidoCambio(db, 312, TestDb.Teacher2, new DateTime(2026, 11, 22, 15, 0, 0),
+            547, "Química", 92, 1122, new DateTime(2026, 11, 25), 2812, motivo: null,
+            (44, 2m, 4m));
+
+        var reporte = await Servicio(db).GetMaterialChangesAsync(TestDb.ManagementId);
+
+        // Filas: 3 del pedido de Ana + 1 del pedido de Beto; la solicitud de Ana no aporta (sin cambios).
+        Assert.Equal(4, reporte.Rows.Count);
+        var deAna = reporte.Rows.Where(f => f.Docente == "Ana Torres").ToList();
+        Assert.All(deAna, f =>
+        {
+            Assert.True(f.LlamadaAtencion);    // 3 artículos agregados
+            Assert.False(f.UltimoMomento);     // 13 días de anticipación
+        });
+        var deBeto = reporte.Rows.Single(f => f.Docente == "Beto Vargas");
+        Assert.True(deBeto.UltimoMomento);
+        Assert.False(deBeto.LlamadaAtencion);
+
+        var ana = reporte.Summaries.Single(s => s.Docente == "Ana Torres");
+        Assert.Equal(1, ana.Solicitudes);      // la solicitud cuenta en Solicitudes; el pedido no
+        Assert.Equal(1, ana.CambiosL3);
+        Assert.Equal(1, ana.LlamadasAtencion);
+        Assert.Equal(1, ana.ConCambios);       // solo el pedido: la solicitud no tenía cambios
+
+        var beto = reporte.Summaries.Single(s => s.Docente == "Beto Vargas");
+        Assert.Equal(0, beto.Solicitudes);     // solo pedidos de cambio: aparece igual
+        Assert.Equal(1, beto.CambiosL3);
+        Assert.Equal(1, beto.UltimoMomento);
+        Assert.Equal(1, beto.ConCambios);
+        Assert.Equal(1, beto.Aumentos);
+    }
+
+    [Fact]
+    public async Task Excel_marca_el_origen_y_el_estado_del_cambio()
+    {
+        using var db = new TestDb();
+        db.AddIntern(TestDb.Teacher1, "Ana Torres");
+        db.Context.Practices.Add(new Practice { Id = 93, Code = "P-93", Name = "Filtración", SubjectId = 548 });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+        SembrarArticulo(db, 48, "CAM-8", "Papel filtro");
+
+        SembrarPedidoCambio(db, 320, TestDb.Teacher1, new DateTime(2026, 11, 10, 15, 0, 0),
+            548, "Química", 93, 1130, new DateTime(2026, 11, 20), 2820, lineas: [(48, 5m, 8m)]);
+
+        var bytes = await Servicio(db).GenerateMaterialChangesExcel(TestDb.ManagementId);
+
+        using var package = new ExcelPackage(new MemoryStream(bytes));
+        var detalle = package.Workbook.Worksheets["Detalle"];
+        Assert.Equal("Cambio de L-3", detalle.Cells[4, 1].Text);
+        Assert.Equal("Pendiente", detalle.Cells[4, 18].Text);
+        Assert.Equal(5m, Convert.ToDecimal(detalle.Cells[4, 11].Value));
+        Assert.Equal(8m, Convert.ToDecimal(detalle.Cells[4, 12].Value));
+        Assert.Equal("Aumentó", detalle.Cells[4, 14].Text);
+        // El resumen muestra su contador propio: 0 solicitudes, 1 pedido de cambio de L-3.
+        var resumen = package.Workbook.Worksheets["Resumen por docente"];
+        Assert.Equal(0, Convert.ToInt32(resumen.Cells[4, 2].Value));
+        Assert.Equal(1, Convert.ToInt32(resumen.Cells[4, 3].Value));
     }
 
     // ==================== (h) ScaleKit ====================

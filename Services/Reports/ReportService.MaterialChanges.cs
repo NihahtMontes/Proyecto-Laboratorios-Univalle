@@ -36,6 +36,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
     /// filas de una solicitud con <see cref="MaterialChangeRules.WarningItemCount"/> o más artículos agregados
     /// o quitados, y <paramref name="UltimoMomento"/> las pedidas con menos de
     /// <see cref="MaterialChangeRules.OnTimeDays"/> días de anticipación.
+    /// <paramref name="Origen"/> distingue la solicitud original («Solicitud») del pedido posterior sobre una
+    /// práctica aprobada («Cambio de L-3»); <paramref name="EstadoCambio"/> es el estado del pedido
+    /// (Pendiente/Aprobado/Rechazado/Retirado) solo en las filas de cambio.
     /// </summary>
     public sealed record MaterialChangeRow(
         DateTime FechaSolicitud,
@@ -55,16 +58,20 @@ namespace Proyecto_Laboratorios_Univalle.Services
         bool LlamadaAtencion,
         bool UltimoMomento,
         string Estado,
-        string? Observacion);
+        string? Observacion,
+        string Origen,
+        string? EstadoCambio);
 
     /// <summary>
     /// Totales de cambios de material de un docente dentro del rango consultado. Las solicitudes con cambios
     /// se dividen en «solo cantidades» y «cambió artículos»; las llamadas de atención y las de último momento
-    /// cuentan solicitudes (no artículos).
+    /// cuentan solicitudes (no artículos). Los pedidos de cambio de L-3 (<paramref name="CambiosL3"/>) suman en
+    /// todas las métricas de cambio menos en <paramref name="Solicitudes"/>.
     /// </summary>
     public sealed record MaterialChangeTeacherSummary(
         string Docente,
         int Solicitudes,
+        int CambiosL3,
         int ConCambios,
         int SoloCantidades,
         int CambioArticulos,
@@ -88,6 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         private sealed class CambiosDocente
         {
             public int Solicitudes;
+            public int CambiosL3;
             public int ConCambios;
             public int SoloCantidades;
             public int CambioArticulos;
@@ -108,6 +116,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
         /// filtran desde/hasta (ambos inclusive por día). Las solicitudes sin programación se omiten.
         /// Lo que cuenta del docente es lo que ÉL pidió (PreviousQuantity de la línea de review más antigua),
         /// no los ajustes que la Inge hizo al aprobar con cambios.
+        /// Segunda fuente: los pedidos de cambio de material de prácticas aprobadas (reviews «Pidió cambio de
+        /// material», sin borradas), una fila por línea del pedido (Kit = Previous, Pedido = New), con su estado
+        /// (Pendiente/Aprobado/Rechazado/Retirado); su fecha local es la que filtra desde/hasta y NO suman en
+        /// Solicitudes (van en CambiosL3), pero sí en el resto de métricas del resumen.
         /// </summary>
         public async Task<MaterialChangesReport> GetMaterialChangesAsync(int managementId,
             DateTime? from = null, DateTime? to = null, int? teacherPersonId = null, CancellationToken ct = default)
@@ -128,7 +140,19 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     p.PracticeName, p.Status, p.Observations, p.ScheduledDate, p.StudentCount
                 })
                 .ToListAsync(ct);
-            if (solicitudes.Count == 0) return new MaterialChangesReport([], []);
+
+            // 1b) Segunda fuente: pedidos de cambio de material (reviews «Pidió cambio de material») de la misma
+            //     gestión, sin borradas. Cubre las prácticas aprobadas que nunca pasaron por una solicitud (importadas).
+            var consultaCambios = _context.PlanningReviews.AsNoTracking()
+                .Where(r => r.Action == PlanningReviewAction.MaterialChangeRequested
+                    && r.Planning!.ManagementId == managementId && !r.Planning.IsDeleted);
+            if (teacherPersonId.HasValue)
+                consultaCambios = consultaCambios.Where(r => r.Planning!.TeacherPersonId == teacherPersonId.Value);
+            var pedidosCambio = await consultaCambios
+                .Select(r => new { r.Id, r.PlanningId, r.Planning!.TeacherPersonId, r.CreatedDate, r.Comment })
+                .ToListAsync(ct);
+
+            if (solicitudes.Count == 0 && pedidosCambio.Count == 0) return new MaterialChangesReport([], []);
 
             var planIds = solicitudes.Select(s => s.Id).ToList();
 
@@ -143,6 +167,49 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Select(l => new { l.Id, l.PlanningReviewId, l.ArticleId, l.PreviousQuantity, l.NewQuantity })
                 .ToListAsync(ct);
             var reviewPorId = reviews.ToDictionary(r => r.Id);
+
+            // 2b) Pedidos de cambio: líneas del pedido (Previous = vigente, New = pedido) y cierre posterior
+            //     (el siguiente review Aprobado/Rechazado/Retirado de esa planificación marca su estado).
+            var cambioReviewIds = pedidosCambio.Select(p => p.Id).ToList();
+            var lineasPedidosCambio = cambioReviewIds.Count == 0 ? [] : await _context.Set<PlanningReviewLine>().AsNoTracking()
+                .Where(l => cambioReviewIds.Contains(l.PlanningReviewId))
+                .Select(l => new { l.Id, l.PlanningReviewId, l.ArticleId, l.PreviousQuantity, l.NewQuantity })
+                .ToListAsync(ct);
+            var lineasPorPedidoCambio = lineasPedidosCambio.GroupBy(l => l.PlanningReviewId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var cambioPlanIds = pedidosCambio.Select(p => p.PlanningId).Distinct().ToList();
+            var cierresCambio = cambioPlanIds.Count == 0 ? [] : await _context.PlanningReviews.AsNoTracking()
+                .Where(r => cambioPlanIds.Contains(r.PlanningId)
+                    && (r.Action == PlanningReviewAction.MaterialChangeApproved
+                        || r.Action == PlanningReviewAction.MaterialChangeRejected
+                        || r.Action == PlanningReviewAction.MaterialChangeWithdrawn))
+                .Select(r => new { r.Id, r.PlanningId, r.Action, r.CreatedDate })
+                .ToListAsync(ct);
+            var cierrePorPlanning = cierresCambio.GroupBy(c => c.PlanningId).ToDictionary(g => g.Key, g => g.ToList());
+
+            /// <summary>Estado de un pedido de cambio: según el review 9/10/11 posterior a él; «Pendiente» si no hay.</summary>
+            string? EstadoDeCambio(int planningId, DateTime pedidoUtc, int pedidoId)
+            {
+                var siguiente = (cierrePorPlanning.GetValueOrDefault(planningId) ?? [])
+                    .Where(c => c.CreatedDate > pedidoUtc || (c.CreatedDate == pedidoUtc && c.Id > pedidoId))
+                    .OrderBy(c => c.CreatedDate).ThenBy(c => c.Id)
+                    .FirstOrDefault();
+                return siguiente == null ? "Pendiente"
+                    : siguiente.Action == PlanningReviewAction.MaterialChangeApproved ? "Aprobado"
+                    : siguiente.Action == PlanningReviewAction.MaterialChangeRejected ? "Rechazado"
+                    : "Retirado";
+            }
+
+            // 2c) Planificaciones de los pedidos de cambio (materia, grupo y fecha de la práctica).
+            var planesCambio = cambioPlanIds.Count == 0 ? [] : await _context.Plannings.AsNoTracking()
+                .Where(p => cambioPlanIds.Contains(p.Id) && !p.IsDeleted)
+                .Select(p => new
+                {
+                    p.Id, p.TeacherPersonId, p.GroupName, p.PracticeName, p.Status, p.Observations, p.ScheduledDate,
+                    Materia = p.Subject != null ? p.Subject.Name : null
+                })
+                .ToListAsync(ct);
+            var planCambioPorId = planesCambio.ToDictionary(p => p.Id);
 
             // 3) Grupos (estudiantes y factor de escalamiento) y programaciones (práctica del kit).
             var groupIds = solicitudes.Where(s => s.CourseGroupId.HasValue)
@@ -191,10 +258,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Select(r => new { r.PlanningId, r.ArticleId, r.RequestedQuantity, r.ExpectedQuantity })
                 .ToListAsync(ct);
 
-            // 6) Nombres y categorías de todos los artículos involucrados (kit ∪ pedido ∪ review lines).
+            // 6) Nombres y categorías de todos los artículos involucrados (kit ∪ pedido ∪ review lines ∪ cambios L-3).
             var articleIds = kitPorPractica.Values.SelectMany(v => v).Select(k => k.ArticleId)
                 .Concat(pedidos.Select(p => p.ArticleId))
                 .Concat(reviewLines.Select(l => l.ArticleId))
+                .Concat(lineasPedidosCambio.Select(l => l.ArticleId))
                 .Distinct().ToList();
             var articulos = new Dictionary<int, (string? Articulo, string? Categoria)>();
             if (articleIds.Count > 0)
@@ -207,7 +275,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
             }
 
             // 7) Nombre visible del docente: Intern.Name (Person.FullName es NotMapped y no se puede consultar).
-            var teacherIds = solicitudes.Select(s => s.TeacherPersonId).Distinct().ToList();
+            var teacherIds = solicitudes.Select(s => s.TeacherPersonId)
+                .Concat(pedidosCambio.Select(p => p.TeacherPersonId))
+                .Distinct().ToList();
             var docentes = await _context.Interns.AsNoTracking()
                 .Where(t => teacherIds.Contains(t.Id))
                 .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
@@ -310,7 +380,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         llamadaAtencion,
                         ultimoMomento,
                         s.Status,
-                        s.Observations));
+                        s.Observations,
+                        "Solicitud",
+                        null));
                 }
                 resumen.ConCambios += cambios.Count > 0 ? 1 : 0;
                 resumen.SoloCantidades += cambios.Count > 0 && cambiosDeArticulo == 0 ? 1 : 0;
@@ -330,6 +402,83 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 }
             }
 
+            // ===== Segunda fuente: pedidos de cambio de material (prácticas ya aprobadas) =====
+            // Kit = lo vigente (Previous), Pedido = lo que el docente pidió ahora (New); el filtro desde/hasta usa
+            // la fecha LOCAL del pedido. Los pedidos de cambio NO suman en Solicitudes: tienen su propio contador.
+            foreach (var pc in pedidosCambio)
+            {
+                var fechaPedido = BoliviaTime.ToLocal(pc.CreatedDate).Date;
+                if (from.HasValue && fechaPedido < from.Value.Date) continue;
+                if (to.HasValue && fechaPedido > to.Value.Date) continue;
+                if (!planCambioPorId.TryGetValue(pc.PlanningId, out var plan)) continue;
+
+                var lineas = lineasPorPedidoCambio.GetValueOrDefault(pc.Id) ?? [];
+                if (lineas.Count == 0) continue;
+
+                var cambios = lineas.Select(l =>
+                {
+                    var kit = l.PreviousQuantity ?? 0m;
+                    var pedido = l.NewQuantity ?? 0m;
+                    var cambio = l.PreviousQuantity == null ? "Agregó"
+                        : l.NewQuantity == null ? "Quitó"
+                        : l.NewQuantity > l.PreviousQuantity ? "Aumentó"
+                        : "Disminuyó";
+                    return (l.ArticleId, Kit: kit, Pedido: pedido, Diferencia: pedido - kit, Cambio: cambio);
+                }).ToList();
+
+                // Mismas reglas que las solicitudes, calculadas por review: llamada de atención con 3+ artículos
+                // agregados o quitados; último momento con menos de 7 días a la práctica.
+                var cambiosDeArticulo = cambios.Count(c => MaterialChangeRules.IsItemChange(c.Cambio));
+                var llamadaAtencion = cambiosDeArticulo >= MaterialChangeRules.WarningItemCount;
+                var diasAnticipacion = (plan.ScheduledDate.Date - fechaPedido).Days;
+                var ultimoMomento = diasAnticipacion < MaterialChangeRules.OnTimeDays;
+                var estadoCambio = EstadoDeCambio(pc.PlanningId, pc.CreatedDate, pc.Id);
+
+                var nombreDocente = docentes.GetValueOrDefault(pc.TeacherPersonId, "—");
+                foreach (var (articleId, kitQty, pedidoQty, diferencia, cambio) in cambios)
+                {
+                    var articulo = articulos.GetValueOrDefault(articleId);
+                    filas.Add(new MaterialChangeRow(
+                        fechaPedido,
+                        plan.ScheduledDate,
+                        diasAnticipacion,
+                        nombreDocente,
+                        plan.Materia ?? "Sin materia",
+                        string.IsNullOrWhiteSpace(plan.GroupName) ? "—" : plan.GroupName!,
+                        plan.PracticeName,
+                        articulo.Articulo ?? $"Artículo {articleId}",
+                        articulo.Categoria,
+                        kitQty, pedidoQty, diferencia, cambio,
+                        MaterialChangeRules.IsItemChange(cambio) ? MaterialChangeRules.ItemKind : MaterialChangeRules.QuantityKind,
+                        llamadaAtencion,
+                        ultimoMomento,
+                        plan.Status,
+                        pc.Comment,
+                        "Cambio de L-3",
+                        estadoCambio));
+                }
+
+                if (!resumenPorDocente.TryGetValue(pc.TeacherPersonId, out var resumenCambio))
+                    resumenPorDocente[pc.TeacherPersonId] = resumenCambio = new CambiosDocente();
+                resumenCambio.CambiosL3++;
+                resumenCambio.ConCambios++;
+                resumenCambio.SoloCantidades += cambiosDeArticulo == 0 ? 1 : 0;
+                resumenCambio.CambioArticulos += cambiosDeArticulo > 0 ? 1 : 0;
+                resumenCambio.LlamadasAtencion += llamadaAtencion ? 1 : 0;
+                resumenCambio.UltimoMomento += ultimoMomento ? 1 : 0;
+                resumenCambio.ArticulosCambiados += cambios.Count;
+                foreach (var c in cambios)
+                {
+                    switch (c.Cambio)
+                    {
+                        case "Aumentó": resumenCambio.Aumentos++; break;
+                        case "Disminuyó": resumenCambio.Disminuciones++; break;
+                        case "Agregó": resumenCambio.Agregados++; break;
+                        default: resumenCambio.Quitados++; break;
+                    }
+                }
+            }
+
             // Detalle: docente, fecha de solicitud, práctica y artículo. Resumen: primero quien tiene más
             // llamadas de atención, luego más solicitudes con artículos cambiados, de último momento y con
             // cambios; al final alfabético por docente (incluye los de 0 cambios).
@@ -339,7 +488,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             var summaries = resumenPorDocente
                 .Select(kv => new MaterialChangeTeacherSummary(
                     docentes.GetValueOrDefault(kv.Key, "—"),
-                    kv.Value.Solicitudes, kv.Value.ConCambios, kv.Value.SoloCantidades, kv.Value.CambioArticulos,
+                    kv.Value.Solicitudes, kv.Value.CambiosL3, kv.Value.ConCambios, kv.Value.SoloCantidades, kv.Value.CambioArticulos,
                     kv.Value.LlamadasAtencion, kv.Value.UltimoMomento, kv.Value.ArticulosCambiados,
                     kv.Value.Aumentos, kv.Value.Disminuciones, kv.Value.Agregados, kv.Value.Quitados, kv.Value.Reenvios))
                 .OrderByDescending(x => x.LlamadasAtencion)
@@ -385,7 +534,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             // ===== Hoja 1: Resumen por docente =====
             string[] encabezadosResumen =
             [
-                "Docente", "Solicitudes", "Con cambios", "Solo cantidades", "Cambió artículos",
+                "Docente", "Solicitudes", "Pedidos de cambio de L-3", "Con cambios", "Solo cantidades", "Cambió artículos",
                 $"Llamadas de atención ({MaterialChangeRules.WarningItemCount}+ artículos)",
                 $"A último momento (menos de {MaterialChangeRules.OnTimeDays} días)",
                 "Artículos cambiados", "Aumentos", "Disminuciones", "Agregados", "Quitados", "Reenvíos"
@@ -401,14 +550,14 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 wsResumen.Cells[ultimaFila, 1].Value = s.Docente;
                 int[] valores =
                 [
-                    s.Solicitudes, s.ConCambios, s.SoloCantidades, s.CambioArticulos, s.LlamadasAtencion, s.UltimoMomento,
+                    s.Solicitudes, s.CambiosL3, s.ConCambios, s.SoloCantidades, s.CambioArticulos, s.LlamadasAtencion, s.UltimoMomento,
                     s.ArticulosCambiados, s.Aumentos, s.Disminuciones, s.Agregados, s.Quitados, s.Reenvios
                 ];
                 for (var i = 0; i < valores.Length; i++)
                     wsResumen.Cells[ultimaFila, i + 2].Value = valores[i];
                 BordesCambios(wsResumen, ultimaFila, encabezadosResumen.Length);
-                if (s.LlamadasAtencion > 0) ResaltarAlerta(wsResumen.Cells[ultimaFila, 6], esLlamada: true);
-                if (s.UltimoMomento > 0) ResaltarAlerta(wsResumen.Cells[ultimaFila, 7], esLlamada: false);
+                if (s.LlamadasAtencion > 0) ResaltarAlerta(wsResumen.Cells[ultimaFila, 7], esLlamada: true);
+                if (s.UltimoMomento > 0) ResaltarAlerta(wsResumen.Cells[ultimaFila, 8], esLlamada: false);
             }
             if (reporte.Summaries.Count == 0)
                 ultimaFila = EscribirNotaVacio(wsResumen, ultimaFila, encabezadosResumen.Length);
@@ -417,9 +566,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
             // ===== Hoja 2: Detalle =====
             string[] encabezadosDetalle =
             [
-                "Fecha de solicitud", "Fecha de práctica", "Días de anticipación", "Docente", "Materia", "Grupo",
+                "Origen", "Fecha de solicitud", "Fecha de práctica", "Días de anticipación", "Docente", "Materia", "Grupo",
                 "Práctica", "Artículo", "Categoría", "Kit", "Pedido", "Diferencia", "Cambio", "Tipo", "Alerta",
-                "Estado", "Observación del docente"
+                "Estado", "Estado del cambio", "Observación del docente"
             ];
             var wsDetalle = package.Workbook.Worksheets.Add("Detalle");
             EscribirTituloCambios(wsDetalle, titulo, encabezadosDetalle.Length);
@@ -429,31 +578,33 @@ namespace Proyecto_Laboratorios_Univalle.Services
             foreach (var f in reporte.Rows)
             {
                 ultimaFila++;
-                EscribirFecha(wsDetalle, ultimaFila, 1, f.FechaSolicitud);
-                EscribirFecha(wsDetalle, ultimaFila, 2, f.FechaPractica);
-                wsDetalle.Cells[ultimaFila, 3].Value = f.DiasAnticipacion;
-                wsDetalle.Cells[ultimaFila, 4].Value = f.Docente;
-                wsDetalle.Cells[ultimaFila, 5].Value = f.Materia;
-                wsDetalle.Cells[ultimaFila, 6].Value = f.Grupo;
-                wsDetalle.Cells[ultimaFila, 7].Value = f.Practica;
-                wsDetalle.Cells[ultimaFila, 8].Value = f.Articulo;
-                wsDetalle.Cells[ultimaFila, 9].Value = f.Categoria ?? "—";
-                EscribirCantidad(wsDetalle, ultimaFila, 10, f.Kit);
-                EscribirCantidad(wsDetalle, ultimaFila, 11, f.Pedido);
-                EscribirCantidad(wsDetalle, ultimaFila, 12, f.Diferencia);
-                wsDetalle.Cells[ultimaFila, 13].Value = f.Cambio;
-                wsDetalle.Cells[ultimaFila, 14].Value = f.Tipo;
-                wsDetalle.Cells[ultimaFila, 15].Value = string.Join(" · ", new[]
+                wsDetalle.Cells[ultimaFila, 1].Value = f.Origen;
+                EscribirFecha(wsDetalle, ultimaFila, 2, f.FechaSolicitud);
+                EscribirFecha(wsDetalle, ultimaFila, 3, f.FechaPractica);
+                wsDetalle.Cells[ultimaFila, 4].Value = f.DiasAnticipacion;
+                wsDetalle.Cells[ultimaFila, 5].Value = f.Docente;
+                wsDetalle.Cells[ultimaFila, 6].Value = f.Materia;
+                wsDetalle.Cells[ultimaFila, 7].Value = f.Grupo;
+                wsDetalle.Cells[ultimaFila, 8].Value = f.Practica;
+                wsDetalle.Cells[ultimaFila, 9].Value = f.Articulo;
+                wsDetalle.Cells[ultimaFila, 10].Value = f.Categoria ?? "—";
+                EscribirCantidad(wsDetalle, ultimaFila, 11, f.Kit);
+                EscribirCantidad(wsDetalle, ultimaFila, 12, f.Pedido);
+                EscribirCantidad(wsDetalle, ultimaFila, 13, f.Diferencia);
+                wsDetalle.Cells[ultimaFila, 14].Value = f.Cambio;
+                wsDetalle.Cells[ultimaFila, 15].Value = f.Tipo;
+                wsDetalle.Cells[ultimaFila, 16].Value = string.Join(" · ", new[]
                 {
                     f.LlamadaAtencion ? "Llamada de atención" : null,
                     f.UltimoMomento ? "Último momento" : null
                 }.Where(t => t != null));
-                wsDetalle.Cells[ultimaFila, 16].Value = f.Estado;
-                wsDetalle.Cells[ultimaFila, 17].Value = f.Observacion;
-                wsDetalle.Cells[ultimaFila, 17].Style.WrapText = true;
+                wsDetalle.Cells[ultimaFila, 17].Value = f.Estado;
+                wsDetalle.Cells[ultimaFila, 18].Value = f.EstadoCambio ?? "—";
+                wsDetalle.Cells[ultimaFila, 19].Value = f.Observacion;
+                wsDetalle.Cells[ultimaFila, 19].Style.WrapText = true;
                 BordesCambios(wsDetalle, ultimaFila, encabezadosDetalle.Length);
                 if (f.LlamadaAtencion || f.UltimoMomento)
-                    ResaltarAlerta(wsDetalle.Cells[ultimaFila, 15], esLlamada: f.LlamadaAtencion);
+                    ResaltarAlerta(wsDetalle.Cells[ultimaFila, 16], esLlamada: f.LlamadaAtencion);
             }
             if (reporte.Rows.Count == 0)
                 ultimaFila = EscribirNotaVacio(wsDetalle, ultimaFila, encabezadosDetalle.Length);
