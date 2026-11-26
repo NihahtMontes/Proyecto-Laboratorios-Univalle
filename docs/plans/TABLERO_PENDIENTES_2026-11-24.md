@@ -149,7 +149,24 @@ Se corrieron sobre una copia de EXP, nunca sobre EXP.
 
 **Siguiente / observaciones**
 - Al pasar todo a REAL o a la nube, aplicar las 6 migraciones que EXP tiene y REAL no: las 5 de antes más `WidenPlanningReviewActions`.
-- Ya existía: el icono `fa-check-double` no está en el Font Awesome del tema y se ve vacío en 12 pantallas (Notificaciones, Kardex, Mantenimientos…). Conviene cambiarlo por uno que exista.
-- Ya existía: el aviso flotante «Tienes N avisos que requieren atención» tapa 7 s los botones de arriba a la derecha y se queda fijo con el mouse encima.
+- ✅ (26/11) Ya existía: el icono `fa-check-double` no está en el Font Awesome del tema y se ve vacío en 12 pantallas (Notificaciones, Kardex, Mantenimientos…). Se cambió por `mdi-check-all`.
+- ✅ (26/11) Ya existía: el aviso flotante «Tienes N avisos que requieren atención» tapa 7 s los botones de arriba a la derecha y se queda fijo con el mouse encima. Ahora sale abajo a la derecha.
 - Ya existía: `docente_casos.mjs` tiene escritas las claves de las cuentas de prueba. Pasarlas a variables de entorno, como `cambio_material.mjs`.
 - Opcional: en el portal docente, escribir la hora de la limpieza en la celda. Hoy es una línea naranja y la hora solo aparece al pasar el mouse.
+
+## 9. Pruebas del equipo en la nube (25–26/11, noche)
+
+Detalle completo: `docs/deployment/PUBLICACION_CORRECCIONES_2026-11-26.md`. Rama `fix/nube-redirecciones-docentes`.
+
+| Pedido o falla | Estado |
+|---|---|
+| Cuentas de «Cierre de práctica» con cambio de clave obligatorio quedaban en bucle (ERR_TOO_MANY_REDIRECTS) | ✅ publicado |
+| Campana con el menú contraído se salía de la pantalla | ✅ publicado |
+| Login cortado abajo en laptops y teléfonos | ✅ publicado |
+| Crear un docente nuevo desde Usuarios (no estaba en el catálogo) | ✅ publicado |
+| Saber dónde se asignan los grupos de un docente y ver sus grupos por gestión | ✅ publicado |
+| Enlaces que el Supervisor y el rol de cierre veían pero no podían abrir | ✅ publicado |
+| Zona horaria del servidor: confirmar la de MonsterASP y, si no es Bolivia, un reloj único con `America/La_Paz` | ❌ sin empezar |
+| Dos fichas para un mismo docente de 2027-1 (una con nombre completo y otra solo con el apellido) | ⏸ unificar a mano o decidir cómo |
+| «Asignar el material» que buscaba Danilo: aclarar qué pantalla esperaba | ⏸ espera la respuesta de Danilo |
+| Pantalla que parta del docente para asignarle varios grupos a la vez | ⏸ decidir si se hace |
