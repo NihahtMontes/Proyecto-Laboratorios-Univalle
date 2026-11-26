@@ -14,12 +14,16 @@ public static class PracticeClosureAccess
 {
     public const string HomePage = "/Cierre/Index";
 
-    /// <summary>Rutas que el rol de cierre puede abrir (prefijos, sin distinguir mayúsculas).</summary>
+    /// <summary>
+    /// Rutas que el rol de cierre puede abrir (prefijos, sin distinguir mayúsculas). Incluye el cambio de contraseña:
+    /// UseTeacherScope manda ahí a toda cuenta con cambio obligatorio, y si este middleware la devolviera a /Cierre
+    /// el navegador quedaría rebotando entre las dos páginas (ERR_TOO_MANY_REDIRECTS).
+    /// </summary>
     private static readonly string[] AllowedPrefixes =
     [
         "/Cierre", "/LaboratoryOperations/L3", "/LaboratoryOperations/L5", "/PracticaLibre/Asistencia",
         "/Login", "/Logout", "/Error", "/Api/Notifications", "/Notifications",
-        "/AccesoDenegado", "/Ayuda", "/Account/Profile"
+        "/AccesoDenegado", "/Ayuda", "/Account/Profile", TeacherAccess.ChangePasswordPath
     ];
 
     /// <summary>True si el usuario solo tiene el rol de cierre (sin rol de gestión).</summary>

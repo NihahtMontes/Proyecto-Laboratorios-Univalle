@@ -305,7 +305,11 @@
                                                     }
                                                 </td>
                                                 <td class="text-right">
-                                                    <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-3"><i class="fas fa-eye mr-1"></i> Ver detalle</a>
+                                                    @* El detalle del mantenimiento es solo de administración: el Supervisor ve la fila pero no el enlace. *@
+                                                    @if (User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+                                                    {
+                                                        <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-3"><i class="fas fa-eye mr-1"></i> Ver detalle</a>
+                                                    }
                                                 </td>
                                             </tr>
                                         }

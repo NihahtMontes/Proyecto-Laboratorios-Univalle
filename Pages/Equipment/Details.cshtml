@@ -286,9 +286,19 @@
             <a asp-page="./Edit" asp-route-id="@Model.Equipment.Id" asp-route-returnUrl="Details" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
                 <i class="fas fa-edit mr-1"></i> Modificar Ficha Técnica
             </a>
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
-                <i class="fas fa-list mr-1"></i> Volver al listado
-            </a>
+            @* El listado de equipos es solo de administración; el Supervisor vuelve al inventario del Inicio. *@
+            @if (User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
+                    <i class="fas fa-list mr-1"></i> Volver al listado
+                </a>
+            }
+            else
+            {
+                <a asp-page="/AssetView/Index" asp-route-activeTab="inventario" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
+                    <i class="fas fa-list mr-1"></i> Volver al inventario
+                </a>
+            }
 
             <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
                 <i class="fas fa-trash-alt mr-1"></i> Dar de Baja Definición del Sistema

@@ -7,8 +7,12 @@
 
     function copyIconToType(args) {
         var opts = args && args.length > 0 ? args[0] : null;
-        if (opts && typeof opts === 'object' && opts.icon && !opts.type) {
-            opts.type = opts.icon;
+        if (opts && typeof opts === 'object' && opts.icon) {
+            if (!opts.type) {
+                opts.type = opts.icon;
+            }
+            // La v7 no conoce `icon` y avisa en la consola por cada alerta: se quita después de copiarlo.
+            delete opts.icon;
         }
     }
 

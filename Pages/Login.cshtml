@@ -25,7 +25,8 @@
     <link href="~/dist/css/style.min.css" rel="stylesheet">
 
     <style>
-      body { overflow: hidden; }
+      /* La página debe poder desplazarse: en una laptop la tarjeta puede ser más alta que la ventana
+         y con overflow oculto en body quedaba cortada abajo sin forma de verla. */
       /* 1. Fondo de pantalla - Cocina Industrial / Laboratorio de Gastronomía */
         .auth-wrapper {
             /* Imagen sugerente de laboratorio de gastronomía moderno */
@@ -39,9 +40,9 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding-top: 25vh;
             margin: 0;
-            padding: 0;
+            /* Margen arriba y abajo para que la tarjeta no quede pegada al borde cuando no entra en la ventana. */
+            padding: 24px 0;
             overflow: hidden;
         }
         /* Overlay oscuro para enfocar la tarjeta y que las letras se lean bien */
@@ -251,19 +252,53 @@
             user-select: none;
         }
 
-        /* Responsivo (Celulares) */
+        /* La tarjeta se centra cuando entra en la ventana y arranca arriba cuando no:
+           el tema (.auth-wrapper .auth-box) le ponía un margen del 10 % arriba y abajo. */
+        .auth-wrapper .auth-box {
+            margin: auto;
+        }
+
+        /* Pantallas bajas (laptops con barras del navegador): la tarjeta se compacta para entrar sin desplazar. */
+        @@media (min-width: 769px) and (max-height: 820px) {
+            .auth-right { padding: 32px 64px; }
+            .auth-left { padding: 32px 40px; }
+            .form-title { font-size: 1.6rem; }
+            .form-subtitle { margin-bottom: 20px; }
+            .input-group-custom { margin-bottom: 1rem; }
+            .input-group-custom .form-control { padding: 0.75rem 1rem 0.75rem 0; }
+            .input-group-custom .input-group-text { padding: 0.75rem 1rem; }
+            .custom-checkbox-container { margin-bottom: 1.25rem; }
+            .auth-right .mt-5 { margin-top: 1.5rem !important; }
+        }
+
+        /* Responsivo (Celulares): 16 px a cada lado, marca compacta y campos a todo el ancho de la tarjeta. */
         @@media (max-width: 768px) {
             .auth-box {
                 flex-direction: column !important;
-                width: 100% !important;
+                width: calc(100% - 32px) !important;
                 max-width: 450px !important;
                 min-height: auto;
             }
             .auth-left {
                 width: 100% !important;
+                padding: 24px;
+            }
+            .auth-left img {
+                width: 44px;
+                margin-bottom: 12px;
+            }
+            .brand-title {
+                font-size: 1.4rem;
             }
             .auth-right {
                 width: 100% !important;
+                padding: 28px 20px;
+            }
+            .form-title {
+                font-size: 1.6rem;
+            }
+            .form-subtitle {
+                margin-bottom: 24px;
             }
         }
     </style>

@@ -134,9 +134,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 ModelState.AddModelError("Input.ProfilePictureUpload", imageValidationError);
             }
 
-            if (await TeacherLink.ValidateAsync(_context, Input.Role, Input.PersonId, null) is string teacherError)
+            if (await TeacherLink.ValidateAsync(_context, Input.Role, Input.PersonId, null, allowNew: true) is string teacherError)
             {
                 ModelState.AddModelError("Input.PersonId", teacherError);
+            }
+
+            // Docente que no está en el catálogo: se registra su ficha con los nombres de la cuenta (dentro de la misma
+            // transacción). Antes no había forma de crear un docente desde la web: «Registrar persona» no tiene categoría.
+            string? newTeacherName = null;
+            if (Input.Role == UserRole.Docente && Input.PersonId is null)
+            {
+                newTeacherName = TeacherLink.FullName(Input.FirstName, Input.LastName, Input.SecondLastName);
+                if (await TeacherLink.NewTeacherErrorAsync(_context, newTeacherName) is string newTeacherError)
+                {
+                    ModelState.AddModelError("Input.PersonId", newTeacherError);
+                }
             }
 
             if (!ModelState.IsValid)
@@ -216,6 +228,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
                 await using var transaction = await _context.Database.BeginTransactionAsync();
 
+                if (newTeacherName != null)
+                {
+                    var teacher = TeacherLink.NewTeacher(newTeacherName, normalizedEmail, user.PhoneNumber, currentUser?.Id);
+                    _context.Interns.Add(teacher);
+                    await _context.SaveChangesAsync();
+                    user.PersonId = teacher.Id;
+                }
+
                 var createResult = await _userManager.CreateAsync(user, Input.Password);
                 if (!createResult.Succeeded)
                 {
@@ -248,7 +268,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return Page();
             }
 
-            TempData.Success($"Cuenta de usuario para '{user.FullName}' creada exitosamente.");
+            if (newTeacherName != null)
+            {
+                TempData.Success($"Cuenta de '{user.FullName}' creada y docente «{newTeacherName}» registrado en el catálogo. " +
+                    "Asígnale sus grupos en Materias › Grupos de la gestión.");
+            }
+            else
+            {
+                TempData.Success($"Cuenta de usuario para '{user.FullName}' creada exitosamente.");
+            }
             return RedirectToPage("./Index");
         }
 
@@ -266,6 +294,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         {
             TeacherOptions = await TeacherLink.OptionsAsync(_context, null);
             ViewData["TeacherOptions"] = TeacherLink.ToSelectList(TeacherOptions, Input.PersonId);
+            // Al crear se puede registrar un docente nuevo; al editar hay que elegirlo del catálogo.
+            ViewData["TeacherAllowNew"] = true;
             var roles = EnumHelper.ToSelectList<UserRole>();
             if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
             {

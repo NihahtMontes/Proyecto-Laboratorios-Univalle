@@ -35,8 +35,10 @@
         .step-item.active .step-number  { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
         .step-item.active .step-label   { color: #f59e0b; }
 
-        /* ===== CAMPANA: el panel nunca se sale de la pantalla ===== */
-        #notificationDropdown .notification-menu { width: min(400px, calc(100vw - 32px)); }
+        /* ===== CAMPANA: el panel nunca se sale de la pantalla =====
+           La campana está a la izquierda de la barra superior: el panel se abre hacia la derecha desde ella
+           (alineado a su borde izquierdo). Alineado a la derecha se salía por la izquierda, sobre todo con el menú contraído. */
+        #notificationDropdown .notification-menu { width: min(400px, calc(100vw - 32px)); left: 0; right: auto; }
         @@media (max-width: 767.98px) {
             /* En el teléfono la campana no está pegada al borde: se fija a la pantalla con 16 px a cada lado. */
             #notificationDropdown .notification-menu {
@@ -113,18 +115,18 @@
                                                 <i class="mdi mdi-bell font-24"></i>
                                                 <span class="badge badge-danger badge-pill rounded-circle" id="notificationCount" style="position: absolute; top: 15px; right: 5px; font-size: 10px; display: none;">0</span>
                                             </a>
-                                            <div class="dropdown-menu dropdown-menu-right mailbox notification-menu animated bounceInDown">
+                                            <div class="dropdown-menu mailbox notification-menu animated bounceInDown">
                                                 @Html.AntiForgeryToken()
                                                 <div class="p-3 border-bottom">
                                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                                         <h6 class="font-weight-bold mb-0"><i class="fas fa-bell mr-2 text-warning"></i> Notificaciones</h6>
                                                         <button type="button" class="btn btn-sm btn-link text-muted p-0" id="btnMarkAllRead" title="Marcar todas como leídas">
-                                                            <i class="fas fa-check-double mr-1"></i> Marcar leídas
+                                                            <i class="mdi mdi-check-all mr-1"></i> Marcar leídas
                                                         </button>
                                                     </div>
                                                     <div id="notificationCounters" class="d-flex flex-wrap gap-2 small" style="display: none;"></div>
                                                 </div>
-                                                <div id="notificationList" style="max-height: 400px; overflow-y: auto;">
+                                                <div id="notificationList" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
                                                     <div class="text-center text-muted p-4 small">
                                                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                                         <div class="mt-2">Cargando notificaciones...</div>
@@ -407,8 +409,9 @@
                                         });
                                         $('<i/>', { class: sanitizeIconClass(item.icon) }).appendTo($iconWrap);
 
-                                        // Body
-                                        const $body = $('<div/>', { class: 'flex-grow-1' });
+                                        // Body: min-width 0 deja que text-truncate recorte con «…»; sin él, el texto largo
+                                        // ensanchaba el elemento flexible y la lista mostraba una barra horizontal.
+                                        const $body = $('<div/>', { class: 'flex-grow-1', style: 'min-width: 0;' });
                                         $('<div/>', { class: 'font-weight-bold text-dark small text-truncate' }).text(item.title || 'Notificación').appendTo($body);
                                         $('<div/>', { class: 'text-muted small text-truncate' }).text(item.message || '').appendTo($body);
                                         $('<div/>', { class: 'text-muted', style: 'font-size: 0.7rem;' })
@@ -621,9 +624,10 @@
                                                 $('#notificationDropdown [data-toggle="dropdown"]').dropdown('toggle');
                                             };
 
+                                            // Abajo a la derecha: arriba tapaba 7 s los botones de acción de la página (Reportar una falla, Reportes).
                                             const CriticalToast = Swal.mixin({
                                                 toast: true,
-                                                position: 'top-end',
+                                                position: 'bottom-end',
                                                 timer: 7000,
                                                 showConfirmButton: false,
                                                 timerProgressBar: true,
