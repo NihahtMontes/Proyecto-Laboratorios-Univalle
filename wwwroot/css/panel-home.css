@@ -506,7 +506,8 @@ a.ph-section:focus .ph-section__cta i {
     .ph-tabs {
         position: sticky;
         top: 72px;
-        z-index: 10;
+        /* Debajo del menú lateral (z-index 10): al expandirlo no debe quedar tapado por las pestañas. */
+        z-index: 5;
     }
 }
 

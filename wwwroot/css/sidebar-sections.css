@@ -57,12 +57,30 @@
     }
 }
 
-/* Enlaces de una sección plegada: se ocultan solo cuando el menú se ve completo.
-   En el menú mini (solo íconos) se muestran todos, porque ahí no hay títulos para abrirlos;
-   al pasar el mouse el menú se expande y vuelve a respetar el plegado. */
-#main-wrapper:not([data-sidebartype="mini-sidebar"]) .sidebar-section-item--hidden,
-#main-wrapper[data-sidebartype="mini-sidebar"] .left-sidebar:hover .sidebar-section-item--hidden,
-#main-wrapper.show-sidebar .sidebar-section-item--hidden {
+/* Enlaces de una sección plegada: se ocultan siempre, también en el menú mini (solo íconos),
+   para que el menú mini muestre exactamente lo mismo que el menú completo. */
+.sidebar-section-item--hidden {
+    display: none;
+}
+
+/* Ícono propio de cada sección: solo en el menú mini sin expandir, donde reemplaza a la flecha
+   y permite abrir o cerrar la sección con un clic. */
+.sidebar-nav ul .nav-small-cap .sidebar-section-icon {
+    display: none;
+    margin: 0;
+    font-size: 20px;
+}
+
+#main-wrapper[data-sidebartype="mini-sidebar"]:not(.show-sidebar) .left-sidebar:not(:hover) .sidebar-section-toggle {
+    justify-content: center;
+    padding-inline: 0;
+}
+
+#main-wrapper[data-sidebartype="mini-sidebar"]:not(.show-sidebar) .left-sidebar:not(:hover) .sidebar-section-icon {
+    display: inline-block;
+}
+
+#main-wrapper[data-sidebartype="mini-sidebar"]:not(.show-sidebar) .left-sidebar:not(:hover) .sidebar-section-chevron {
     display: none;
 }
 
