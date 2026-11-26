@@ -12,6 +12,10 @@
 @{
     var management = Model.Management;
     var stepIcons = new[] { "fa-calendar-check", "fa-list-check", "fa-boxes" };
+    // El rol de cierre no puede abrir el panel de planificación: su «Panel» es /Cierre (si no, rebotaba allí igual).
+    var panelPage = Proyecto_Laboratorios_Univalle.Helpers.PracticeClosureAccess.IsClosureOnly(User)
+        ? "/Cierre/Index"
+        : "/LaboratoryOperations/Index";
 }
 
 <style>
@@ -241,7 +245,7 @@
                     <span class="pc-badge @(management.IsEditable ? "pc-badge--active" : "pc-badge--inactive")">
                         <i class="fas @(management.IsEditable ? "fa-check-circle" : "fa-circle")"></i> @management.StatusText
                     </span>
-                    <a asp-page="./Index" class="pc-panel-link">
+                    <a asp-page="@panelPage" class="pc-panel-link">
                         <i class="fas fa-th-large"></i> Panel
                     </a>
                 </div>
@@ -262,7 +266,7 @@
                 <i class="fas fa-info-circle" style="color:#7460ee;font-size:1.1rem;"></i>
                 <span>El semestre académico de esta planificación no está disponible (registro anterior o eliminado).</span>
             </div>
-            <a asp-page="./Index" class="pc-panel-link">
+            <a asp-page="@panelPage" class="pc-panel-link">
                 <i class="fas fa-th-large"></i> Panel
             </a>
         </div>

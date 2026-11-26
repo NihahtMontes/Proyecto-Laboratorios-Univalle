@@ -31,7 +31,9 @@
                         </h6>
                     </div>
                     <div class="ml-auto mt-3">
-                        @if (Model.SelectedManagement != null)
+                        @* El panel de la gestión es solo de administración: el Supervisor ve Reportes pero no ese panel. *@
+                        @if (Model.SelectedManagement != null
+                             && (User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin)))
                         {
                             <a asp-page="/Managements/Details" asp-route-id="@Model.SelectedManagement.Id" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
                                 <i class="fas fa-arrow-left mr-1 text-info"></i> Volver al panel
