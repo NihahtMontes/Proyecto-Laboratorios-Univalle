@@ -34,6 +34,16 @@
                           color: #adb5bd; display: block; }
         .step-item.active .step-number  { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
         .step-item.active .step-label   { color: #f59e0b; }
+
+        /* ===== CAMPANA: el panel nunca se sale de la pantalla ===== */
+        #notificationDropdown .notification-menu { width: min(400px, calc(100vw - 32px)); }
+        @@media (max-width: 767.98px) {
+            /* En el teléfono la campana no está pegada al borde: se fija a la pantalla con 16 px a cada lado. */
+            #notificationDropdown .notification-menu {
+                position: fixed; top: 64px; left: 16px; right: 16px;
+                width: auto; max-height: calc(100dvh - 80px); overflow-y: auto;
+            }
+        }
     </style>
 
                 @await RenderSectionAsync("Styles", required: false)
@@ -103,7 +113,7 @@
                                                 <i class="mdi mdi-bell font-24"></i>
                                                 <span class="badge badge-danger badge-pill rounded-circle" id="notificationCount" style="position: absolute; top: 15px; right: 5px; font-size: 10px; display: none;">0</span>
                                             </a>
-                                            <div class="dropdown-menu dropdown-menu-right mailbox animated bounceInDown" style="min-width: 380px; max-width: 420px;">
+                                            <div class="dropdown-menu dropdown-menu-right mailbox notification-menu animated bounceInDown">
                                                 @Html.AntiForgeryToken()
                                                 <div class="p-3 border-bottom">
                                                     <div class="d-flex justify-content-between align-items-center mb-2">
