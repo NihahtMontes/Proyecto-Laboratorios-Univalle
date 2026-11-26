@@ -2,23 +2,42 @@
 @model int?
 @{
     // Campo "Docente del catálogo": solo visible con el rol Docente (valor 4). Lo usan Crear y Editar usuario.
+    // Al crear (TeacherAllowNew) se puede dejar sin elegir: se registra un docente nuevo con los nombres del formulario.
     var options = ViewData["TeacherOptions"] as List<SelectListItem> ?? [];
+    var allowNew = ViewData["TeacherAllowNew"] as bool? == true;
 }
 <div id="teacherLinkPanel" class="form-group mb-3 p-3 rounded border-left border-primary" style="background:#f3f1fe; display:none;">
     <label for="Input_PersonId" class="control-label font-weight-bold small text-uppercase" style="color:#7460ee;">
-        <i class="fas fa-user mr-1"></i> Docente del catálogo <span class="text-danger">*</span>
+        <i class="fas fa-user mr-1"></i> Docente del catálogo
+        @if (!allowNew)
+        {
+            <span class="text-danger">*</span>
+        }
     </label>
     <select id="Input_PersonId" name="Input.PersonId" class="form-control custom-select">
-        <option value="">-- Seleccionar docente --</option>
+        <option value="">@(allowNew ? "Docente nuevo: registrarlo con los nombres de este formulario" : "-- Seleccionar docente --")</option>
         @foreach (var option in options)
         {
             <option value="@option.Value" selected="@(option.Selected || option.Value == Model?.ToString())">@option.Text</option>
         }
     </select>
-    <span class="text-danger small font-weight-bold" data-valmsg-for="Input.PersonId" data-valmsg-replace="true"></span>
+    @* ValidationMessage muestra también el error del servidor (docente duplicado, ya vinculado...) junto al campo. *@
+    @Html.ValidationMessage("Input.PersonId", null, new { @class = "text-danger small font-weight-bold d-block" })
     <small class="form-text text-muted">
-        La cuenta verá y solicitará prácticas solo de los grupos de este docente.
-        @if (options.Count == 0)
+        @if (allowNew)
+        {
+            <text>Si el docente ya está en la lista, elígelo. Si no está, deja «Docente nuevo»: se registra en el catálogo con los nombres y apellidos de arriba.</text>
+        }
+        else
+        {
+            <text>La cuenta verá y solicitará prácticas solo de los grupos de este docente.</text>
+        }
+        <span class="d-block mt-1">
+            <i class="fas fa-info-circle mr-1"></i>Los grupos del docente se asignan en
+            <a asp-page="/Catalogs/StudentGroups/Index" target="_blank" rel="noopener">Materias › Grupos de la gestión</a>
+            (editar el grupo y elegir el docente de cada materia).
+        </span>
+        @if (options.Count == 0 && !allowNew)
         {
             <span class="d-block text-warning font-weight-bold mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Todos los docentes del catálogo ya tienen cuenta.</span>
         }
