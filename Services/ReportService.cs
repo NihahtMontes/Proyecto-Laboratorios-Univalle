@@ -3,7 +3,6 @@ using OfficeOpenXml.Style;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Drawing;
 
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
@@ -18,6 +17,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
         Task<byte[]> GenerateL48GanttExcel(int managementId, int labId);
         Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable, DateTime? sessionDate = null, int? unitId = null);
         Task<byte[]> GenerateL3SalidaExcel(int departureId);
+        Task<byte[]> GenerateL9ReprogramacionesExcel(int managementId, DateTime? originFrom = null, DateTime? originTo = null);
+        Task<byte[]> GenerateMaterialChangesExcel(int managementId, DateTime? from = null, DateTime? to = null, int? teacherPersonId = null);
     }
 
     public partial class ReportService : IReportService
@@ -51,6 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Include(r => r.Equipment).ThenInclude(e => e!.City)
                 .Include(r => r.Equipment).ThenInclude(e => e!.Country)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.EquipmentUnit).ThenInclude(u => u!.Laboratory).ThenInclude(l => l!.Faculty)
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(r => r.Id == requestId);

@@ -361,7 +361,7 @@ public class PlanificacionModel : PageModel
                 Id.HasValue ? [Id.Value] : null);
             if (conflicts.Count > 0)
                 ModelState.AddModelError(string.Empty,
-                    $"El laboratorio está ocupado o no queda un periodo libre entre prácticas: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+                    $"El laboratorio está ocupado en esos periodos: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
         }
 
         if (!ModelState.IsValid)
@@ -483,7 +483,7 @@ public class PlanificacionModel : PageModel
                 if (await _occupancy.FindConflictsAsync(Input.LaboratoryId, date, startPeriod!.Order, Input.PeriodCount,
                     existing != null ? [existing.Id] : null) is { Count: > 0 } conflicts)
                     ModelState.AddModelError(string.Empty,
-                        $"El laboratorio se ocupó mientras se guardaba (ocupado o sin periodo libre entre prácticas): {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+                        $"El laboratorio se ocupó mientras se guardaba: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
 
                 // Choque de docente bajo bloqueo: si apareció uno nuevo la huella ya no coincide y se bloquea.
                 if (teacherSlotChanged)
@@ -553,6 +553,8 @@ public class PlanificacionModel : PageModel
             if (newSchedule) _context.PracticeSchedules.Add(schedule);
 
             planning.PracticeSchedule = schedule;
+            // Número propio de esta sesión (la programación puede ser compartida por otras sesiones del grupo).
+            planning.StudentCount = Input.StudentCount ?? planning.StudentCount;
             if (isNew) _context.Plannings.Add(planning);
 
             await _context.SaveChangesAsync();
@@ -689,7 +691,7 @@ public class PlanificacionModel : PageModel
         var conflicts = await _occupancy.FindConflictsAsync(laboratoryId, date, start.Order, periodCount, [planningId]);
         if (conflicts.Count > 0)
         {
-            TempData.Error($"El laboratorio está ocupado o no queda un periodo libre entre prácticas: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+            TempData.Error($"El laboratorio está ocupado en esos periodos: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
             return RedirectToPage(new { id = planningId });
         }
 
@@ -757,7 +759,7 @@ public class PlanificacionModel : PageModel
             }
             if (await _occupancy.FindConflictsAsync(laboratoryId, date, start.Order, periodCount, [planningId]) is { Count: > 0 } revalidados)
             {
-                TempData.Error($"El laboratorio se ocupó mientras se guardaba (ocupado o sin periodo libre entre prácticas): {string.Join("; ", revalidados.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+                TempData.Error($"El laboratorio se ocupó mientras se guardaba: {string.Join("; ", revalidados.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
                 return RedirectToPage(new { id = planningId });
             }
 
@@ -1088,7 +1090,7 @@ public class PlanificacionModel : PageModel
             SubjectId = planning.SubjectId ?? 0,
             PracticeId = planning.PracticeSchedule?.PracticeId ?? 0,
             GroupName = planning.GroupName ?? string.Empty,
-            StudentCount = planning.PracticeSchedule?.StudentCount,
+            StudentCount = planning.StudentCount ?? planning.PracticeSchedule?.StudentCount,
             ScalingFactor = planning.PracticeSchedule?.ScalingFactor,
             IsDemonstrative = planning.PracticeSchedule?.IsDemonstrative ?? false,
             Date = planning.ScheduledDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

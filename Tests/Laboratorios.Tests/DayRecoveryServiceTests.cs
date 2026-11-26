@@ -23,7 +23,7 @@ public class DayRecoveryServiceTests
         var id = db.Context.AcademicDays.AsNoTracking().Single(d => d.Date == Day).Id;
 
         var result = await new DayRecoveryService(db.Context, new NoOpPlanningLock(),
-            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "  Feriado  ");
+            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "  Feriado  ", "Feriado");
 
         Assert.True(result.Ok, result.Message);
         Assert.Equal(2, result.PendingCount);
@@ -37,7 +37,7 @@ public class DayRecoveryServiceTests
         Assert.Equal("Feriado", db.Context.DayRecoveries.AsNoTracking().Single().Reason);
 
         var repeated = await new DayRecoveryService(db.Context, new NoOpPlanningLock(),
-            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "Otro");
+            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "Otro", "Feriado");
         Assert.False(repeated.Ok);
         Assert.Single(db.Context.DayRecoveries.AsNoTracking());
     }
@@ -48,7 +48,7 @@ public class DayRecoveryServiceTests
         using var db = new TestDb();
         var id = db.Context.AcademicDays.AsNoTracking().Single(d => d.Date == Day).Id;
         var result = await new DayRecoveryService(db.Context, new NoOpPlanningLock(),
-            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "Feriado");
+            NullLogger<DayRecoveryService>.Instance).SuspendAsync(id, "Feriado", "Feriado");
         Assert.False(result.Ok);
         Assert.Empty(db.Context.DayRecoveries.AsNoTracking());
         Assert.Equal(AcademicDayStatus.Enabled, db.Context.AcademicDays.AsNoTracking().Single(d => d.Id == id).Status);
@@ -79,7 +79,7 @@ public class DayRecoveryServiceTests
         using var db = new TestDb();
         db.AddPlanning(50, Day, 1, 2);
 
-        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, Day, "Feriado");
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, Day, "Feriado", "Feriado");
 
         Assert.True(result.Ok, result.Message);
         var academicDay = db.Context.AcademicDays.AsNoTracking().Single(d => d.Date == Day);
@@ -95,7 +95,7 @@ public class DayRecoveryServiceTests
         db.AddPlanning(51, Day, 1, 2);
         var outside = TestDb.Week2Monday.AddDays(7);   // domingo de la semana 3: sin calendario
 
-        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, outside, "Feriado");
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, outside, "Feriado", "Feriado");
 
         Assert.False(result.Ok);
         Assert.Contains($"La fecha {outside:dd/MM/yyyy} no pertenece al calendario académico", result.Message);
@@ -109,7 +109,7 @@ public class DayRecoveryServiceTests
         using var db = new TestDb();
         db.AddPlanning(52, Day, 1, 2);
 
-        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, TestDb.SuspendedDay, "Otro motivo");
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, TestDb.SuspendedDay, "Otro motivo", "Feriado");
 
         Assert.False(result.Ok);
         Assert.Contains("ya está suspendido o tiene una reposición", result.Message);
@@ -154,5 +154,36 @@ public class DayRecoveryServiceTests
         Assert.Equal("EnRevisión", preview.Blockers[0].StatusLabel);
         Assert.Contains("1 planificación(es) en estado no compatible", preview.Message);
         Assert.Contains("PRA-00057", preview.Message);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Inventada")]
+    public async Task Suspend_RequiresKnownReasonCategory(string? category)
+    {
+        using var db = new TestDb();
+        db.AddPlanning(9101, Day, 1, 2, status: PlanningStatus.Approved);
+
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, Day, "Feriado departamental declarado ayer", category);
+
+        Assert.False(result.Ok);
+        Assert.Contains("categoría", result.Message);
+        Assert.Empty(db.Context.DayRecoveries.AsNoTracking());
+    }
+
+    [Fact]
+    public async Task Suspend_StoresReasonCategory_AndAcceptsShortReason()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(9102, Day, 1, 2, status: PlanningStatus.Approved);
+
+        // El motivo puede ser cualquier texto no vacío (incluso "0"): las 5 palabras son solo una recomendación de la pantalla.
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, Day, "0", "Paro o movilización");
+
+        Assert.True(result.Ok, result.Message);
+        var recovery = Assert.Single(db.Context.DayRecoveries.AsNoTracking());
+        Assert.Equal("Paro o movilización", recovery.ReasonCategory);
+        Assert.Equal("0", recovery.Reason);
     }
 }

@@ -6,6 +6,7 @@
 
 - `../context.md`.
 - `../.agents/skills/ui-premium/SKILL.md` si tocas vistas.
+- `../.agents/skills/modern-web-guidance/SKILL.md` antes de escribir HTML, CSS o JS de cliente (ver `../docs/WEB_MODERNA.md`).
 - `../.agents/skills/backend-methods/SKILL.md` si tocas PageModels.
 - Archivos del modulo y consumidores reales; evitar cargar documentacion no relacionada.
 

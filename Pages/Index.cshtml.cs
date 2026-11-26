@@ -165,27 +165,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 // Inicio sin parpadeo: la redirección se resuelve en el servidor (antes era window.location en la vista).
                 if (!ShowWizard)
                 {
-                    ActiveManagement = ManagementId.HasValue
-                        ? await _context.Managements
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync(m => m.Id == ManagementId.Value && m.Status == ManagementStatus.Active)
-                        : null;
-                    ActiveManagement ??= await _managementContext.GetCurrentManagementAsync();
-
+                    // El asistente y los flujos que regresan con ManagementId (Kardex, «Volver al panel»,
+                    // «Finalizar asistente») siguen aterrizando en el panel de su gestión activa.
                     var isAdminUser = User.IsInRole(AuthorizationHelper.RoleAdministrator)
                         || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
-                    if (!isAdminUser)
+
+                    if (isAdminUser && ManagementId.HasValue)
                     {
-                        // El panel de la gestión es solo para administradores: el Supervisor inicia en planificación.
-                        return RedirectToPage("/LaboratoryOperations/Index");
-                    }
-                    if (ActiveManagement != null)
-                    {
-                        return RedirectToPage("/Managements/Details", new { id = ActiveManagement.Id, ActiveTab = "dashboard" });
+                        ActiveManagement = await _context.Managements
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(m => m.Id == ManagementId.Value && m.Status == ManagementStatus.Active);
+
+                        if (ActiveManagement != null)
+                        {
+                            return RedirectToPage("/Managements/Details", new { id = ActiveManagement.Id, ActiveTab = "dashboard" });
+                        }
                     }
 
-                    // Administrador sin gestión activa: estado vacío, sin cargas pesadas.
-                    return Page();
+                    // Resto de casos (sin ManagementId, gestión inactiva o Supervisor): el nuevo
+                    // Inicio de la aplicación (saludo + atajos + inventario) en /AssetView/Index.
+                    return RedirectToPage("/AssetView/Index");
                 }
 
                 // Cargar Listas para Filtros

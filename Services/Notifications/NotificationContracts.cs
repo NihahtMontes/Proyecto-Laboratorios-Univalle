@@ -26,9 +26,10 @@ public static class NotificationGroups
     public const string Planning = "planificacion";
     public const string Departures = "prestamos";
     public const string Acquisitions = "adquisiciones";
+    public const string DataReview = "revisar-datos";  // unidades con datos por confirmar (importadas) o de baja
     public const string Other = "otros";
 
-    public static readonly string[] Order = [Overdue, Today, Upcoming, Preventive, Planning, Departures, Acquisitions, Other];
+    public static readonly string[] Order = [Overdue, Today, Upcoming, Preventive, Planning, Departures, Acquisitions, Other, DataReview];
 }
 
 /// <summary>Dominio funcional de origen de un aviso.</summary>

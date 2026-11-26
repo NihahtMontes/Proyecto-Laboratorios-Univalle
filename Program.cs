@@ -119,20 +119,31 @@ builder.Services.AddScoped<IAcademicManagementService, AcademicManagementService
 builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
 builder.Services.AddScoped<ILaboratoryGridService, LaboratoryGridService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancySource, Proyecto_Laboratorios_Univalle.Services.Occupancy.PlanningOccupancySource>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancySource, Proyecto_Laboratorios_Univalle.Services.Occupancy.FreePracticeSlotOccupancySource>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.StudentPractice.StudentPracticeService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancyService, Proyecto_Laboratorios_Univalle.Services.Occupancy.OccupancyService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.ILabWeekOccupancyService, Proyecto_Laboratorios_Univalle.Services.Occupancy.LabWeekOccupancyService>();
 builder.Services.AddScoped<IGroupScheduleService, GroupScheduleService>();
 builder.Services.AddScoped<ICourseGroupPurgeService, CourseGroupPurgeService>();
 builder.Services.AddScoped<IStudentGroupService, StudentGroupService>();
 builder.Services.AddScoped<ISlotValidationService, SlotValidationService>();
 builder.Services.AddScoped<IPlanningLock, SqlServerPlanningLock>();
 builder.Services.AddScoped<IReschedulingService, ReschedulingService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.PlanningImport.IPlanningImportService, Proyecto_Laboratorios_Univalle.Services.PlanningImport.PlanningImportService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.PlanningImport.IGeneratorSetupService, Proyecto_Laboratorios_Univalle.Services.PlanningImport.GeneratorSetupService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.ManagementPlans.IManagementPlanBackfillService, Proyecto_Laboratorios_Univalle.Services.ManagementPlans.ManagementPlanBackfillService>();
 builder.Services.AddScoped<IDayRecoveryService, DayRecoveryService>();
 builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
+builder.Services.Configure<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions>(
+    builder.Configuration.GetSection(Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions.Section));
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.ITeacherRequestService, Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestService>();
+builder.Services.AddScoped<SidebarCountsService>();
 builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();
 builder.Services.AddScoped<IConflictGridService, ConflictGridService>();
 builder.Services.AddScoped<IConflictResolutionService, ConflictResolutionService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.INotificationAlertService, Proyecto_Laboratorios_Univalle.Services.Notifications.NotificationAlertService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Inicio.IInicioPanelService, Proyecto_Laboratorios_Univalle.Services.Inicio.InicioPanelService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.IMaintenanceNotificationWriter, Proyecto_Laboratorios_Univalle.Services.Notifications.MaintenanceNotificationWriter>();
 builder.Services.AddScoped<IEquipmentStateHistoryService, EquipmentStateHistoryService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
@@ -176,6 +187,8 @@ builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");
     options.Conventions.AllowAnonymousToPage("/Login");
+    // Inicio de la gestión (Admin, SuperAdmin, Supervisor): la página de inventario hace de portada.
+    options.Conventions.AddPageRoute("/AssetView/Index", "Inicio");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}/{*extra}");
     options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}");
@@ -217,6 +230,8 @@ app.UseCookiePolicy();
 app.UseAuthentication();
 // El rol de cierre de prácticas solo ve su módulo (Cierre, L-3, L-5); antes de la autorización para redirigir siempre a /Cierre.
 app.UsePracticeClosureScope();
+app.UseTeacherScope();
+app.UseStudentScope();
 app.UseAuthorization();
 
 app.MapRazorPages();

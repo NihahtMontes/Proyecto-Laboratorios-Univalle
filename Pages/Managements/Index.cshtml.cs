@@ -145,22 +145,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnGetCurrentCorrectiveAsync()
         {
-            var correctiveId = await _context.Managements
-                .AsNoTracking()
-                .Where(m => m.Type == ManagementType.Corrective && m.Status == ManagementStatus.Active)
-                .OrderByDescending(m => m.Year)
-                .ThenByDescending(m => m.Semester)
-                .ThenByDescending(m => m.CreatedDate)
-                .Select(m => (int?)m.Id)
-                .FirstOrDefaultAsync();
+            var corrective = await _managementContext.GetCurrentManagementAsync(ManagementType.Corrective);
 
-            if (correctiveId == null)
+            if (corrective == null)
             {
                 TempData.Warning("No hay una gestión correctiva activa. Cree o active una gestión correctiva antes de reportar fallas.");
                 return RedirectToPage("./Index", new { Type = ManagementType.Corrective.ToString() });
             }
 
-            return RedirectToPage("./Details", new { id = correctiveId.Value, ActiveTab = "dashboard" });
+            return RedirectToPage("./Details", new { id = corrective.Id, ActiveTab = "dashboard" });
+        }
+
+        /// <summary>Gemelo preventivo de <see cref="OnGetCurrentCorrectiveAsync"/>: abre el panel de la gestión preventiva activa.</summary>
+        public async Task<IActionResult> OnGetCurrentPreventiveAsync()
+        {
+            var preventive = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
+
+            if (preventive == null)
+            {
+                TempData.Info("No hay una gestión preventiva activa.");
+                return RedirectToPage("./Index", new { Type = ManagementType.Preventive.ToString() });
+            }
+
+            return RedirectToPage("./Details", new { id = preventive.Id, ActiveTab = "dashboard" });
         }
 
         public async Task<IActionResult> OnPostCloseManagementAsync(int id)

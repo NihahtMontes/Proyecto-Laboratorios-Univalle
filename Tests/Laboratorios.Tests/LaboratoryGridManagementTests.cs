@@ -4,10 +4,15 @@ using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Laboratorios.Tests;
 
+/// <summary>
+/// Ajustada por la grilla global (decisión 2026-11-23): una planificación de OTRA gestión que ocupa el ambiente
+/// en las mismas fechas SÍ se dibuja y ocupa las celdas (misma verdad para todos los roles), pero el conteo del
+/// selector de laboratorios sigue contando solo las de la gestión elegida.
+/// </summary>
 public class LaboratoryGridManagementTests
 {
     [Fact]
-    public async Task SameCalendarWeek_DoesNotShowAnotherManagementsPlannings()
+    public async Task SameCalendarWeek_ShowsAnotherManagementsOccupancy_ButCountsOnlyItsOwn()
     {
         using var db = new TestDb();
         var date = TestDb.Week1Monday.AddDays(1);
@@ -26,11 +31,14 @@ public class LaboratoryGridManagementTests
         db.Context.SaveChanges();
         db.Context.ChangeTracker.Clear();
 
-        var grid = await new LaboratoryGridService(db.Context, new AcademicManagementService(db.Context))
-            .BuildAsync(TestDb.ManagementId, TestDb.LabA, 1, null, false);
+        var grid = await db.Grid().BuildAsync(TestDb.ManagementId, TestDb.LabA, 1, null, false);
 
         Assert.NotNull(grid);
-        Assert.Equal([10], grid.Weeks.SelectMany(w => w.Days).SelectMany(d => d.Blocks).Select(b => b.PlanningId));
+        // Se dibujan ambas: la propia y la de la otra gestión (ocupa las mismas celdas que ve el docente).
+        Assert.Equal([10, 20], grid!.Weeks.SelectMany(w => w.Days).SelectMany(d => d.Blocks).Select(b => b.PlanningId));
+        var day = grid.Weeks.SelectMany(w => w.Days).Single(d => d.Date == date);
+        Assert.All(new[] { 1, 2, 3, 4 }, order => Assert.True(day.IsBusy(order)));
+        // El selector de laboratorios sigue contando solo las de la gestión elegida.
         Assert.Equal(1, grid.Laboratories.Single(l => l.Id == TestDb.LabA).PlanningCount);
     }
 }

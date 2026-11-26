@@ -1,0 +1,348 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.Solicitudes.IndexModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@using Proyecto_Laboratorios_Univalle.Services
+@{
+    ViewData["Title"] = "Solicitudes de docentes";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+    var clean = Model.Rows.Where(r => r.Status == PlanningStatus.Requested && r.Clean).ToList();
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-7">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark mb-0">Solicitudes de docentes</h2>
+            <div class="text-muted small">Ordenadas por la fecha de la práctica: lo más urgente primero. Una solicitud no reserva el laboratorio hasta aprobarla.</div>
+        </div>
+        <div class="col-md-5 text-md-right mt-3 mt-md-0">
+            @if (Model.Tab == "revisar" && clean.Count > 0 && !Model.HasFilters)
+            {
+                <form method="post" asp-page-handler="ApproveClean" id="approveCleanForm" class="d-inline">
+                    @foreach (var row in clean)
+                    {
+                        <input type="hidden" name="ids" value="@row.Id" />
+                    }
+                    <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm" id="btnApproveClean">
+                        <i class="fas fa-clipboard-check mr-1"></i>Aprobar @clean.Count sin observaciones
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <!-- Pestañas por estado (los contadores respetan los filtros) -->
+    <ul class="nav nav-pills dc-tabs mb-3" id="sol-tabs" role="tablist">
+        @foreach (var t in IndexModel.Tabs)
+        {
+            var count = Model.TabCounts.GetValueOrDefault(t.Key);
+            <li class="nav-item">
+                <a class="nav-link @(Model.Tab == t.Key ? "active" : null)" asp-page="./Index" asp-all-route-data="@Model.FilterRoute(t.Key)" data-tab="@t.Key">
+                    <i class="@t.Icon mr-1"></i>@t.Label
+                    <span class="badge badge-pill @(Model.Tab == t.Key ? "badge-light" : t.Key == "revisar" && count > 0 ? "badge-danger" : t.Key == "cambios" && count > 0 ? "badge-warning" : "badge-secondary") ml-1">@count</span>
+                </a>
+            </li>
+        }
+    </ul>
+
+    <!-- Filtros -->
+    <form method="get" class="card border-0 shadow-sm mb-3" style="border-radius:16px;" id="sol-filters">
+        <div class="card-body py-3">
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <div class="form-row align-items-end">
+                <div class="form-group col-lg-3 col-md-6 mb-2">
+                    <label for="f-q" class="small font-weight-bold text-muted mb-1">BUSCAR</label>
+                    <input type="search" id="f-q" name="q" value="@Model.Q" class="form-control form-control-sm" placeholder="Código (PRA-00123) o nombre de la práctica" maxlength="80" />
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-teacher" class="small font-weight-bold text-muted mb-1">DOCENTE</label>
+                    <select id="f-teacher" name="teacherId" class="custom-select custom-select-sm">
+                        <option value="">Todos</option>
+                        @foreach (var o in Model.TeacherOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.TeacherId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-subject" class="small font-weight-bold text-muted mb-1">MATERIA</label>
+                    <select id="f-subject" name="subjectId" class="custom-select custom-select-sm">
+                        <option value="">Todas</option>
+                        @foreach (var o in Model.SubjectOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.SubjectId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-2 col-md-6 mb-2">
+                    <label for="f-lab" class="small font-weight-bold text-muted mb-1">LABORATORIO</label>
+                    <select id="f-lab" name="laboratoryId" class="custom-select custom-select-sm">
+                        <option value="">Todos</option>
+                        @foreach (var o in Model.LaboratoryOptions)
+                        {
+                            <option value="@o.Id" selected="@(o.Id == Model.LaboratoryId)">@o.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group col-lg-3 col-md-12 mb-2">
+                    <label class="small font-weight-bold text-muted mb-1" for="f-from">FECHA DE LA PRÁCTICA</label>
+                    <div class="d-flex align-items-center">
+                        <input type="date" id="f-from" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" aria-label="Desde" />
+                        <span class="mx-1 text-muted">a</span>
+                        <input type="date" id="f-to" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" aria-label="Hasta" />
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 mr-2"><i class="fas fa-filter mr-1"></i>Filtrar</button>
+                @if (Model.HasFilters)
+                {
+                    <a asp-page="./Index" asp-route-tab="@Model.Tab" class="btn btn-light border btn-sm rounded-pill px-3" id="sol-clear"><i class="fas fa-times mr-1"></i>Quitar filtros</a>
+                    <span class="small text-muted ml-3">Mostrando solo lo que coincide con los filtros.</span>
+                }
+            </div>
+        </div>
+    </form>
+
+    @if (Model.Coverage.Any(c => c.Expected > 0))
+    {
+        <!-- Control semanal: prácticas programadas frente a solicitudes recibidas -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center mb-3">
+                    <h5 class="font-weight-bold text-dark mb-0 mr-3"><i class="fas fa-tasks mr-2" style="color:#7460ee;"></i>Previstas vs. recibidas</h5>
+                    <small class="text-muted">Prácticas del cronograma de cada semana y cuántas ya tienen solicitud del docente.</small>
+                </div>
+                <div class="row">
+                    @foreach (var c in Model.Coverage)
+                    {
+                        var pct = c.Expected == 0 ? 100 : (int)Math.Round(100.0 * c.Received / c.Expected);
+                        var bar = c.MissingCount == 0 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-danger";
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="p-3 rounded h-100" style="background:#f8f9fc;">
+                                <div class="small text-uppercase font-weight-bold text-muted">@(c.WeekNumber is int w ? $"Semana {w}" : "Semana") · @c.From.ToString("dd/MM")–@c.To.ToString("dd/MM")</div>
+                                <div class="font-weight-bold text-dark" style="font-size:1.4rem;">@c.Received <small class="text-muted">de @c.Expected</small></div>
+                                <div class="progress my-2" style="height:6px;"><div class="progress-bar @bar" style="width:@pct%"></div></div>
+                                @if (c.MissingCount > 0)
+                                {
+                                    <div class="small text-muted" title="@string.Join("\n", c.Missing)">
+                                        Faltan @c.MissingCount: @c.Missing.FirstOrDefault()@(c.MissingCount > 1 ? "…" : "")
+                                    </div>
+                                }
+                                else if (c.Expected > 0)
+                                {
+                                    <div class="small text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Todas solicitadas</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm" style="border-radius:16px;">
+        <div class="card-body p-0">
+            @if (Model.Tab == "cambios")
+            {
+                <!-- Pedidos de cambio de material (L-3) sobre prácticas ya aprobadas -->
+                @if (Model.ChangeRows.Count == 0)
+                {
+                    <div class="dc-empty">
+                        <i class="fas fa-exchange-alt text-success"></i>
+                        <div class="font-weight-bold text-dark">@(Model.HasFilters ? "Ningún pedido de cambio coincide con los filtros." : "¡Bandeja al día! No hay pedidos de cambio de material pendientes.")</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Práctica</th>
+                                    <th>Docente</th>
+                                    <th>Fecha de práctica</th>
+                                    <th>Cambios</th>
+                                    <th>Alertas</th>
+                                    <th>Motivo</th>
+                                    <th class="text-right"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.ChangeRows)
+                                {
+                                    <tr class="dc-inbox-row">
+                                        <td>
+                                            <span class="font-weight-bold text-dark">@row.Practice</span>
+                                            <div class="small text-muted">@row.Code · @row.Subject · Gr. @row.Group</div>
+                                        </td>
+                                        <td class="small">@row.Teacher</td>
+                                        <td class="text-nowrap">
+                                            <div class="text-capitalize font-weight-bold">@row.Date.ToString("ddd d MMM", es)</div>
+                                            <span class="badge @(row.DaysAhead <= 2 ? "badge-danger" : row.DaysAhead <= 5 ? "badge-warning" : "badge-light border")">
+                                                @row.DaysAheadText
+                                            </span>
+                                            <div class="small text-muted">@row.DaysAhead día(s) de anticipación al pedir</div>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @if (row.QuantityChanges > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-primary" title="Cambios de cantidad de los mismos artículos"><i class="fas fa-sliders-h mr-1"></i>@row.QuantityChanges de cantidad</span>
+                                            }
+                                            @if (row.ItemChanges > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-orange" title="Artículos agregados o quitados"><i class="fas fa-exchange-alt mr-1"></i>@row.ItemChanges de artículos</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (row.LastMinute)
+                                            {
+                                                <span class="badge badge-pill badge-orange" title="Pedido con menos de @MaterialChangeRules.OnTimeDays días de anticipación a la práctica"><i class="fas fa-hourglass-half mr-1"></i>Último momento</span>
+                                            }
+                                            @if (row.Warning)
+                                            {
+                                                <span class="badge badge-pill badge-danger" title="@(MaterialChangeRules.WarningItemCount) o más artículos agregados o quitados en una misma práctica"><i class="fas fa-exclamation-triangle mr-1"></i>Llamada de atención</span>
+                                            }
+                                        </td>
+                                        <td class="small text-muted text-truncate" style="max-width:280px;" title="@row.Reason">@row.Reason</td>
+                                        <td class="text-right">
+                                            <a asp-page="./RevisarCambio" asp-route-id="@row.PlanningId" class="btn btn-sm rounded-pill px-3 btn-primary">Revisar<i class="fas fa-arrow-right ml-1"></i></a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+            else if (Model.Rows.Count == 0)
+            {
+                <div class="dc-empty">
+                    <i class="fas fa-inbox text-success"></i>
+                    <div class="font-weight-bold text-dark">@(Model.HasFilters ? "Ninguna solicitud coincide con los filtros." : Model.Tab == "revisar" ? "¡Bandeja al día! No hay solicitudes por revisar." : "No hay solicitudes en esta vista.")</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Práctica y docente</th>
+                                <th>Cuándo</th>
+                                <th>Laboratorio</th>
+                                <th>@(Model.Tab == "revisar" ? "Análisis" : "Estado")</th>
+                                <th class="text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                var rowCss = row.Status == PlanningStatus.Requested ? (row.Urgent ? "is-urgent" : row.Soon ? "is-soon" : null) : null;
+                                <tr class="dc-inbox-row @rowCss">
+                                    <td>
+                                        <a asp-page="./Revisar" asp-route-id="@row.Id" class="font-weight-bold text-dark">@row.Practice</a>
+                                        <div class="small text-muted">@row.Code · @row.Subject · Gr. @row.Group</div>
+                                        <div class="small"><i class="fas fa-user mr-1 text-muted"></i>@row.Teacher</div>
+                                        @if (Model.Tab != "revisar" && !string.IsNullOrWhiteSpace(row.Comment))
+                                        {
+                                            <div class="small text-muted text-truncate" style="max-width:380px;"><i class="fas fa-comment mr-1"></i>@row.Comment</div>
+                                        }
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <div class="text-capitalize font-weight-bold">@row.Date.ToString("ddd d MMM", es)</div>
+                                        <div class="small text-muted">@row.TimeText</div>
+                                        @if (row.Status == PlanningStatus.Requested)
+                                        {
+                                            <span class="badge @(row.Urgent ? "badge-danger" : row.Soon ? "badge-warning" : "badge-light border")">
+                                                @(row.DaysLeft < 0 ? "Fecha pasada" : row.DaysLeft == 0 ? "Hoy" : row.DaysLeft == 1 ? "Mañana" : $"En {row.DaysLeft} días")
+                                            </span>
+                                        }
+                                    </td>
+                                    <td><strong>@row.LabCode</strong><div class="small text-muted">@row.Items artículo(s)</div></td>
+                                    <td>
+                                        @if (row.Status != PlanningStatus.Requested)
+                                        {
+                                            <span class="badge badge-pill badge-@row.StatusCss">@row.StatusLabel</span>
+                                            @if (row.LastActionDate is DateTime last)
+                                            {
+                                                <div class="small text-muted mt-1">Última acción: @last.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                            }
+                                        }
+                                        else if (row.Clean)
+                                        {
+                                            <span class="dc-flag dc-soft-success"><i class="fas fa-check-circle mr-1"></i>Sin observaciones</span>
+                                        }
+                                        else
+                                        {
+                                            @if (row.Blocks > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-danger"><i class="fas fa-ban mr-1"></i>Choque de horario</span>
+                                            }
+                                            @if (row.Competitors > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-primary"><i class="fas fa-random mr-1"></i>Compite con otra solicitud</span>
+                                            }
+                                            @if (row.MaterialShort > 0)
+                                            {
+                                                <span class="dc-flag dc-soft-orange"><i class="fas fa-box-open mr-1"></i>@row.MaterialShort artículo(s) no alcanzan</span>
+                                            }
+                                        }
+                                        @if (row.MaterialNoStock > 0)
+                                        {
+                                            <span class="dc-flag dc-soft-secondary"><i class="fas fa-question-circle mr-1"></i>@row.MaterialNoStock sin stock registrado</span>
+                                        }
+                                    </td>
+                                    <td class="text-right">
+                                        <a asp-page="./Revisar" asp-route-id="@row.Id" class="btn btn-sm rounded-pill px-3 @(row.Status == PlanningStatus.Requested ? "btn-primary" : "btn-light border")">
+                                            @(row.Status == PlanningStatus.Requested ? "Revisar" : "Ver")<i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Truncated)
+                {
+                    <div class="small text-muted px-3 py-2 border-top">Se muestran las primeras @IndexModel.MaxRows. Use los filtros para acotar.</div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var btn = document.getElementById('btnApproveClean');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                Swal.fire({
+                    title: '¿Aprobar @clean.Count solicitud(es)?',
+                    text: 'Solo las que no tienen choques, competencia ni faltantes. Se revalidan una por una antes de aprobar y los docentes reciben el aviso.',
+                    type: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, aprobar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#36bea6'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        btn.disabled = true;
+                        HTMLFormElement.prototype.submit.call(document.getElementById('approveCleanForm'));
+                    }
+                });
+            });
+        })();
+    </script>
+}

@@ -76,4 +76,13 @@ En esta sesión, tras corregir DNS, se verificaron la resolución del endpoint y
 
 ### Connection strings y credenciales
 
+**Después de clonar (una sola vez por computadora):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools\configurar-conexion-nube.ps1
+dotnet run --launch-profile Proyecto_Laboratorios_Univalle
+```
+
+El script pide la contraseña de la base de MonsterASP (la entrega el responsable por un canal privado) y la guarda en User Secrets, fuera del repositorio. El repositorio es público: la contraseña no debe subirse a Git.
+
 La aplicación requiere `ConnectionStrings:DefaultConnection`. Para desarrollo local, configúrala en User Secrets del proyecto o en `ConnectionStrings__DefaultConnection`; para producción, en la configuración privada del sitio. Nunca guardes la contraseña ni la cadena completa en `appsettings.json` versionado, README, prompts, logs o Git. Si una contraseña fue capturada/compartida, rótala antes de seguir usándola.

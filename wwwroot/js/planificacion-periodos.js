@@ -263,14 +263,8 @@
             var last = b.start + b.count - 1;
             for (var o = b.start; o <= last; o++) occupied[o] = b.label;
         });
-        // Debe quedar un periodo libre entre prácticas del mismo ambiente:
-        // los periodos contiguos a un bloque son de separación (si no están ocupados).
-        this.blocks.forEach(function (b) {
-            var before = b.start - 1;
-            var after = b.start + b.count;
-            if (before >= 1 && !occupied[before]) gaps[before] = true;
-            if (after <= MAX_PERIODS && !occupied[after]) gaps[after] = true;
-        });
+        // Ya no hay periodos de separación: la limpieza es de 10 minutos en el receso, así que
+        // los periodos contiguos a otra práctica quedan libres (gaps se mantiene vacío).
 
         this.$slots.each(function () {
             var $slot = $(this);

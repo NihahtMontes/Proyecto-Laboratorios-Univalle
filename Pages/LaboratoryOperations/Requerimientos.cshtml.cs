@@ -167,7 +167,7 @@ public class RequerimientosModel : PageModel
         var warnings = new List<string>();
         foreach (var line in recipe.Where(r => !present.Contains(r.ArticleId)))
         {
-            var (quantity, note) = Scale(line, schedule.StudentCount, schedule.ScalingFactor);
+            var (quantity, note) = Scale(line, plan.StudentCount ?? schedule.StudentCount, schedule.ScalingFactor);
             if (quantity == null)
             {
                 skipped++;
@@ -223,7 +223,7 @@ public class RequerimientosModel : PageModel
         var added = 0;
         foreach (var item in kit.Where(k => !present.Contains(k.ArticleId)))
         {
-            var (quantity, note) = RequirementPickerService.Scale(item.Quantity, item.IsScalable, schedule?.StudentCount, schedule?.ScalingFactor);
+            var (quantity, note) = RequirementPickerService.Scale(item.Quantity, item.IsScalable, plan.StudentCount ?? schedule?.StudentCount, schedule?.ScalingFactor);
             var observations = string.Join(" · ", new[] { item.Observations, note }.Where(t => !string.IsNullOrWhiteSpace(t)));
             _context.PlanningRequirements.Add(new PlanningRequirement
             {
@@ -590,7 +590,7 @@ public class RequerimientosModel : PageModel
             return RedirectToPage("./Index");
         }
 
-        StudentCount = Plan.PracticeSchedule?.StudentCount;
+        StudentCount = Plan.StudentCount ?? Plan.PracticeSchedule?.StudentCount;
         ScalingFactor = Plan.PracticeSchedule?.ScalingFactor;
 
         Items = await _context.PlanningRequirements.AsNoTracking()

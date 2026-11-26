@@ -5,7 +5,8 @@ Hace lo que hace el navegador pero sin JavaScript: GET de la página, toma el fo
 y lee el resultado (errores de validación, mensajes TempData que el layout convierte en toast/modal y el destino del redirect).
 Sirve para probar a escala las reglas del SERVIDOR (lo que el JS del navegador impide escribir) en cada módulo.
 
-Seguridad: se niega a ejecutar si la base de datos objetivo no es DB_Laboratorios_Univalle_QA_E2E (variable E2E_DB).
+Seguridad: se niega a ejecutar si la base de datos objetivo no es una copia desechable
+(DB_Laboratorios_Univalle_QA_E2E o DB_Laboratorios_Univalle_EXP; variable E2E_DB). Nunca REAL ni la oficial.
 Uso:  E2E_PW=... E2E_USER=qa_super E2E_DB=DB_Laboratorios_Univalle_QA_E2E python Tools/E2E/http_cases_<modulo>.py
 """
 import json
@@ -21,8 +22,9 @@ from lxml import html as LH
 import e2e_lib
 from e2e_lib import BASE, DB_NAME, Session
 
-if DB_NAME != "DB_Laboratorios_Univalle_QA_E2E":
-    sys.exit(f"SEGURIDAD: http_forms solo corre contra la copia de QA (E2E_DB={DB_NAME!r}).")
+DISPOSABLE_COPIES = {"DB_Laboratorios_Univalle_QA_E2E", "DB_Laboratorios_Univalle_EXP"}
+if DB_NAME not in DISPOSABLE_COPIES:
+    sys.exit(f"SEGURIDAD: http_forms solo corre contra una copia desechable {sorted(DISPOSABLE_COPIES)} (E2E_DB={DB_NAME!r}).")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

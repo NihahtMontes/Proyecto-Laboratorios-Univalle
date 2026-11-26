@@ -233,7 +233,7 @@
                                                asp-route-selDate="@day.Date.ToString("yyyy-MM-dd", inv)"
                                                asp-route-articleId="@articleId"
                                                class="cf-chip cf-chip--@type.Css @(isSel ? "is-selected" : selectedKey != null ? "is-dimmed" : "")"
-                                               title="@($"{m.Tag} · {m.ArticleName} · {type.Label} · {m.Load.ToString("0.##", cultura)} pedidos / {m.Available?.ToString("0.##", cultura) ?? "—"} en stock")">
+                                               title="@($"{m.Tag} · {m.ArticleName} · {type.Label} · {m.Load.ToString("0.##", cultura)} pedidos / {m.Available?.ToString("0.##", cultura) ?? "—"} en stock · P{period.Order} ({period.Label})")">
                                                 <strong class="cf-chip__tag">@m.Tag</strong>
                                                 <span class="cf-chip__name">@m.ArticleName</span>
                                                 <span class="cf-chip__qty">@m.Load.ToString("0.##", cultura)/@(m.Available?.ToString("0.##", cultura) ?? "—")</span>
@@ -368,6 +368,7 @@
                                                 <small class="text-muted d-block text-truncate" title="@(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")">
                                                     @(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")
                                                 </small>
+                                                <small class="text-muted d-block">@rowP.Practice.TimeText · @ConflictosModel.PeriodosTexto(rowP.PeriodOrders)</small>
                                                 <span class="small">@rowP.Quantity.ToString("0.##", cultura) pedido(s)</span>
                                                 <span class="badge badge-light border cf-mini__status">@rowP.StatusLabel</span>
                                                 @if (rowP.SuggestedMove)
@@ -507,10 +508,20 @@
                         <input type="date" id="recovery-date" name="date" class="form-control" required />
                     </div>
                     <div class="form-group">
+                        <label for="recovery-category" class="small font-weight-bold">CATEGORÍA DEL MOTIVO <span class="text-danger">*</span></label>
+                        <select id="recovery-category" name="category" class="custom-select" required>
+                            <option value="">— Elegir —</option>
+                            @foreach (var c in Proyecto_Laboratorios_Univalle.Models.DayRecoveryReasonCategories.All)
+                            {
+                                <option value="@c">@c</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="recovery-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
                         <textarea id="recovery-reason" name="reason" class="form-control" rows="3" maxlength="200" required
-                                  placeholder="Ej. Feriado institucional, evento académico..."></textarea>
-                        <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                                  placeholder="Describa qué pasó, por ejemplo: feriado departamental declarado por la gobernación"></textarea>
+                        <small class="text-muted">Obligatorio, máximo 200 caracteres. Se recomiendan al menos 5 palabras.</small>
                     </div>
                     <div id="recovery-preview" class="cf-recovery-preview" aria-live="polite">
                         <div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>
@@ -661,6 +672,8 @@
                     var trigger = e.relatedTarget;
                     var triggerDate = trigger ? trigger.getAttribute('data-date') : null;
                     reasonInput.value = '';
+                    var categoryInput = document.getElementById('recovery-category');
+                    if (categoryInput) categoryInput.value = '';
                     lastPreview = null;
                     confirmButton.disabled = true;
                     if (triggerDate) {
@@ -692,6 +705,7 @@
                         HTMLFormElement.prototype.submit.call(recoveryForm);
                     };
                     if (typeof Swal === 'undefined') { send(); return; }
+                    var ask = function () {
                     Swal.fire({
                         title: '¿Suspender el día?',
                         text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
@@ -704,6 +718,8 @@
                     }).then(function (result) {
                         if (result && (result.isConfirmed === true || result.value === true)) send();
                     });
+                    };
+                    Motivo.check(reasonInput.value, ask, reasonInput);
                 });
             }
         })();

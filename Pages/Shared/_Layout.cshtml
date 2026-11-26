@@ -17,6 +17,7 @@
     <link href="~/assets/extra-libs/c3/c3.min.css" rel="stylesheet">
     <link href="~/css/smart-index.css" rel="stylesheet" asp-append-version="true">
     <link href="~/css/ux-help.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/sidebar-sections.css" rel="stylesheet" asp-append-version="true">
 
     <style>
         /* ===== WIZARD STEPPER GLOBAL ===== */
@@ -33,6 +34,16 @@
                           color: #adb5bd; display: block; }
         .step-item.active .step-number  { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
         .step-item.active .step-label   { color: #f59e0b; }
+
+        /* ===== CAMPANA: el panel nunca se sale de la pantalla ===== */
+        #notificationDropdown .notification-menu { width: min(400px, calc(100vw - 32px)); }
+        @@media (max-width: 767.98px) {
+            /* En el teléfono la campana no está pegada al borde: se fija a la pantalla con 16 px a cada lado. */
+            #notificationDropdown .notification-menu {
+                position: fixed; top: 64px; left: 16px; right: 16px;
+                width: auto; max-height: calc(100dvh - 80px); overflow-y: auto;
+            }
+        }
     </style>
 
                 @await RenderSectionAsync("Styles", required: false)
@@ -102,7 +113,7 @@
                                                 <i class="mdi mdi-bell font-24"></i>
                                                 <span class="badge badge-danger badge-pill rounded-circle" id="notificationCount" style="position: absolute; top: 15px; right: 5px; font-size: 10px; display: none;">0</span>
                                             </a>
-                                            <div class="dropdown-menu dropdown-menu-right mailbox animated bounceInDown" style="min-width: 380px; max-width: 420px;">
+                                            <div class="dropdown-menu dropdown-menu-right mailbox notification-menu animated bounceInDown">
                                                 @Html.AntiForgeryToken()
                                                 <div class="p-3 border-bottom">
                                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -174,6 +185,7 @@
                     <script src="~/dist/js/custom.min.js"></script>
                     <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
                     <script src="~/js/swal-compat.js" asp-append-version="true"></script>
+                    <script src="~/js/motivo.js" asp-append-version="true"></script>
                     <script src="~/assets/extra-libs/c3/d3.min.js"></script>
                     <script src="~/assets/extra-libs/c3/c3.min.js"></script>
 
@@ -352,7 +364,7 @@
                                         return url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
                                     }
 
-                                    const groupOrder = ['vencidos', 'hoy', 'proximos', 'preventivo', 'planificacion', 'prestamos', 'adquisiciones', 'otros'];
+                                    const groupOrder = ['vencidos', 'hoy', 'proximos', 'preventivo', 'planificacion', 'prestamos', 'adquisiciones', 'otros', 'revisar-datos'];
                                     const groupConfig = {
                                         vencidos:      { label: 'Vencidos',            color: 'danger',    icon: 'fas fa-exclamation-triangle' },
                                         hoy:           { label: 'Para hoy',            color: 'warning',   icon: 'fas fa-calendar-day' },
@@ -361,7 +373,8 @@
                                         planificacion: { label: 'Planificación',       color: 'primary',   icon: 'fas fa-flask' },
                                         prestamos:     { label: 'Préstamos',           color: 'warning',   icon: 'fas fa-exchange-alt' },
                                         adquisiciones: { label: 'Adquisiciones',       color: 'success',   icon: 'fas fa-shopping-cart' },
-                                        otros:         { label: 'Otros',               color: 'secondary', icon: 'fas fa-bell' }
+                                        otros:         { label: 'Otros',               color: 'secondary', icon: 'fas fa-bell' },
+                                        'revisar-datos': { label: 'Revisar datos',     color: 'secondary', icon: 'fas fa-clipboard-check' }
                                     };
 
                                     function urgencyColor(urgency) {
@@ -481,8 +494,13 @@
                                         $list.empty();
 
                                         const snoozedKeys = snoozedKeysIn(items);
-                                        const snoozedCount = Object.keys(snoozedKeys).length;
-                                        updateBadge(Math.max(0, (totalCount || 0) - snoozedCount));
+                                        // El número de la campana cuenta solo lo accionable: «Revisar datos» (datos por
+                                        // confirmar) se ve en la lista, pero no suma como alarma.
+                                        const snoozedCount = (items || []).filter(function (i) {
+                                            return i.syntheticKey && snoozedKeys[i.syntheticKey] && i.group !== 'revisar-datos';
+                                        }).length;
+                                        const dataReviewCount = (groupCounts && groupCounts['revisar-datos']) || 0;
+                                        updateBadge(Math.max(0, (totalCount || 0) - dataReviewCount - snoozedCount));
 
                                         const filtered = getVisibleNotifications(items);
                                         if (filtered.length === 0) {
@@ -574,21 +592,29 @@
                                             const snoozedKeys = snoozedKeysIn(items);
                                             var snoozedCritical = 0;
                                             var snoozedOverdue = 0;
+                                            var preventiveDanger = 0;         // preventivos vencidos (urgencia danger): también cuentan como vencidos
+                                            var snoozedPreventiveDanger = 0;
                                             (items || []).forEach(function(item) {
-                                                if (!item.syntheticKey || !snoozedKeys[item.syntheticKey]) return;
-                                                if (item.urgency === 'danger' || item.urgency === 'warning') snoozedCritical++;
-                                                if (item.group === 'vencidos') snoozedOverdue++;
+                                                var isSnoozed = !!(item.syntheticKey && snoozedKeys[item.syntheticKey]);
+                                                if (isSnoozed && (item.urgency === 'danger' || item.urgency === 'warning')) snoozedCritical++;
+                                                if (isSnoozed && item.group === 'vencidos') snoozedOverdue++;
+                                                if (item.group === 'preventivo' && item.urgency === 'danger') {
+                                                    preventiveDanger++;
+                                                    if (isSnoozed) snoozedPreventiveDanger++;
+                                                }
                                             });
 
                                             const criticalCount = Math.max(0, ((data && data.criticalCount) || 0) - snoozedCritical);
                                             if (criticalCount <= 0) return;
 
-                                            const overdueCount = Math.max(0, ((groupCounts && groupCounts.vencidos) || 0) - snoozedOverdue);
+                                            // Vencidos: el grupo "vencidos" más los preventivos vencidos (danger).
+                                            // "revisar-datos" es urgencia secondary: nunca entra en criticalCount ni en esta alarma.
+                                            const overdueCount = Math.max(0, ((groupCounts && groupCounts.vencidos) || 0) + preventiveDanger - snoozedOverdue - snoozedPreventiveDanger);
                                             const restCount = Math.max(0, criticalCount - overdueCount);
 
                                             const parts = [];
                                             if (overdueCount > 0) parts.push(overdueCount + ' vencido(s)');
-                                            if (restCount > 0) parts.push(restCount + ' para hoy');
+                                            if (restCount > 0) parts.push(restCount + ' para atender');
                                             const summary = parts.length > 0 ? parts.join(' · ') : criticalCount + ' requiere(n) atención';
 
                                             const openBell = function() {

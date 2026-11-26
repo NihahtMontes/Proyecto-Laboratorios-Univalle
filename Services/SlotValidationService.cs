@@ -102,7 +102,7 @@ public sealed class SlotValidationService : ISlotValidationService
                 p.AcademicWeekId,
                 p.StartPeriodId,
                 p.PeriodCount,
-                ScheduleStudents = p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null,
+                ScheduleStudents = p.StudentCount ?? (p.PracticeSchedule != null ? p.PracticeSchedule.StudentCount : null),
                 GroupStudents = p.CourseGroup != null ? p.CourseGroup.StudentCount : null
             })
             .FirstOrDefaultAsync(ct);
@@ -110,6 +110,14 @@ public sealed class SlotValidationService : ISlotValidationService
         if (origin == null)
         {
             issues.Add(Block(Codes.OriginNotFound, "La planificación de origen no existe o fue eliminada."));
+            return Result();
+        }
+
+        // Solicitudes de docentes sin aprobar: se resuelven en la bandeja (aprobar/observar/rechazar), no se mueven.
+        if (origin.Status is PlanningStatus.Requested or PlanningStatus.Observed or PlanningStatus.Rejected)
+        {
+            issues.Add(Block(Codes.OriginNotMovable,
+                $"Es una solicitud de docente ({PlanningStatus.Label(origin.Status)}): revísala en Solicitudes de docentes; el docente elige otro horario si se observa."));
             return Result();
         }
 
@@ -199,14 +207,14 @@ public sealed class SlotValidationService : ISlotValidationService
                 var conflicts = await _occupancy.FindConflictsAsync(laboratory.Id, date, startPeriod!.Order, count, excluded, ct);
                 if (conflicts.Count > 0)
                 {
-                    // La regla del ambiente exige un periodo libre: se bloquean solapamientos y bloques contiguos,
-                    // con un mensaje distinto cuando el único problema es la contigüidad.
+                    // Regla del ambiente (PlanningSlot.CleaningGapPeriods): hoy la limpieza es de 10 minutos y solo choca
+                    // la superposición real; el segundo mensaje aplica si algún día se vuelve a exigir separación.
                     var overlaps = conflicts.Any(c =>
                         PlanningSlot.Overlaps(c.StartOrder, c.PeriodCount, startPeriod!.Order, count));
                     issues.Add(new SlotIssue(Codes.LabOccupied, SlotSeverity.Block,
                         overlaps
                             ? $"El laboratorio {laboratory.Code} ya está ocupado el {date:dd/MM/yyyy} en alguno de esos periodos."
-                            : $"Debe quedar un periodo libre entre prácticas del laboratorio {laboratory.Code}: hay otra práctica justo antes o después.",
+                            : $"Falta la separación de limpieza entre prácticas del laboratorio {laboratory.Code}: hay otra práctica justo antes o después.",
                         conflicts.Select(c => $"{c.Label} · {c.PeriodsText}").ToList()));
                 }
             }

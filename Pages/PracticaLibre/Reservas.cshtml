@@ -1,0 +1,99 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.PracticaLibre.ReservasModel
+@{
+    ViewData["Title"] = "Reservas de práctica libre";
+    ViewData["Section"] = "Práctica libre";
+    ViewData["HidePageTitle"] = true;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Práctica libre</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Reservas de estudiantes</h2>
+    <p class="text-muted small mb-0">Apruebe o rechace cada pedido de lugar. Revise qué va a practicar, el material que pide y sus faltas anteriores.</p>
+</div>
+
+<div class="container-fluid">
+    <section class="card border-0 shadow-sm rounded-lg mb-3" aria-labelledby="rs-pending"><div class="card-body p-4">
+        <h5 id="rs-pending" class="font-weight-bold text-dark">Por revisar <span class="badge badge-pill badge-warning">@Model.Pending.Count</span></h5>
+        @if (Model.Pending.Count == 0)
+        {
+            <p class="text-muted mb-0">No hay reservas por revisar.</p>
+        }
+        @foreach (var r in Model.Pending)
+        {
+            <article class="border rounded-lg p-3 mt-3">
+                <div class="d-flex flex-wrap justify-content-between">
+                    <div>
+                        <h6 class="font-weight-bold mb-1">
+                            <a asp-page="./Ficha" asp-route-id="@r.ProfileId">@r.Student</a>
+                            <small class="text-muted">· @r.Career @(r.Semester).º sem. · @r.Email @(r.Phone != null ? "· " + r.Phone : "")</small>
+                            @if (r.Incidents > 0) { <span class="badge badge-danger ml-1">@r.Incidents falta(s)</span> }
+                        </h6>
+                        <div class="small"><strong>@r.SlotCode</strong> · @r.Date.ToString("ddd dd/MM/yyyy") · @r.Periods · @r.Lab</div>
+                        <div class="small mt-1"><strong>Va a practicar:</strong> @r.Purpose</div>
+                    </div>
+                    <small class="text-muted">Pedida el @r.CreatedDate.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                </div>
+                @if (r.Material.Count > 0)
+                {
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm mb-0 small">
+                            <thead><tr><th>Material</th><th class="text-right">Pide</th><th class="text-right">Libre en ese horario</th><th>Estado</th></tr></thead>
+                            <tbody>
+                                @foreach (var m in r.Material)
+                                {
+                                    <tr><td>@m.Code · @m.Name</td><td class="text-right">@m.Requested.ToString("0.##")</td>
+                                        <td class="text-right">@(m.Free?.ToString("0.##") ?? "—")</td>
+                                        <td><span class="badge badge-@(m.StateText == "Disponible" ? "success" : m.StateText == "Justo" ? "warning" : "danger")">@m.StateText</span></td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="small text-muted mt-2">No pidió material.</div>
+                }
+                <div class="d-flex flex-wrap align-items-center mt-3">
+                    <form method="post" asp-page-handler="Review" asp-route-id="@r.Id" asp-route-approve="true" class="mr-2 mb-1"
+                          data-confirm="¿Aprobar la reserva de @r.Student?">
+                        <button type="submit" class="btn btn-sm btn-success btn-rounded"><i class="fas fa-check mr-1"></i>Aprobar</button>
+                    </form>
+                    <form method="post" asp-page-handler="Review" asp-route-id="@r.Id" asp-route-approve="false" class="form-inline mb-1"
+                          data-confirm="¿Rechazar la reserva de @r.Student?">
+                        <label class="sr-only" for="note-@r.Id">Motivo del rechazo</label>
+                        <input id="note-@r.Id" name="note" class="form-control form-control-sm mr-1" placeholder="Motivo del rechazo" required maxlength="300" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded">Rechazar</button>
+                    </form>
+                </div>
+            </article>
+        }
+    </div></section>
+
+    <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="rs-next"><div class="card-body p-0">
+        <h5 id="rs-next" class="font-weight-bold text-dark p-4 mb-0">Próximas aprobadas</h5>
+        @if (Model.Upcoming.Count == 0)
+        {
+            <p class="text-muted px-4 pb-4 mb-0">No hay reservas aprobadas próximas.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light"><tr><th>Estudiante</th><th>Cupo</th><th>Cuándo</th><th>Material</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Upcoming)
+                        {
+                            <tr><td><a asp-page="./Ficha" asp-route-id="@r.ProfileId">@r.Student</a></td><td>@r.SlotCode · @r.Lab</td>
+                                <td>@r.Date.ToString("ddd dd/MM") · @r.Periods</td><td>@(r.Material.Count == 0 ? "—" : $"{r.Material.Count} artículo(s)")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div></section>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

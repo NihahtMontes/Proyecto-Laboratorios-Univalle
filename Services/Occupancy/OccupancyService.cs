@@ -9,7 +9,7 @@ public interface IOccupancyService
     /// <summary>Bloques de todas las fuentes que cumplen la consulta.</summary>
     Task<IReadOnlyList<OccupancyBlock>> GetAsync(OccupancyQuery query, CancellationToken ct = default);
 
-    /// <summary>Bloques que ocupan el ambiente en la fecha y se solapan o quedan contiguos (sin un periodo libre) con [startOrder, startOrder + periodCount − 1].</summary>
+    /// <summary>Bloques que ocupan el ambiente en la fecha y chocan con [startOrder, startOrder + periodCount − 1] según la regla de limpieza (<see cref="PlanningSlot.CleaningGapPeriods"/>).</summary>
     Task<IReadOnlyList<OccupancyBlock>> FindConflictsAsync(int laboratoryId, DateTime date, int startOrder, int periodCount,
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default);
 
@@ -39,7 +39,7 @@ public sealed class OccupancyService : IOccupancyService
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default)
     {
         var blocks = await GetAsync(new OccupancyQuery(date.Date, date.Date, [laboratoryId], null, excludePlanningIds), ct);
-        // En un mismo ambiente debe quedar al menos un periodo libre entre prácticas: también es conflicto el bloque contiguo.
+        // Regla del ambiente: la limpieza es de 10 minutos (receso), así que hoy solo choca la superposición real.
         return blocks.Where(b => b.LaboratoryId == laboratoryId
             && Conflicts(b, date, startOrder, periodCount, excludePlanningIds,
                 (bs, bc, os, oc) => PlanningSlot.OverlapsWithGap(bs, bc, os, oc))).ToList();
@@ -49,7 +49,7 @@ public sealed class OccupancyService : IOccupancyService
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default)
     {
         var blocks = await GetAsync(new OccupancyQuery(date.Date, date.Date, null, [teacherPersonId], excludePlanningIds), ct);
-        // Para el docente solo cuenta el solapamiento real: la regla del periodo libre aplica solo al ambiente.
+        // Para el docente solo cuenta el solapamiento real.
         return blocks.Where(b => b.TeacherPersonId == teacherPersonId
             && Conflicts(b, date, startOrder, periodCount, excludePlanningIds,
                 (bs, bc, os, oc) => PlanningSlot.Overlaps(bs, bc, os, oc))).ToList();

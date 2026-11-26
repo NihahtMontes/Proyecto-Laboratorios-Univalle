@@ -100,7 +100,7 @@ public class ConflictosModel : PageModel
     }
 
     /// <summary>Suspende el día elegido desde la grilla, crea la reposición y abre la grilla con los afectados.</summary>
-    public async Task<IActionResult> OnPostRecoverDayAsync(int managementId, string date, string? reason)
+    public async Task<IActionResult> OnPostRecoverDayAsync(int managementId, string date, string? reason, string? category)
     {
         if (!CanRecover)
         {
@@ -112,7 +112,7 @@ public class ConflictosModel : PageModel
             TempData.Error("Elija una fecha válida para reponer.");
             return RedirectToPage(new { managementId, week = Week });
         }
-        var result = await _recoveries.SuspendByDateAsync(managementId, parsed, reason);
+        var result = await _recoveries.SuspendByDateAsync(managementId, parsed, reason, category);
         if (result.Ok)
         {
             TempData.Success(result.Message);
@@ -130,6 +130,17 @@ public class ConflictosModel : PageModel
         ConflictKind.Rotation => "alcanza turnando",
         _ => "sin existencias"
     };
+
+    /// <summary>
+    /// Texto compacto de los periodos que cubre una práctica en el panel: "P2–P5" si son
+    /// contiguos, "P2, P4" si hay huecos; "Sin periodos" si la práctica no tiene horario.
+    /// </summary>
+    public static string PeriodosTexto(IReadOnlyList<int> orders)
+    {
+        if (orders.Count == 0) return "Sin periodos";
+        var contiguos = orders[^1] - orders[0] + 1 == orders.Count;
+        return contiguos ? $"P{orders[0]}–P{orders[^1]}" : string.Join(", ", orders.Select(o => $"P{o}"));
+    }
 
     /// <summary>Clase Font Awesome de una acción ("mdi …" ya trae su prefijo).</summary>
     public static string IconClass(string icon) => icon.StartsWith("mdi", StringComparison.Ordinal) ? icon : $"fas {icon}";

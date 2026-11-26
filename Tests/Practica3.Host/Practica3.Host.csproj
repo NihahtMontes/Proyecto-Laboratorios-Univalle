@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Servidor de pruebas de aceptación (Práctica 3). Ejecuta el Program.cs real de la aplicación sobre una base
+    EF Core en memoria con datos de prueba; nunca se conecta a la base oficial.
+    Uso: dotnet run, proyecto Tests/Practica3.Host, argumento opcional: puerto (5300 por defecto)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Practica3.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Proyecto Laboratorios Univalle.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Laboratorios.Tests/Practica3/Soporte/LabAppHost.cs" Link="Soporte/LabAppHost.cs" />
+    <Compile Include="../Laboratorios.Tests/Practica3/Soporte/EscenarioGastronomia.cs" Link="Soporte/EscenarioGastronomia.cs" />
+  </ItemGroup>
+
+</Project>

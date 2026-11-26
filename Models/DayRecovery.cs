@@ -27,6 +27,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(500)]
         public string Reason { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Categoría del motivo (una de <see cref="DayRecoveryReasonCategories.All"/>): sirve para filtrar las reposiciones.
+        /// Nula en las reposiciones anteriores a esta columna.
+        /// </summary>
+        [StringLength(40)]
+        public string? ReasonCategory { get; set; }
+
         public DayRecoveryStatus Status { get; set; } = DayRecoveryStatus.InProgress;
 
         public ICollection<Rescheduling> Reschedulings { get; set; } = new List<Rescheduling>();
@@ -36,5 +43,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? LastModifiedDate { get; set; }
         public int? CreatedById { get; set; }
         public int? ModifiedById { get; set; }
+    }
+
+    /// <summary>Categorías del motivo de una suspensión de día con reposición (texto guardado tal cual).</summary>
+    public static class DayRecoveryReasonCategories
+    {
+        public const string Other = "Otro";
+
+        public static readonly IReadOnlyList<string> All =
+        [
+            "Feriado", "Paro o movilización", "Corte de servicios", "Evento institucional", "Clima o emergencia", Other
+        ];
+
+        public static bool IsValid(string? value) => value != null && All.Contains(value);
     }
 }

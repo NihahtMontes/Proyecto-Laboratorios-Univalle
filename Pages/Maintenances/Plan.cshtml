@@ -179,31 +179,10 @@
                     </table>
                 </div>
 
-                @if (Model.Plans!.HasPreviousPage || Model.Plans.HasNextPage)
-                {
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Plans.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Plan" asp-route-pageIndex="@(Model.Plans.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-managementId="@Model.ManagementId" asp-route-maintenanceType="@Model.MaintenanceType">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Plans.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Plans.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Plan" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-managementId="@Model.ManagementId" asp-route-maintenanceType="@Model.MaintenanceType">@i</a>
-                                </li>
-                            }
-                            @if (Model.Plans.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Plan" asp-route-pageIndex="@(Model.Plans.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-managementId="@Model.ManagementId" asp-route-maintenanceType="@Model.MaintenanceType">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Plans, new Dictionary<string, string?> { ["searchTerm"] = Model.SearchTerm, ["managementId"] = Model.ManagementId?.ToString(), ["maintenanceType"] = Model.MaintenanceType?.ToString() }, itemLabel: "activos planificados");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

@@ -246,6 +246,42 @@
 .gr-block--secondary { border-left-color: #6c757d; background: #f2f3f4; }
 .gr-block--light { border-left-color: #b8b8c2; background: #f8f8fa; }
 .gr-block--danger { border-left-color: #f62d51; background: #fdecef; }
+/* Solicitudes docentes en revisión: se dibujan atenuadas (no ocupan) para avisar del interés en el horario. */
+.gr-block--primary { border-left-color: #7460ee; background: #f3f1fe; }
+.gr-block--orange { border-left-color: #fb8c00; background: #fff4e5; }
+.gr-block--dark { border-left-color: #343a40; background: #f1f1f1; }
+
+/* Cupos de práctica libre de estudiantes: ocupan el ambiente (mismo color en todas las grillas). */
+.gr-block--slot { border-left-color: #00a5b8; background: #e2f6fa; }
+.badge-slot { background: #cdeaf1; color: #0b6e8a; border: 1px solid #a9d9e5; }
+
+/* Franja delgada de limpieza de 10 minutos al cierre de cada práctica (no bloquea periodos).
+   En bloques angostos (dos prácticas el mismo día) baja a dos líneas en vez de cortarse: la hora
+   nunca se recorta ni se parte (guía de web moderna: el texto no se trunca con «…»). */
+.gr-block__clean {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 3px;
+    align-self: flex-start;
+    max-width: 100%;
+    min-inline-size: 0;
+    margin-top: 1px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: #ffe9cc;
+    color: #8a5a00;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+}
+.gr-block__clean i { font-size: 9px; }
+.gr-block__clean-time { white-space: nowrap; }
+
+/* Celda ocupada según la fuente única de ocupación (visible cuando no hay bloque dibujado encima,
+   p. ej. planificaciones legadas con horas convertidas a periodos). */
+.gr-cell--busy { background: #fdf0f2; }
 
 /* No ocupantes (reprogramada, pendiente de reposición, repuesta): atenuados */
 .gr-block--inactive { opacity: .6; border-style: dashed; border-left-style: solid; }
@@ -590,6 +626,14 @@ body.gr-carrying, body.gr-carrying * { cursor: move !important; }
 .gr-legend__icon--recovery { color: #fd7e14; font-size: 15px; }
 .gr-legend__note { margin-left: auto; }
 
+/* Leyenda común de ocupación (misma paleta que las grillas del docente). */
+.gr-legend__swatch--free { background: #fff; }
+.gr-legend__swatch--busy { background: #fde2e7; border-left-color: #f62d51; }
+.gr-legend__swatch--slot { background: #e2f6fa; border-left-color: #00a5b8; }
+.gr-legend__swatch--nooccupy { background: #f3f1fe; border-style: dashed; border-left-style: solid; border-left-color: #7460ee; opacity: .75; }
+.gr-legend__swatch--cleaning { height: 6px; border: 0; border-radius: 999px; background: repeating-linear-gradient(90deg, #ffe9cc, #ffe9cc 6px, #f0cf9a 6px, #f0cf9a 8px); }
+.gr-legend__swatch--offday { background: #f8f9fa; border-left-color: #ced4da; }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 992px) {
     .gr-sheet__head { grid-template-columns: 1fr; }
@@ -722,3 +766,27 @@ body.gr-carrying, body.gr-carrying * { cursor: move !important; }
     .gr-grid--hovering .gr-block:not(.gr-block--related),
     .gr-grid--conflicts .gr-block:not(.gr-block--has-conflict) { opacity: 1; }
 }
+
+/* Reprogramar (azul) frente a reponer (naranja): que nunca se confundan */
+.gr-rs-band__title { font-size: 15px; color: #1f2937; }
+.gr-rs-band__eyebrow { font-size: 11px; }
+.gr-rs-band--move { background: linear-gradient(135deg, #e8f1fe, #dbe9fd); border-left-color: #1e6fd9; }
+.gr-rs-band--move .gr-rs-band__icon, .gr-rs-band--move .gr-rs-band__eyebrow { color: #1e6fd9; }
+.gr-rs-band--recovery { background: linear-gradient(135deg, #fff4e0, #ffe9c7); border-left-color: #e8890c; }
+.gr-rs-band--recovery .gr-rs-band__icon, .gr-rs-band--recovery .gr-rs-band__eyebrow { color: #c26d00; }
+.gr-rs-accent { color: #1e6fd9; }
+.gr-rs-band--recovery ~ * .gr-rs-accent { color: #c26d00; }
+.gr-rs-band--move ~ * .gr-rs-panel { border-top-color: #1e6fd9 !important; }
+.gr-rs-band--recovery ~ * .gr-rs-panel { border-top-color: #e8890c !important; }
+.gr-rs-band--move ~ * .gr-rs-submit { background: #1e6fd9; }
+.gr-rs-band--move ~ * .gr-rs-submit:hover, .gr-rs-band--move ~ * .gr-rs-submit:focus { background: #1658ae; }
+.gr-rs-band--recovery ~ * .gr-rs-submit { background: #e8890c; }
+.gr-rs-band--recovery ~ * .gr-rs-submit:hover, .gr-rs-band--recovery ~ * .gr-rs-submit:focus { background: #c26d00; }
+
+/* Resumen antes -> después junto al motivo */
+.gr-rs-summary { margin-bottom: 10px; font-size: 12px; line-height: 1.35; }
+.gr-rs-summary__row { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 8px; border: 1px solid #e5e7eb; }
+.gr-rs-summary__row--before { background: #f8f9fa; color: #6b7280; }
+.gr-rs-summary__row--after { background: #eaf7ee; border-color: #b7e1c3; color: #1f2937; }
+.gr-rs-summary__tag { flex: 0 0 58px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; padding-top: 2px; }
+.gr-rs-summary__arrow { text-align: center; color: #6b7280; font-size: 16px; line-height: 1.1; }

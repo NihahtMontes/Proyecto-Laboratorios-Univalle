@@ -1,0 +1,107 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.PracticaLibre.CuposModel
+@using Proyecto_Laboratorios_Univalle.Models
+@{
+    ViewData["Title"] = "Cupos de práctica libre";
+    ViewData["Section"] = "Práctica libre";
+    ViewData["HidePageTitle"] = true;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Práctica libre</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Cupos de práctica libre</h2>
+    <p class="text-muted small mb-0">Abra cupos en laboratorios libres para que los estudiantes reserven un lugar (de 4 a 6 por cupo). El cupo ocupa el laboratorio en todas las grillas.</p>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-4 mb-3">
+            <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="pl-new"><div class="card-body p-4">
+                <h5 id="pl-new" class="font-weight-bold text-dark mb-3"><i class="fas fa-plus-circle mr-2" style="color:#7460ee;"></i>Abrir un cupo</h5>
+                <form method="post" asp-page-handler="Create">
+                    <div asp-validation-summary="All" class="alert alert-danger border-0 small" role="alert"></div>
+                    <div class="form-group">
+                        <label asp-for="Input.LaboratoryId" class="font-weight-bold">Laboratorio</label>
+                        <select asp-for="Input.LaboratoryId" class="custom-select" required>
+                            <option value="">Elija…</option>
+                            @foreach (var lab in Model.Labs) { <option value="@lab.Id">@lab.Label</option> }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.Date" class="font-weight-bold">Fecha</label>
+                        <input asp-for="Input.Date" type="date" class="form-control" required />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-7">
+                            <label asp-for="Input.StartPeriodId" class="font-weight-bold">Desde</label>
+                            <select asp-for="Input.StartPeriodId" class="custom-select" required>
+                                <option value="">Periodo…</option>
+                                @foreach (var p in Model.Periods) { <option value="@p.Id">P@(p.Order) · @p.StartTime.ToString(@"hh\:mm")</option> }
+                            </select>
+                        </div>
+                        <div class="form-group col-5">
+                            <label asp-for="Input.PeriodCount" class="font-weight-bold">Periodos</label>
+                            <input asp-for="Input.PeriodCount" type="number" min="1" max="12" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.Capacity" class="font-weight-bold">Estudiantes</label>
+                        <input asp-for="Input.Capacity" type="number" min="1" max="30" class="form-control" required aria-describedby="cap-help" />
+                        <small id="cap-help" class="form-text text-muted">Sugerido: 6.</small>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Input.Notes">Nota para los estudiantes</label>
+                        <textarea asp-for="Input.Notes" class="form-control" rows="2" maxlength="500"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">Abrir cupo</button>
+                </form>
+            </div></section>
+        </div>
+        <div class="col-lg-8 mb-3">
+            <section class="card border-0 shadow-sm rounded-lg" aria-labelledby="pl-list"><div class="card-body p-0">
+                <h5 id="pl-list" class="font-weight-bold text-dark p-4 mb-0">Cupos (última semana y próximos 4 meses)</h5>
+                @if (Model.Slots.Count == 0)
+                {
+                    <p class="text-muted px-4 pb-4 mb-0">Todavía no hay cupos.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light"><tr><th>Cupo</th><th>Cuándo</th><th>Dónde</th><th>Lugares</th><th class="text-right">Acción</th></tr></thead>
+                            <tbody>
+                                @foreach (var s in Model.Slots)
+                                {
+                                    var cancelled = s.Status == FreePracticeSlotStatus.Cancelled;
+                                    <tr class="@(cancelled ? "text-muted" : null)">
+                                        <td class="font-weight-bold">@s.Code @if (cancelled) { <span class="badge badge-secondary">Cancelado</span> }</td>
+                                        <td>@s.Date.ToString("ddd dd/MM/yyyy") · @s.TimeText</td>
+                                        <td>@s.LaboratoryCode</td>
+                                        <td><span class="badge badge-@(s.Free == 0 ? "danger" : "success")">@s.Approved aprobadas</span>
+                                            @if (s.Pending > 0) { <span class="badge badge-warning">@s.Pending por revisar</span> }
+                                            <small class="text-muted">de @s.Capacity</small></td>
+                                        <td class="text-right">
+                                            @if (!cancelled && s.Date >= DateTime.Today)
+                                            {
+                                                <form method="post" asp-page-handler="Cancel" asp-route-id="@s.Id" class="form-inline justify-content-end"
+                                                      data-confirm="¿Cancelar el cupo @s.Code?" data-confirm-text="Se cancelan sus reservas y se avisa a los estudiantes.">
+                                                    <label class="sr-only" for="reason-@s.Id">Motivo</label>
+                                                    <input id="reason-@s.Id" name="reason" class="form-control form-control-sm mr-1" placeholder="Motivo" required maxlength="200" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded">Cancelar</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div></section>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/practica-libre.js" asp-append-version="true"></script>
+}

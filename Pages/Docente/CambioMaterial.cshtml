@@ -1,0 +1,189 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Docente.CambioMaterialModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Services
+@{
+    ViewData["Title"] = $"Pedir cambio de material · {Model.Code}";
+    ViewData["Section"] = "Portal docente";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+    var articlesUrl = Url.Page("./NuevaSolicitud", "Articles");
+    var kitUrl = Url.Page("./CambioMaterial", "Kit", new { id = Model.Row.Id });
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">
+                <a asp-page="./Solicitud" asp-route-id="@Model.Row.Id" class="text-reset">@Model.Code</a> <i class="fas fa-chevron-right mx-1 small"></i> PEDIR CAMBIO DE MATERIAL
+            </h4>
+            <h2 class="font-weight-bold text-dark mb-1"><i class="fas fa-exchange-alt mr-2" style="color:#7460ee;"></i>Cambiar el material de @Model.Row.Practice</h2>
+            <span class="text-muted small">@Model.Row.Subject · Grupo @Model.Row.Group · La práctica sigue aprobada: este pedido lo revisa la Inge.</span>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            <a asp-page="./Solicitud" asp-route-id="@Model.Row.Id" class="btn btn-light border rounded-pill px-3"><i class="fas fa-arrow-left mr-1"></i>Volver a la solicitud</a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <form method="post" id="cm-form" novalidate="novalidate"
+                  data-articles-url="@articlesUrl"
+                  data-kit-url="@kitUrl"
+                  data-days-ahead="@Model.DaysAhead"
+                  data-on-time-days="@MaterialChangeRules.OnTimeDays"
+                  data-warning-items="@MaterialChangeRules.WarningItemCount">
+                <input type="hidden" name="id" value="@Model.Row.Id" />
+                <div id="cm-lines"></div>
+
+                <!-- Contexto de la práctica -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-6 col-lg-3 mb-3">
+                                <div class="small text-muted text-uppercase font-weight-bold">Fecha</div>
+                                <div class="font-weight-bold text-dark text-capitalize">@Model.Row.Date.ToString("dddd d 'de' MMMM", es)</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3 mb-3">
+                                <div class="small text-muted text-uppercase font-weight-bold">Horario</div>
+                                <div class="font-weight-bold text-dark">@Model.Row.TimeText</div>
+                                <div class="small text-muted">@Model.Row.PeriodsText</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3 mb-3">
+                                <div class="small text-muted text-uppercase font-weight-bold">Laboratorio</div>
+                                <div class="font-weight-bold text-dark">@Model.Row.LabCode</div>
+                                <div class="small text-muted">@Model.Row.LabName</div>
+                            </div>
+                            <div class="col-sm-6 col-lg-3 mb-3">
+                                <div class="small text-muted text-uppercase font-weight-bold">Anticipación</div>
+                                <div class="font-weight-bold text-dark">@Model.DaysAhead día(s)</div>
+                                <div class="small text-muted">faltan para la práctica</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Material a cambiar -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                    <div class="card-body">
+                        <h5 class="font-weight-bold text-dark mb-1"><i class="fas fa-box-open mr-2" style="color:#7460ee;"></i>Material vigente <span class="badge badge-light border" id="cm-count">@Model.Rows.Count</span></h5>
+                        <p class="small text-muted">Cambia cantidades, quita artículos o agrega nuevos. Lo que envíes reemplaza al L-3 vigente cuando la Inge apruebe el pedido.</p>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-2" id="cm-table">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Artículo</th>
+                                        <th>Categoría</th>
+                                        <th class="text-center">Vigente</th>
+                                        <th style="width:200px;">Nueva cantidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cm-body">
+                                    @foreach (var line in Model.Rows)
+                                    {
+                                        var qtyText = line.Quantity.ToString("0.##", CultureInfo.InvariantCulture);
+                                        var currentText = line.Current.ToString("0.##", CultureInfo.InvariantCulture);
+                                        @* data-current va en la FILA: el resumen en vivo (docente-cambio-material.js) lo lee del <tr>. *@
+                                        <tr class="cm-row" data-article-id="@line.ArticleId" data-current="@currentText">
+                                            <td>
+                                                <strong class="text-dark">@line.Name</strong>
+                                                <div class="small text-muted">@line.Code</div>
+                                            </td>
+                                            <td class="small text-muted align-middle">@line.Category</td>
+                                            <td class="text-center align-middle">
+                                                @(line.Current > 0 ? line.Current.ToString("0.##") : "—") <small class="text-muted">@line.Unit</small>
+                                            </td>
+                                            <td class="align-middle">
+                                                <div class="d-flex align-items-center">
+                                                    <input type="number" class="form-control form-control-sm cm-qty" value="@qtyText"
+                                                           min="0" step="0.01" data-original="@qtyText"
+                                                           aria-label="Nueva cantidad de @line.Name" />
+                                                    <button type="button" class="btn btn-sm btn-outline-danger cm-remove ml-2" title="Pone la cantidad en 0 (el artículo se quita del pedido)"><i class="fas fa-times"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-light border cm-restore ml-1" style="display:none;" title="Recupera la cantidad anterior"><i class="fas fa-undo"></i></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Agregar artículo -->
+                        <div class="cm-search-box mt-3">
+                            <label class="small font-weight-bold text-uppercase text-muted mb-1" for="cm-search"><i class="fas fa-search mr-1"></i>Agregar artículo</label>
+                            <input type="search" class="form-control" id="cm-search" autocomplete="off" placeholder="Nombre o código del artículo del catálogo…" aria-describedby="cm-search-help" />
+                            <small id="cm-search-help" class="form-text text-muted">Busca en el catálogo activo y agrégalo al pedido con su cantidad.</small>
+                            <div class="cm-results list-group shadow-sm" id="cm-results" style="display:none;"></div>
+                        </div>
+
+                        <!-- Recalcular kit -->
+                        <div class="p-3 rounded mt-3" style="background:#f8f9fc;">
+                            <label class="small font-weight-bold text-uppercase text-muted mb-1" for="cm-students"><i class="fas fa-users mr-1"></i>Recalcular el kit</label>
+                            <div class="form-row align-items-center">
+                                <div class="col-auto">
+                                    <input type="number" class="form-control cm-students" id="cm-students" min="1" max="500" placeholder="Ej: 24" value="@Model.Students" />
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-light border rounded-pill px-3" id="cm-recalc"><i class="fas fa-calculator mr-1"></i>Recalcular para N estudiantes</button>
+                                </div>
+                            </div>
+                            <div class="alert border-0 small mt-2 mb-0 dc-soft-primary p-3 rounded" id="cm-recalc-note" style="display:none;">
+                                <i class="fas fa-info-circle mr-1"></i><span id="cm-recalc-text"></span> Menciona el número de estudiantes en el motivo.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Motivo -->
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                    <div class="card-body">
+                        <label class="small font-weight-bold text-uppercase text-muted" for="cm-reason"><i class="fas fa-comment-alt mr-1"></i>Motivo del cambio (obligatorio)</label>
+                        <textarea class="form-control" id="cm-reason" name="reason" rows="4" maxlength="1000"
+                                  placeholder="Ej: subimos a 30 estudiantes y necesitamos más pipetas; el multímetro 04 está dañado.">@Model.Reason</textarea>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Entre 10 y 1000 caracteres: la Inge lo lee para decidir.</small>
+                            <small class="text-muted" id="cm-reason-count" aria-hidden="true">0/1000</small>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <button type="button" class="btn rounded-pill px-4 text-white" style="background:#7460ee;" id="cm-submit"><i class="fas fa-paper-plane mr-2"></i>Enviar pedido</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Resumen en vivo -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm dc-sticky" style="border-radius:16px;">
+                <div class="card-body">
+                    <div class="small font-weight-bold text-uppercase mb-3" style="color:#7460ee;"><i class="fas fa-clipboard-list mr-1"></i>Resumen del pedido</div>
+                    <div id="cm-summary" aria-live="polite" class="font-weight-bold text-dark mb-3">Sin cambios por ahora: el pedido sería igual al L-3 vigente.</div>
+                    <div class="alert border-0 small mb-2 dc-soft-danger p-3 rounded" id="cm-alert-warning" style="display:none;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i><strong>Quedará como llamada de atención:</strong> @MaterialChangeRules.WarningItemCount o más artículos agregados o quitados en una misma práctica.
+                    </div>
+                    @if (Model.LastMinute)
+                    {
+                        <div class="alert border-0 small mb-2 dc-soft-warning p-3 rounded" id="cm-alert-lastminute">
+                            <i class="fas fa-hourglass-half mr-1"></i><strong>Quedará como último momento:</strong> pides el cambio con menos de @MaterialChangeRules.OnTimeDays días de anticipación a la práctica.
+                        </div>
+                    }
+                    <div class="mt-3 pt-3 border-top small text-muted">
+                        <i class="fas fa-info-circle mr-1"></i>El L-3 vigente sigue funcionando mientras tu pedido está en revisión; solo se mueve cuando la Inge lo aprueba.<br />
+                        <i class="fas fa-info-circle mr-1"></i>Las unidades físicas solo se pueden mantener o quitar, no cambiar su cantidad.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/docente-cambio-material.js" asp-append-version="true"></script>
+}

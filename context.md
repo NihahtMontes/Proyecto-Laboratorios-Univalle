@@ -2,6 +2,10 @@
 
 Este archivo es el punto de entrada rapido. No contiene todo el conocimiento del proyecto; enruta al contexto correcto para evitar leer documentacion irrelevante.
 
+## Preparacion Del Equipo
+
+Al iniciar una sesion larga (evaluacion, QA, E2E, importaciones), comprobar que el equipo no se suspenda, no hiberne ni apague la pantalla, y aplicar lo que falte. Comandos `powercfg` en `docs/GUIA_NUEVA_CONVERSACION.md`, seccion E, «Preparar el equipo antes de empezar».
+
 ## Lectura Obligatoria
 
 Antes de modificar codigo:

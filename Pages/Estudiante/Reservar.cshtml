@@ -1,0 +1,54 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Estudiante.ReservarModel
+@{
+    ViewData["Title"] = "Reservar práctica libre";
+    ViewData["Section"] = "Portal estudiante";
+    ViewData["HidePageTitle"] = true;
+    var s = Model.Slot!;
+}
+
+<div class="page-breadcrumb">
+    <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">Portal estudiante</h4>
+    <h2 class="font-weight-bold text-dark mb-0">Reservar un lugar</h2>
+    <p class="text-muted small mb-0">@s.Date.ToString("dddd dd/MM/yyyy") · @s.TimeText · @s.LaboratoryCode · @s.LaboratoryName · @s.Free lugar(es) libre(s)</p>
+</div>
+
+<div class="container-fluid">
+    <section class="card border-0 shadow-sm rounded-lg" aria-label="Formulario de reserva"><div class="card-body p-4">
+        <form method="post" asp-route-slotId="@Model.SlotId">
+            <div asp-validation-summary="All" class="alert alert-danger border-0" role="alert"></div>
+            @if (!string.IsNullOrWhiteSpace(s.Notes)) { <p class="small"><strong>Nota de la Inge:</strong> @s.Notes</p> }
+            <div class="form-group">
+                <label for="rs-purpose" class="font-weight-bold">¿Qué vas a practicar?</label>
+                <textarea id="rs-purpose" name="Purpose" class="form-control" rows="3" maxlength="500" required
+                          placeholder="Por ejemplo: menú de tres tiempos, masas laminadas, técnica de corte…">@Model.Purpose</textarea>
+            </div>
+
+            <fieldset class="mb-3">
+                <legend class="h6 font-weight-bold">Material que necesitas (opcional)</legend>
+                <p class="small text-muted">Elige cada artículo de la lista y la cantidad. La Inge lo revisará con tu reserva.</p>
+                <datalist id="rs-catalog">
+                    @foreach (var item in Model.Catalog) { <option value="@item"></option> }
+                </datalist>
+                @for (var i = 0; i < Proyecto_Laboratorios_Univalle.Pages.Estudiante.ReservarModel.MaxLines; i++)
+                {
+                    <div class="form-row">
+                        <div class="col-8 col-md-9 mb-2">
+                            <label class="sr-only" for="rs-art-@i">Artículo @(i + 1)</label>
+                            <input id="rs-art-@i" name="Articles" list="rs-catalog" class="form-control form-control-sm" autocomplete="off"
+                                   value="@Model.Articles.ElementAtOrDefault(i)" placeholder="@(i == 0 ? "Escribe para buscar: bowl, olla, batidora…" : "")" />
+                        </div>
+                        <div class="col-4 col-md-3 mb-2">
+                            <label class="sr-only" for="rs-qty-@i">Cantidad @(i + 1)</label>
+                            <input id="rs-qty-@i" name="Quantities" type="number" min="0" step="0.01" inputmode="decimal" class="form-control form-control-sm"
+                                   value="@Model.Quantities.ElementAtOrDefault(i)" placeholder="Cant." />
+                        </div>
+                    </div>
+                }
+            </fieldset>
+
+            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">Pedir mi lugar</button>
+            <a asp-page="./Index" class="btn btn-link">Volver</a>
+        </form>
+    </div></section>
+</div>

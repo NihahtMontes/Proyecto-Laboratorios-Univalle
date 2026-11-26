@@ -33,7 +33,7 @@ Los commits locales estan preautorizados cuando forman parte de la mision; no ha
 
 | Capa/Tarea | Contexto | Manifesto | Skill |
 |---|---|---|---|
-| UI Razor, `.cshtml`, JS, SweetAlert2 | `context.md` | `Pages/AGENTS.md` | `.agents/skills/ui-premium/SKILL.md` |
+| UI Razor, `.cshtml`, JS, SweetAlert2 | `context.md` | `Pages/AGENTS.md` | `.agents/skills/ui-premium/SKILL.md` + `.agents/skills/modern-web-guidance/SKILL.md` |
 | PageModels, handlers, InputModel | `context.md` | `Pages/AGENTS.md` | `.agents/skills/backend-methods/SKILL.md` |
 | Modelos, EF, migraciones | `context.md` | `Models/AGENTS.md` | `.agents/skills/database/SKILL.md` |
 | Reportes Excel/PDF | `context.md` | `Services/AGENTS.md` | `.agents/skills/reporting/SKILL.md` |
@@ -46,6 +46,21 @@ Los commits locales estan preautorizados cuando forman parte de la mision; no ha
 ## Modulos Especificos
 
 - L-6, L-3, Kardex/L-48 y L-12: partir de `context.md`, ubicar el flujo real con busqueda dirigida y leer solo sus Pages, Services y modelos relacionados.
+
+## Web Moderna (obligatorio en HTML, CSS y JS de cliente)
+
+Antes de escribir o cambiar HTML, CSS o JavaScript de interfaz, el agente consulta la skill
+`modern-web-guidance` (Google Chrome, Edge, Firefox y MDN), ya instalada en el proyecto:
+
+```sh
+npx -y modern-web-guidance@latest search "<2-5 palabras en ingles, p. ej. confirmation modal dialog>"
+npx -y modern-web-guidance@latest retrieve "<id>"
+```
+
+- Aplica lo que devuelva dentro de las invariantes del proyecto (Bootstrap 4, NiceAdmin, SweetAlert2 v7, jQuery ya presente): se moderniza el codigo nuevo o el que se toca, sin reescribir librerias ni pantallas que no son parte de la tarea.
+- No aplica a backend (C#, EF, SQL), scripts ni pruebas.
+- Revisar codigo heredado: `npx -y modern-web-guidance@latest legacy-scan wwwroot`.
+- Instalacion, actualizacion y detalles: `docs/WEB_MODERNA.md`.
 
 ## Reglas Criticas Cortas
 

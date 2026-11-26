@@ -279,10 +279,11 @@
     }
 
     /**
-     * Regla local de separación: el destino no puede quedar solapado ni contiguo a otro bloque
-     * del mismo ambiente y día (el bloque de origen se excluye porque "se levanta" de la grilla).
+     * Regla local del ambiente: el destino no puede solaparse con otro bloque del mismo ambiente y día
+     * (el bloque de origen se excluye porque "se levanta" de la grilla). Los bloques contiguos sí se permiten:
+     * la limpieza es de 10 minutos y se hace en el receso entre periodos.
      */
-    function bufferProblem(d) {
+    function overlapProblem(d) {
         var start = d.order;
         var end = lastOrderOf(start);
         var blocks = document.querySelectorAll('.gr-block[data-date="' + d.date + '"][data-laboratory-id="' + d.labId + '"]');
@@ -295,7 +296,7 @@
             var c = parseInt(block.getAttribute('data-period-count'), 10);
             if (!s || !c) continue;   // legado sin periodos
             var otherEnd = s + c - 1;
-            if (start <= otherEnd + 1 && end >= s - 1) return true;   // solapa o queda contiguo
+            if (start <= otherEnd && end >= s) return true;   // se solapa
         }
         return false;
     }
@@ -306,7 +307,7 @@
         var cell = cellFor(d);
         if (cell && cell.getAttribute('data-suspended') === 'true') return 'El día está suspendido.';
         if (cell && cell.getAttribute('data-out') === 'true') return 'El día está fuera de la gestión.';
-        if (bufferProblem(d)) return 'Debe quedar un periodo libre entre prácticas.';
+        if (overlapProblem(d)) return 'El laboratorio ya tiene otra práctica en esos periodos.';
         var groupSubject = groupConflict(d.date, d.order);
         if (groupSubject) return 'El grupo ' + groupName + ' tiene clase de ' + groupSubject + ' en ese horario.';
         return null;
@@ -474,6 +475,23 @@
         if (labSelect && labsById[d.labId]) labSelect.value = String(d.labId);
     }
 
+    /** Resumen "antes -> después" que acompaña al motivo: deja claro qué se mueve y adónde. */
+    function renderSummary(d) {
+        var box = document.getElementById('gr-rs-summary');
+        if (!box) return;
+        var lab = labsById[d.labId];
+        var row = function (css, label, date, order, labText, teacher) {
+            return '<div class="gr-rs-summary__row gr-rs-summary__row--' + css + '">'
+                + '<span class="gr-rs-summary__tag">' + label + '</span>'
+                + '<span><strong>' + esc(formatDate(date)) + '</strong><br>' + esc(periodsText(order))
+                + '<br>' + esc(labText || '—') + (teacher ? '<br>' + esc(teacher) : '') + '</span></div>';
+        };
+        box.innerHTML = row('before', 'Antes', cfg.originDate, cfg.originStartOrder, cfg.originLabLabel, cfg.originTeacherName)
+            + '<div class="gr-rs-summary__arrow" aria-hidden="true"><i class="mdi mdi-arrow-down-bold"></i></div>'
+            + row('after', 'Después', d.date, d.order, lab ? lab.label : '', currentTeacherName());
+        box.hidden = false;
+    }
+
     function unfix() {
         fixed = null;
         if (confirmBox) confirmBox.hidden = true;
@@ -483,6 +501,7 @@
         fixed = { dest: d, result: result };
         drawGhost(d, result.level, true);
         renderPreview(d, result, { fixed: true });
+        renderSummary(d);
         if (confirmBox) confirmBox.hidden = false;
         if (acceptWrap) acceptWrap.hidden = !result.hasWarnings;
         if (acceptBox) acceptBox.checked = false;
@@ -961,7 +980,7 @@
         }
         var reason = reasonInput ? reasonInput.value.trim() : '';
         if (!reason) {
-            alertBox('Falta el motivo', 'Indique el motivo de la reprogramación.');
+            alertBox('Falta el motivo', cfg.recovery ? 'Escriba el motivo de la reposición.' : 'Escriba el motivo de la reprogramación.');
             if (reasonInput) reasonInput.focus();
             return;
         }
@@ -1013,12 +1032,16 @@
                 confirmButtonColor: '#6f42c1',
                 cancelButtonColor: '#6c757d'
             };
-        Swal.fire(options).then(function (r) {
-            if (r && (r.isConfirmed === true || r.value === true)) {
-                clearCarry();   // confirmación enviada: el modo llevar termina aquí
-                HTMLFormElement.prototype.submit.call(form);
-            }
-        });
+        var ask = function () {
+            Swal.fire(options).then(function (r) {
+                if (r && (r.isConfirmed === true || r.value === true)) {
+                    clearCarry();   // confirmación enviada: el modo llevar termina aquí
+                    HTMLFormElement.prototype.submit.call(form);
+                }
+            });
+        };
+        // Motivo corto (menos de 5 palabras): se recomienda ampliarlo, pero se puede guardar igual.
+        if (window.Motivo) { window.Motivo.check(reason, ask, reasonInput); } else { ask(); }
     });
 
     // Tras un intento fallido se vuelve a previsualizar el destino intentado.

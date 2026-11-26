@@ -21,13 +21,13 @@ public sealed record DayRecoveryPreview(bool Ok, string Message, DateTime Date, 
 public interface IDayRecoveryService
 {
     /// <summary>Suspende el día entero y conserva el estado previo de todas sus planificaciones vigentes.</summary>
-    Task<DayRecoveryResult> SuspendAsync(int dayId, string? reason, CancellationToken ct = default);
+    Task<DayRecoveryResult> SuspendAsync(int dayId, string? reason, string? category, CancellationToken ct = default);
 
     /// <summary>Vista previa de solo lectura: día del calendario, planificaciones afectadas por laboratorio y bloqueos.</summary>
     Task<DayRecoveryPreview> PreviewAsync(int managementId, DateTime date, CancellationToken ct = default);
 
     /// <summary>Resuelve el día de la gestión por fecha y lo suspende (misma operación que SuspendAsync).</summary>
-    Task<DayRecoveryResult> SuspendByDateAsync(int managementId, DateTime date, string? reason, CancellationToken ct = default);
+    Task<DayRecoveryResult> SuspendByDateAsync(int managementId, DateTime date, string? reason, string? category, CancellationToken ct = default);
 }
 
 public sealed class DayRecoveryService : IDayRecoveryService
@@ -43,11 +43,14 @@ public sealed class DayRecoveryService : IDayRecoveryService
         _logger = logger;
     }
 
-    public async Task<DayRecoveryResult> SuspendAsync(int dayId, string? reason, CancellationToken ct = default)
+    public async Task<DayRecoveryResult> SuspendAsync(int dayId, string? reason, string? category, CancellationToken ct = default)
     {
         var cleanReason = reason?.Trim();
         if (string.IsNullOrEmpty(cleanReason) || cleanReason.Length > 200)
             return Fail("Indique un motivo de suspensión de hasta 200 caracteres.");
+        var cleanCategory = category?.Trim();
+        if (!DayRecoveryReasonCategories.IsValid(cleanCategory))
+            return Fail("Elija la categoría del motivo de la suspensión.");
 
         var scope = await _context.AcademicDays.AsNoTracking().Where(d => d.Id == dayId)
             .Select(d => new { d.Date, d.AcademicWeek.ManagementId }).FirstOrDefaultAsync(ct);
@@ -77,7 +80,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
             var candidates = await _context.Plannings.AsNoTracking()
                 .Where(p => p.ManagementId == scope.ManagementId && p.ScheduledDate >= start && p.ScheduledDate < end
                     && !PlanningStatus.NonOccupying.Contains(p.Status))
-                .Select(p => new { p.Id, p.Code, p.Status }).ToListAsync(ct);
+                .Select(p => new { p.Id, p.Code, p.Status, p.TeacherPersonId, p.PracticeName }).ToListAsync(ct);
             if (candidates.Count == 0)
                 return Fail("El día no tiene planificaciones vigentes: suspéndalo desde Calendario académico.");
             var incompatible = candidates
@@ -90,7 +93,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
             var recovery = new DayRecovery
             {
                 ManagementId = scope.ManagementId, Date = start,
-                Reason = cleanReason, Status = DayRecoveryStatus.InProgress
+                Reason = cleanReason, ReasonCategory = cleanCategory, Status = DayRecoveryStatus.InProgress
             };
             _context.DayRecoveries.Add(recovery);
             await _context.SaveChangesAsync(ct);
@@ -112,6 +115,14 @@ public sealed class DayRecoveryService : IDayRecoveryService
                 await _context.SaveChangesAsync(ct);
                 _context.ChangeTracker.Clear();
             }
+
+            // Aviso a cada docente con práctica ese día: se suspendió y su práctica queda por reponer.
+            await Notifications.TeacherNotifier.AddAsync(_context, candidates.Select(p => new Notifications.TeacherNotice(
+                p.TeacherPersonId, p.Id, scope.ManagementId, $"Se suspendió el {start:dd/MM/yyyy}",
+                $"{cleanCategory}: {cleanReason}. Tu práctica «{p.PracticeName}» queda pendiente de reposición; te avisaremos la nueva fecha.",
+                "mdi mdi-calendar-remove text-warning")).ToList(), ct);
+            await _context.SaveChangesAsync(ct);
+            _context.ChangeTracker.Clear();
 
             await transaction.CommitAsync(ct);
             return new DayRecoveryResult(true,
@@ -173,7 +184,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
     }
 
     /// <summary>Suspende por fecha (panel de planificación); falla con mensaje explícito si el día no existe.</summary>
-    public async Task<DayRecoveryResult> SuspendByDateAsync(int managementId, DateTime date, string? reason, CancellationToken ct = default)
+    public async Task<DayRecoveryResult> SuspendByDateAsync(int managementId, DateTime date, string? reason, string? category, CancellationToken ct = default)
     {
         var target = date.Date;
         var dayId = await _context.AcademicDays.AsNoTracking()
@@ -182,7 +193,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
             .FirstOrDefaultAsync(ct);
         if (dayId == null)
             return Fail($"La fecha {target:dd/MM/yyyy} no pertenece al calendario académico de la gestión.");
-        return await SuspendAsync(dayId.Value, reason, ct);
+        return await SuspendAsync(dayId.Value, reason, category, ct);
     }
 
     /// <summary>"3 planificación(es) en estado no compatible: PRA-00001 (Aprobada), ... y 2 más." Muestra el código persistido si existe.</summary>

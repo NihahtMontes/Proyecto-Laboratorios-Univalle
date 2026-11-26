@@ -2,9 +2,11 @@ namespace Proyecto_Laboratorios_Univalle.Helpers;
 
 /// <summary>
 /// Nombres visibles canónicos de la aplicación (glosario de UX, docs/ux/GLOSARIO.md).
-/// En pantalla se usa SOLO el nombre claro: los códigos de formato institucional (L-3, L-7…) quedan
-/// en los Excel de Services/Reports y en la página de Ayuda. Un concepto = un nombre en menú, título,
-/// botones, pasos y mensajes.
+/// En pantalla se usa el nombre claro; los códigos de formato institucional (L-3, L-7…) vuelven
+/// SOLO en el menú, los títulos de los listados y las tarjetas del panel en formato corto
+/// «L6 · Verificaciones» (decisión del usuario 2026-11-16). Los códigos completos (L-3, L-7…)
+/// siguen en los Excel de Services/Reports y en la página de Ayuda.
+/// Un concepto = un nombre en menú, título, botones, pasos y mensajes.
 /// </summary>
 public static class UiTerms
 {
@@ -19,6 +21,12 @@ public static class UiTerms
     public const string ServiceRequest = "Solicitud de servicio técnico";     // antes L-7
     public const string MaintenanceRecord = "Registro de mantenimiento";      // antes L-8
     public const string EquipmentDeparture = "Salida de equipos";             // antes L-3 (Departures)
+    // Nombres cortos con código (decisión del usuario 2026-11-16): menú, títulos de listados y tarjetas del panel.
+    public const string VerificationShort = "L6 · Verificaciones";
+    public const string ServiceRequestShort = "L7 · Servicio técnico";
+    public const string MaintenanceRecordShort = "L8 · Kardex";
+    public const string DepartureShort = "L3 · Salidas";
+    public const string Acquisition = "Adquisición";
     public const string MaintenanceClosure = "Cierre del mantenimiento";      // antes Kardex (paso 5)
     public const string EquipmentHistory = "Historial del equipo";            // antes Kardex de la unidad
     public const string PurchaseRequest = "Solicitud de compra";              // antes L-12 / Desembolso
@@ -33,6 +41,10 @@ public static class UiTerms
     public const string AcademicTerm = "Semestre académico";                   // antes «Gestión académica»
     public const string Laboratory = "Laboratorio";                            // antes «Ambiente»
     public const string ClassPeriod = "Periodo de clase";
+    public const string ReschedulingReport = "Informe de reprogramaciones y reposiciones"; // L-9 (nuevo)
+    public const string ReschedulingReportShort = "L9 · Reprogramaciones y reposiciones";  // L-9 en tarjetas y menú
+    public const string MaterialChangesReport = "Cambios de material del docente";         // pedido del docente vs kit
+    public const string MaterialChangesReportShort = "Cambios de material del docente";    // en tarjetas y menú
 
     // Generales
     public const string ErrorTitle = "No se pudo completar";                  // antes «¡Ups!»

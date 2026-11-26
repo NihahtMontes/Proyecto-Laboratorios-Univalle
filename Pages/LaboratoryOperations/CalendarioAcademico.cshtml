@@ -333,7 +333,7 @@
                         <label for="suspend-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
                         <textarea id="suspend-reason" name="Reason" class="form-control" rows="3" maxlength="200"
                                   required placeholder="Ej. Feriado institucional, evento académico..." data-msg-required="Indique el motivo de la suspensión."></textarea>
-                        <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                        <small class="text-muted">Obligatorio, máximo 200 caracteres. Se recomiendan al menos 5 palabras.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0">
@@ -360,8 +360,20 @@
                         <input type="hidden" name="dayId" id="recover-day-id" />
                         <p>Suspenderá <strong id="recover-day-label"></strong> y pondrá <strong id="recover-day-count"></strong> planificaciones de <strong id="recover-day-labs"></strong> laboratorios en la lista para reprogramar.</p>
                         <p class="small text-muted">Se conserva la práctica original y su entrega de material. Cada nueva ubicación se confirma por separado.</p>
-                        <label for="recover-day-reason" class="font-weight-bold">Motivo de suspensión</label>
-                        <textarea id="recover-day-reason" name="reason" class="form-control" maxlength="200" rows="3" required></textarea>
+                        <div class="form-group">
+                            <label for="recover-day-category" class="small font-weight-bold">CATEGORÍA DEL MOTIVO <span class="text-danger">*</span></label>
+                            <select id="recover-day-category" name="category" class="custom-select" required>
+                                <option value="">— Elegir —</option>
+                                @foreach (var c in Proyecto_Laboratorios_Univalle.Models.DayRecoveryReasonCategories.All)
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <label for="recover-day-reason" class="font-weight-bold">Motivo de suspensión <span class="text-danger">*</span></label>
+                        <textarea id="recover-day-reason" name="reason" class="form-control" maxlength="200" rows="3" required
+                                  placeholder="Describa qué pasó, por ejemplo: feriado departamental declarado por la gobernación"></textarea>
+                        <small class="text-muted">Obligatorio, máximo 200 caracteres. Se recomiendan al menos 5 palabras.</small>
                     </div>
                     <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-warning font-weight-bold">Suspender y abrir reposición</button></div>
@@ -449,6 +461,7 @@
                     $('#recover-day-count').text(button.data('count'));
                     $('#recover-day-labs').text(button.data('labs'));
                     $('#recover-day-reason').val('');
+                    $('#recover-day-category').val('');
                 });
             }
             ['form-suspend', 'form-recover-day'].forEach(function (id) {
@@ -460,12 +473,16 @@
                     if (!form.reportValidity()) return;
                     var send = function () { form.dataset.confirmed = '1'; HTMLFormElement.prototype.submit.call(form); };
                     if (typeof Swal === 'undefined') { send(); return; }
+                    var reasonEl = form.querySelector('textarea');
+                    var ask = function () {
                     Swal.fire({ title: id === 'form-recover-day' ? '¿Suspender el día entero?' : '¿Suspender este día?',
                         text: id === 'form-recover-day'
                             ? 'Todas las planificaciones del día dejarán de ocupar el laboratorio y quedarán pendientes de reprogramar.'
                             : 'El día dejará de admitir nuevas planificaciones.',
                         type: 'warning', showCancelButton: true, confirmButtonText: 'Sí, suspender', cancelButtonText: 'Cancelar'
                     }).then(function (result) { if (result && (result.isConfirmed === true || result.value === true)) send(); });
+                    };
+                    Motivo.check(reasonEl ? reasonEl.value : '', ask, reasonEl);
                 });
             });
 

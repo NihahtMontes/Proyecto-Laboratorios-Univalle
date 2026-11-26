@@ -60,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             [Required(ErrorMessage = "El documento de identidad es obligatorio")]
             [StringLength(10)]
-            [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
+            [RegularExpression(BolivianIdentity.CiPattern, ErrorMessage = BolivianIdentity.CiError)]
             [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
@@ -80,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public DateTime? HireDate { get; set; }
 
             [Required(ErrorMessage = "El teléfono es obligatorio")]
-            [Phone(ErrorMessage = "Formato de teléfono inválido")]
+            [RegularExpression(BolivianIdentity.PhonePattern, ErrorMessage = BolivianIdentity.UserPhoneError)]
             [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
 
@@ -91,14 +91,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             [Display(Name = "Foto de Perfil")]
             public IFormFile? ProfilePictureUpload { get; set; }
+
+            /// <summary>Persona docente del catálogo (obligatoria para el rol Docente).</summary>
+            [Display(Name = "Docente del catálogo")]
+            public int? PersonId { get; set; }
+
+            /// <summary>Exigir que el usuario cambie la contraseña en su primer ingreso.</summary>
+            [Display(Name = "Pedir cambio de contraseña en el primer ingreso")]
+            public bool MustChangePassword { get; set; } = true;
         }
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync(UserRole? role = null, int? personId = null)
         {
-            LoadRoles();
+            if (role.HasValue && Enum.IsDefined(role.Value)) Input.Role = role.Value;
+            Input.PersonId = personId;
+            await LoadRolesAsync();
             return Page();
         }
 
@@ -124,9 +134,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 ModelState.AddModelError("Input.ProfilePictureUpload", imageValidationError);
             }
 
+            if (await TeacherLink.ValidateAsync(_context, Input.Role, Input.PersonId, null) is string teacherError)
+            {
+                ModelState.AddModelError("Input.PersonId", teacherError);
+            }
+
             if (!ModelState.IsValid)
             {
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -157,7 +172,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             if (!ModelState.IsValid)
             {
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -173,9 +188,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 Position = Input.Position?.Clean(),
                 Department = Input.Department?.Clean(),
                 HireDate = Input.HireDate ?? DateTime.UtcNow,
-                PhoneNumber = Input.PhoneNumber?.Trim(),
+                PhoneNumber = BolivianIdentity.NormalizePhone(Input.PhoneNumber),
                 Status = GeneralStatus.Activo,
                 EmailConfirmed = true,
+                PersonId = Input.Role == UserRole.Docente ? Input.PersonId : null,
+                MustChangePassword = Input.MustChangePassword,
                 CreatedDate = DateTime.UtcNow
             };
 
@@ -205,7 +222,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                     AddIdentityErrors(createResult);
                     await transaction.RollbackAsync();
                     SafeImageUpload.DeleteIfExists(uploadedFilePath);
-                    LoadRoles();
+                    await LoadRolesAsync();
                     return Page();
                 }
 
@@ -215,7 +232,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                     AddIdentityErrors(roleResult);
                     await transaction.RollbackAsync();
                     SafeImageUpload.DeleteIfExists(uploadedFilePath);
-                    LoadRoles();
+                    await LoadRolesAsync();
                     return Page();
                 }
 
@@ -227,7 +244,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 _logger.LogError(ex, "No se pudo crear la cuenta {UserName}.", normalizedUserName);
                 ModelState.AddModelError(string.Empty,
                     "No se pudo crear la cuenta. Revise los datos e intente nuevamente.");
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -243,8 +260,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             }
         }
 
-        private void LoadRoles()
+        public List<TeacherLink.TeacherOption> TeacherOptions { get; private set; } = [];
+
+        private async Task LoadRolesAsync()
         {
+            TeacherOptions = await TeacherLink.OptionsAsync(_context, null);
+            ViewData["TeacherOptions"] = TeacherLink.ToSelectList(TeacherOptions, Input.PersonId);
             var roles = EnumHelper.ToSelectList<UserRole>();
             if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
             {

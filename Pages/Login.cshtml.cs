@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace Proyecto_Laboratorios_Univalle.Pages
 {
@@ -15,10 +16,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
 
-        public LoginModel(SignInManager<User> signInManager, UserManager<User> userManager)
+        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _db;
+
+        public LoginModel(SignInManager<User> signInManager, UserManager<User> userManager, Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext db)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+            _db = db;
         }
 
         [BindProperty]
@@ -68,6 +72,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 if (user == null || user.Status != GeneralStatus.Activo)
                 {
+                    // Estudiante con registro propio: con la contraseña correcta se le dice en qué quedó su cuenta.
+                    if (user?.Role == UserRole.Estudiante && await _userManager.CheckPasswordAsync(user, Input.Password)
+                        && await _db.StudentProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == user.Id) is { } profile)
+                    {
+                        ModelState.AddModelError(string.Empty, profile.AccountStatus switch
+                        {
+                            StudentAccountStatus.Pending => "Tu cuenta de estudiante está pendiente de aprobación. Te avisaremos cuando un administrador la revise.",
+                            StudentAccountStatus.Rejected => $"Tu solicitud de cuenta fue rechazada{(string.IsNullOrWhiteSpace(profile.ReviewNote) ? "." : $": {profile.ReviewNote}")}",
+                            _ => "Tu cuenta de estudiante fue dada de baja. Consulta con la administración de laboratorios."
+                        });
+                        return Page();
+                    }
                     ModelState.AddModelError(string.Empty, "Intento de inicio de sesión no válido.");
                     return Page();
                 }

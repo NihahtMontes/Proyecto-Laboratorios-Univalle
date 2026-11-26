@@ -5,6 +5,8 @@
     ViewData["Title"] = "Laboratorios";
     ViewData["Section"] = "Configuración";
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter.HasValue;
+    var isFacultiesTab = Model.IsFacultiesTab;
+    var isCareersTab = Model.IsCareersTab;
 }
 <div class="row">
     <div class="col-12">
@@ -12,17 +14,17 @@
             <!-- 🧪 Navigation Tabs -->
             <ul class="nav nav-tabs customtab px-4 pt-3 border-0" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active font-weight-bold" data-toggle="tab" href="#laboratories" role="tab">
+                    <a class="nav-link @(!isFacultiesTab && !isCareersTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#laboratories" role="tab">
                         <i class="fas fa-flask mr-2"></i> Centros de Laboratorio
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#faculties" role="tab">
+                    <a class="nav-link @(isFacultiesTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#faculties" role="tab">
                         <i class="fas fa-university mr-2"></i> Unidades Académicas
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#careers" role="tab">
+                    <a class="nav-link @(isCareersTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#careers" role="tab">
                         <i class="fas fa-graduation-cap mr-2"></i> Carreras / Programas
                     </a>
                 </li>
@@ -32,7 +34,7 @@
                 <!-- ============================================================== -->
                 <!-- TAB 1: LABORATORIES -->
                 <!-- ============================================================== -->
-                <div class="tab-pane active" id="laboratories" role="tabpanel">
+                <div class="tab-pane @(!isFacultiesTab && !isCareersTab ? "active" : "")" id="laboratories" role="tabpanel">
                     <div class="card-body">
                         <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                             <div>
@@ -159,38 +161,17 @@
                             </table>
                         </div>
 
-                        @if (Model.Laboratories!.TotalPages > 1)
-                        {
-                            <nav aria-label="Paginación Laboratorios">
-                                <ul class="pagination justify-content-center">
-                                    @if (Model.Laboratories.HasPreviousPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Laboratories.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                        </li>
-                                    }
-                                    @for (var i = 1; i <= Model.Laboratories.TotalPages; i++)
-                                    {
-                                        <li class="page-item @(i == Model.Laboratories.PageIndex ? "active" : "")">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                        </li>
-                                    }
-                                    @if (Model.Laboratories.HasNextPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Laboratories.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                        </li>
-                                    }
-                                </ul>
-                            </nav>
+                        @{
+                            var labPager = PagerModel.From(Model.Laboratories, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString(), ["tab"] = "laboratories" }, fragment: "laboratories", itemLabel: "laboratorios");
                         }
+                        <partial name="_Pager" model="labPager" />
                     </div>
                 </div>
 
                 <!-- ============================================================== -->
                 <!-- TAB 2: FACULTIES -->
                 <!-- ============================================================== -->
-                <div class="tab-pane" id="faculties" role="tabpanel">
+                <div class="tab-pane @(isFacultiesTab ? "active" : "")" id="faculties" role="tabpanel">
                     <div class="card-body">
                         <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                             <div>
@@ -269,38 +250,17 @@
                             </table>
                         </div>
 
-                        @if (Model.Faculties!.TotalPages > 1)
-                        {
-                            <nav aria-label="Paginación Facultades">
-                                <ul class="pagination justify-content-center">
-                                    @if (Model.Faculties.HasPreviousPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Faculties.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                        </li>
-                                    }
-                                    @for (var i = 1; i <= Model.Faculties.TotalPages; i++)
-                                    {
-                                        <li class="page-item @(i == Model.Faculties.PageIndex ? "active" : "")">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                        </li>
-                                    }
-                                    @if (Model.Faculties.HasNextPage)
-                                    {
-                                        <li class="page-item">
-                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Faculties.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                        </li>
-                                    }
-                                </ul>
-                            </nav>
+                        @{
+                            var facPager = PagerModel.From(Model.Faculties, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString(), ["tab"] = "faculties" }, pageParam: "facultiesPageIndex", fragment: "faculties", itemLabel: "facultades");
                         }
+                        <partial name="_Pager" model="facPager" />
                     </div>
                 </div>
 
                 <!-- ============================================================== -->
                 <!-- TAB 3: CAREERS -->
                 <!-- ============================================================== -->
-                <div class="tab-pane" id="careers" role="tabpanel">
+                <div class="tab-pane @(isCareersTab ? "active" : "")" id="careers" role="tabpanel">
                     <div class="card-body">
                         <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                             <div>
@@ -384,31 +344,10 @@
                         </div>
                     </div>
 
-                    @if (Model.Careers!.TotalPages > 1)
-                    {
-                        <nav aria-label="Paginación Carreras">
-                            <ul class="pagination justify-content-center">
-                                @if (Model.Careers.HasPreviousPage)
-                                {
-                                    <li class="page-item">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Careers.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
-                                    </li>
-                                }
-                                @for (var i = 1; i <= Model.Careers.TotalPages; i++)
-                                {
-                                    <li class="page-item @(i == Model.Careers.PageIndex ? "active" : "")">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
-                                    </li>
-                                }
-                                @if (Model.Careers.HasNextPage)
-                                {
-                                    <li class="page-item">
-                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Careers.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
-                                    </li>
-                                }
-                            </ul>
-                        </nav>
+                    @{
+                        var carPager = PagerModel.From(Model.Careers, new Dictionary<string, string?> { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter?.ToString(), ["tab"] = "careers" }, pageParam: "careersPageIndex", fragment: "careers", itemLabel: "carreras");
                     }
+                    <partial name="_Pager" model="carPager" />
                 </div>
             </div>
         </div>

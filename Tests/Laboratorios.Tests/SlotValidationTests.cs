@@ -46,7 +46,7 @@ public class SlotValidationTests
     }
 
     [Fact]
-    public async Task ContiguousLaboratory_BlocksRequiringFreePeriod()
+    public async Task ContiguousLaboratory_IsAllowed_CleaningIsTenMinutes()
     {
         using var db = new TestDb();
         db.AddPlanning(OriginId, OriginDate, 1, 2);
@@ -54,9 +54,7 @@ public class SlotValidationTests
 
         var result = await Validate(db, TargetDate, 5);   // destino P5–P6: contiguo a P1–P4
 
-        var issue = Single(result, Codes.LabOccupied);
-        Assert.Equal(SlotSeverity.Block, issue.Severity);
-        Assert.Contains("Debe quedar un periodo libre entre prácticas del laboratorio LAB-A", issue.Message);
+        Assert.DoesNotContain(result.Issues, i => i.Code == Codes.LabOccupied);
     }
 
     [Fact]

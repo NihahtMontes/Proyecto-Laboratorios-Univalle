@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
@@ -19,8 +20,21 @@ public sealed partial class NotificationAlertService : INotificationAlertService
     private const int MaxItemsPerCategory = 20;
     private const string ConflictCachePrefix = "notif-conflicts-";
 
+    /// <summary>Estados de unidad que no piden programar el preventivo sino confirmar/corregir sus datos.</summary>
+    private static readonly HashSet<EquipmentStatus> DataReviewUnitStatuses =
+    [
+        EquipmentStatus.PorConfirmar,   // dato histórico importado sin confirmar
+        EquipmentStatus.Decommissioned, // de baja
+        EquipmentStatus.Dismantled,     // desmantelado
+        EquipmentStatus.Deleted         // eliminada (excluida por el filtro global; se consulta con IgnoreQueryFilters)
+    ];
+
     [GeneratedRegex(@"^/Maintenances/Details/(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex MaintenanceUrlRegex();
+
+    /// <summary>Avisos de revisión de solicitudes docentes: /LaboratoryOperations/Solicitudes/Revisar?id={n}.</summary>
+    [GeneratedRegex(@"^/LaboratoryOperations/Solicitudes/Revisar\?id=(\d+)", RegexOptions.IgnoreCase)]
+    private static partial Regex RequestReviewUrlRegex();
 
     private readonly ApplicationDbContext _context;
     private readonly IArticleAvailabilityService _availability;
@@ -186,6 +200,17 @@ public sealed partial class NotificationAlertService : INotificationAlertService
         }
         foreach (var category in categories)
         {
+            if (category.Items.Select(i => i.Group).Distinct().Count() > 1)
+            {
+                // Categoría mixta (p. ej. preventivo: unidades normales + "revisar datos"): sus ítems no están
+                // truncados, así que el total se reparte contando cada ítem en su propio grupo.
+                foreach (var item in category.Items)
+                {
+                    groupCounts[item.Group] += 1;
+                }
+                continue;
+            }
+
             var group = category.Items.Count > 0 ? category.Items[0].Group : NotificationGroups.Other;
             groupCounts[group] += Math.Max(category.Total, 0);
         }
@@ -249,23 +274,34 @@ public sealed partial class NotificationAlertService : INotificationAlertService
                 (n.IconClass != null && n.IconClass.ToLower().Contains(term)));
         }
 
-        // ---------- Auto-resolución: mantenimientos inexistentes o cerrados retiran su aviso ----------
+        // ---------- Auto-resolución ----------
+        // Mantenimientos inexistentes o cerrados retiran su aviso; las solicitudes docentes cuya planificación
+        // no existe, está borrada o ya no está en "Solicitada" también (limpia el backlog histórico sin scripts).
         var unreadRaw = await persistedQuery
             .Select(n => new { n.Id, n.ActionUrl })
             .ToListAsync(cancellationToken);
 
         var maintenanceIdByNotification = new Dictionary<int, int>();
+        var requestIdByNotification = new Dictionary<int, int>();
         foreach (var row in unreadRaw)
         {
             if (row.ActionUrl == null) continue;
-            var match = MaintenanceUrlRegex().Match(row.ActionUrl);
-            if (match.Success && int.TryParse(match.Groups[1].Value, out var maintenanceId))
+            var maintenanceMatch = MaintenanceUrlRegex().Match(row.ActionUrl);
+            if (maintenanceMatch.Success && int.TryParse(maintenanceMatch.Groups[1].Value, out var maintenanceId))
             {
                 maintenanceIdByNotification[row.Id] = maintenanceId;
+                continue;
+            }
+            var requestMatch = RequestReviewUrlRegex().Match(row.ActionUrl);
+            if (requestMatch.Success && int.TryParse(requestMatch.Groups[1].Value, out var planningId))
+            {
+                requestIdByNotification[row.Id] = planningId;
             }
         }
 
-        var excludedIds = new HashSet<int>();
+        var staleIds = new HashSet<int>();
+
+        // (a) Mantenimientos: inexistentes, completados o cancelados.
         if (maintenanceIdByNotification.Count > 0)
         {
             var maintenanceIds = maintenanceIdByNotification.Values.Distinct().ToList();
@@ -280,27 +316,51 @@ public sealed partial class NotificationAlertService : INotificationAlertService
                 .Where(id => !statusById.TryGetValue(id, out var status)
                     || status is MaintenanceStatus.Completed or MaintenanceStatus.Cancelled)
                 .ToHashSet();
-            if (deadMaintenanceIds.Count > 0)
+            foreach (var (notificationId, maintenanceId) in maintenanceIdByNotification)
             {
-                var staleIds = maintenanceIdByNotification
-                    .Where(kv => deadMaintenanceIds.Contains(kv.Value))
-                    .Select(kv => kv.Key)
-                    .ToList();
-                var staleNotifications = await _context.Notifications
-                    .AsTracking()
-                    .Where(n => staleIds.Contains(n.Id))
-                    .ToListAsync(cancellationToken);
-                foreach (var notification in staleNotifications)
-                {
-                    notification.IsRead = true;
-                }
+                if (deadMaintenanceIds.Contains(maintenanceId)) staleIds.Add(notificationId);
+            }
+        }
 
-                if (staleNotifications.Count > 0)
-                {
-                    await _context.SaveChangesAsync(cancellationToken);
-                }
+        // (b) Solicitudes docentes: planificación inexistente, borrada (filtro global IsDeleted) o ya resuelta.
+        if (requestIdByNotification.Count > 0)
+        {
+            var planningIds = requestIdByNotification.Values.Distinct().ToList();
+            // IgnoreQueryFilters: las borradas lógicamente también deben resolver su aviso.
+            var plannings = await _context.Plannings
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(p => planningIds.Contains(p.Id))
+                .Select(p => new { p.Id, p.IsDeleted, p.Status })
+                .ToListAsync(cancellationToken);
+            var planningById = plannings.ToDictionary(x => x.Id);
 
-                excludedIds = staleIds.ToHashSet();
+            foreach (var (notificationId, planningId) in requestIdByNotification)
+            {
+                if (!planningById.TryGetValue(planningId, out var plan)
+                    || plan.IsDeleted
+                    || plan.Status != PlanningStatus.Requested)
+                {
+                    staleIds.Add(notificationId);
+                }
+            }
+        }
+
+        var excludedIds = staleIds;
+        if (staleIds.Count > 0)
+        {
+            var staleNotifications = await _context.Notifications
+                .AsTracking()
+                .Where(n => staleIds.Contains(n.Id))
+                .ToListAsync(cancellationToken);
+            foreach (var notification in staleNotifications)
+            {
+                notification.IsRead = true;
+            }
+
+            if (staleNotifications.Count > 0)
+            {
+                await _context.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -553,12 +613,16 @@ public sealed partial class NotificationAlertService : INotificationAlertService
         MaintenanceRow m, DateTime today, string typeQuery, string title, string group, string urgency, string icon)
     {
         var date = m.ScheduledDate.Date;
+        // "Resolver" lleva a donde se actúa: vencidos y de hoy se editan; los próximos solo se consultan.
+        var url = group == NotificationGroups.Upcoming
+            ? $"/Maintenances/Details/{m.Id}?ManagementId={m.ManagementId}{typeQuery}"
+            : $"/Maintenances/Edit?id={m.Id}&ManagementId={m.ManagementId}{typeQuery}";
         return new NotificationItem
         {
             Id = -1_000_000 - m.Id,
             Title = title,
             Message = $"Unidad {m.InventoryNumber ?? "S/N"} · {m.EquipmentName}: programado para el {date:dd/MM/yyyy}.",
-            Url = $"/Maintenances/Details/{m.Id}?ManagementId={m.ManagementId}{typeQuery}",
+            Url = url,
             Icon = icon,
             SortDate = date,
             Time = RelativeDayLabel(today, date),
@@ -614,6 +678,15 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             .GroupBy(m => m.EquipmentUnitId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        // Estado real de cada unidad sin el filtro global: las eliminadas también se avisan (datos por confirmar).
+        var unitById = (await _context.EquipmentUnits
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(u => unitIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.CurrentStatus, u.InventoryNumber, EquipmentName = u.Equipment != null ? u.Equipment.Name : null })
+                .ToListAsync(cancellationToken))
+            .ToDictionary(u => u.Id);
+
         var items = new List<NotificationItem>();
         foreach (var completedMaintenance in latestByUnit)
         {
@@ -629,6 +702,32 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             }
 
             var date = completedMaintenance.SuggestedDate.Date;
+            var unit = unitById.GetValueOrDefault(completedMaintenance.EquipmentUnitId);
+            var inventory = unit?.InventoryNumber ?? completedMaintenance.InventoryNumber ?? "S/N";
+            var equipmentName = unit?.EquipmentName ?? completedMaintenance.EquipmentName;
+
+            // Unidad con datos por confirmar (importada) o de baja/eliminada: no es una alarma de mantenimiento,
+            // pide confirmar/corregir los datos de la unidad en su ficha. No cuenta en CriticalCount (secondary).
+            if (unit != null && DataReviewUnitStatuses.Contains(unit.CurrentStatus))
+            {
+                items.Add(new NotificationItem
+                {
+                    Id = -2_000_000 - completedMaintenance.EquipmentUnitId,
+                    Title = $"Confirmar datos del equipo {inventory}",
+                    Message = $"Unidad {inventory} · {equipmentName}: estado «{EnumHelper.GetDisplayName(unit.CurrentStatus)}». " +
+                              $"Confirma o corrige sus datos; el historial sugiere mantenimiento para el {date:dd/MM/yyyy}.",
+                    Url = $"/EquipmentUnits/Edit?id={completedMaintenance.EquipmentUnitId}",
+                    Icon = "fas fa-clipboard-check text-secondary",
+                    SortDate = date,
+                    Time = RelativeDayLabel(today, date),
+                    SyntheticKey = $"prev-{completedMaintenance.EquipmentUnitId}",
+                    Group = NotificationGroups.DataReview,
+                    Urgency = NotificationUrgency.Secondary,
+                    Domain = NotificationDomains.Maintenance
+                });
+                continue;
+            }
+
             var (title, urgency) = date < today
                 ? ("Preventivo vencido según el historial del equipo", NotificationUrgency.Danger)
                 : date <= today.AddDays(7)
@@ -639,8 +738,9 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             {
                 Id = -2_000_000 - completedMaintenance.EquipmentUnitId,
                 Title = title,
-                Message = $"Unidad {completedMaintenance.InventoryNumber ?? "S/N"} · {completedMaintenance.EquipmentName}: próximo mantenimiento sugerido para el {date:dd/MM/yyyy}. Aún no está programado.",
-                Url = $"/Maintenances/Details/{completedMaintenance.Id}",
+                Message = $"Unidad {inventory} · {equipmentName}: próximo mantenimiento sugerido para el {date:dd/MM/yyyy}. Aún no está programado.",
+                // "Resolver" lleva al formulario donde se programa el preventivo de esa unidad.
+                Url = $"/Maintenances/Create?equipmentUnitId={completedMaintenance.EquipmentUnitId}",
                 Icon = "fas fa-calendar-check text-primary",
                 SortDate = date,
                 Time = RelativeDayLabel(today, date),
@@ -728,7 +828,8 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             Id = -3_000_000 - d.Id,
             Title = title,
             Message = $"Unidad {d.InventoryNumber ?? "S/N"}: devolución estimada el {date:dd/MM/yyyy}.",
-            Url = $"/Departures/Details?id={d.Id}&ManagementId={d.ManagementId}",
+            // "Resolver" lleva a la edición de la salida (registrar/corregir la devolución).
+            Url = $"/Departures/Edit?id={d.Id}&ManagementId={d.ManagementId}",
             Icon = icon,
             SortDate = date,
             Time = RelativeDayLabel(today, date),
@@ -930,6 +1031,32 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             SyntheticKey = "plan-returns",
             Group = NotificationGroups.Planning,
             Urgency = NotificationUrgency.Danger,
+            Domain = NotificationDomains.Planning
+        }, filterTerm);
+
+        // Material sin devolver: salidas abiertas cuya práctica terminó hace más de 2 horas (aún el mismo día).
+        // Mismo público que las alertas de cierre/L-3: quien ve la planificación ve el estado del material.
+        var unreturnedCutoff = DateTime.Now.AddHours(-2);
+        var openWithPractice = await _context.Departures
+            .AsNoTracking()
+            .Where(d => d.PlanningId != null && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue))
+            .Select(d => new { PlannedDate = (DateTime?)d.Planning!.ScheduledDate, PlannedEnd = d.Planning.EndTime })
+            .ToListAsync(cancellationToken);
+        var unreturnedCount = openWithPractice
+            .Where(d => d.PlannedDate!.Value.Date + (d.PlannedEnd ?? new TimeSpan(23, 59, 59)) < unreturnedCutoff)
+            .Count();
+        AddAggregate(results, unreturnedCount, new NotificationItem
+        {
+            Id = -6_000_005,
+            Title = "Material sin devolver",
+            Message = $"{unreturnedCount} salida(s) con material pendiente de prácticas que ya terminaron.",
+            Url = "/Cierre/Index",
+            Icon = "fas fa-box-open text-warning",
+            SortDate = today,
+            Time = "Hoy",
+            SyntheticKey = "plan-unreturned",
+            Group = NotificationGroups.Planning,
+            Urgency = NotificationUrgency.Warning,
             Domain = NotificationDomains.Planning
         }, filterTerm);
 

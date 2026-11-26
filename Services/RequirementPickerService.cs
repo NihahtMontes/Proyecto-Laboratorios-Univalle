@@ -303,6 +303,28 @@ public sealed class RequirementPickerService
         return (Math.Ceiling(q * s / f), $"Escalada: {q:0.##} × {s} estudiantes ÷ {f}.");
     }
 
+    /// <summary>Línea del kit de una práctica lista para escalar en lote (artículo, cantidad base y si es escalable).</summary>
+    public readonly record struct KitLine(int ArticleId, decimal? Quantity, bool IsScalable);
+
+    /// <summary>
+    /// Escala en lote las líneas del kit de una práctica y suma por artículo (la receta puede repetir un
+    /// artículo en varias líneas). Una línea sin cantidad cuenta 1 y la nota visible es la primera no nula.
+    /// Es la versión batch de <see cref="Scale"/>: el resultado por artículo es idéntico.
+    /// </summary>
+    public static Dictionary<int, (decimal Quantity, string? Note)> ScaleKit(IEnumerable<KitLine> lines, int? students, int? factor)
+    {
+        var totales = new Dictionary<int, (decimal Quantity, string? Note)>();
+        foreach (var line in lines)
+        {
+            var (cantidad, nota) = Scale(line.Quantity, line.IsScalable, students, factor);
+            if (totales.TryGetValue(line.ArticleId, out var previa))
+                totales[line.ArticleId] = (previa.Quantity + (cantidad ?? 1), previa.Note ?? nota);
+            else
+                totales[line.ArticleId] = (cantidad ?? 1, nota);
+        }
+        return totales;
+    }
+
     private static IEnumerable<string> Words(string? term) =>
         (term ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(w => w.Length > 0).Take(5);

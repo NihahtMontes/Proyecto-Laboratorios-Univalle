@@ -26,6 +26,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         public bool HasAdquisicion => AcquisitionRequestId.HasValue;
     }
 
+    /// <summary>Docente con solicitudes en la gestión (Id y nombre visible) para el filtro del reporte de cambios de material.</summary>
+    public sealed record MaterialTeacherOption(int Id, string Name);
+
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class IndexModel : PageModel
     {
@@ -62,9 +65,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         public List<EquipmentUnitReportStatus> EquipmentStatuses { get; set; } = new();
         public Laboratory? SelectedLaboratory { get; set; }
         public Management? SelectedManagement { get; set; }
+        /// <summary>Equipos del laboratorio en la gestión antes de aplicar filtros: permite distinguir
+        /// "laboratorio sin equipos" de "ningún equipo cumple el filtro" en el estado vacío.</summary>
+        public int TotalUnitsInLab { get; set; }
         public bool IsCorrective => SelectedManagement?.Type == ManagementType.Corrective;
         public string CurrentUserFullName { get; set; } = "";
         public string PrintDate { get; set; } = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+
+        /// <summary>Valores iniciales del rango del reporte de cambios de material (hora de Bolivia).</summary>
+        public DateTime MaterialFrom { get; private set; }
+        public DateTime MaterialTo { get; private set; }
+
+        /// <summary>Docentes con solicitudes en la gestión seleccionada (una consulta, solo si hay gestión).</summary>
+        public IReadOnlyList<MaterialTeacherOption> MaterialTeachers { get; private set; } = [];
 
         public async Task OnGetAsync()
         {
@@ -77,6 +90,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
                 ManagementId = SelectedManagement?.Id;
                 ViewData["ManagementId"] = SelectedManagement?.Id;
                 ViewData["ManagementType"] = SelectedManagement?.Type.ToString();
+
+                // Reporte de cambios de material: rango inicial (primer día del mes → hoy, hora de Bolivia)
+                // y docentes con solicitudes en la gestión, en UNA consulta.
+                if (SelectedManagement != null)
+                {
+                    var hoyBolivia = BoliviaTime.ToLocal(DateTime.UtcNow).Date;
+                    MaterialFrom = new DateTime(hoyBolivia.Year, hoyBolivia.Month, 1);
+                    MaterialTo = hoyBolivia;
+                    MaterialTeachers = await _context.Interns.AsNoTracking()
+                        .Where(i => _context.Plannings.Any(p => !p.IsDeleted && p.ManagementId == SelectedManagement.Id
+                            && p.TeacherPersonId == i.Id
+                            && p.Reviews.Any(r => r.Action == PlanningReviewAction.Submitted)))
+                        .OrderBy(i => i.Name)
+                        .Select(i => new MaterialTeacherOption(i.Id, i.Name))
+                        .ToListAsync();
+                }
 
                 if (_currentUser.UserId.HasValue)
                 {
@@ -121,6 +150,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
                     })
                     .ToList();
 
+                // Gestión correctiva: L-6 no aplica (el selector ni siquiera lo ofrece).
+                // Si la URL trae el filtro l6 de una sesión previa en preventivo, se ignora
+                // para no mostrar una lista vacía que parece un error.
+                if (IsCorrective && string.Equals(ReportFilter, "l6", StringComparison.OrdinalIgnoreCase))
+                {
+                    ReportFilter = "all";
+                }
+
+                TotalUnitsInLab = statuses.Count;
+
                 if (!string.IsNullOrWhiteSpace(SearchTerm))
                 {
                     var term = SearchTerm.Trim();
@@ -150,7 +189,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
             }
             catch (Exception ex)
             {
+                // El detalle técnico queda en el log; el usuario ve un mensaje accionable
+                // en lugar de una lista de equipos vacía sin explicación.
                 _logger.LogError(ex, "Error cargando el Centro de Reportes para la gestion {ManagementId} y lab {LabId}", ManagementId, SelectedLabId);
+                TempData.Error("No se pudo cargar la lista de equipos. Intente nuevamente.");
                 LaboratoriesList ??= new SelectList(new List<Laboratory>(), "Id", "Name");
             }
         }

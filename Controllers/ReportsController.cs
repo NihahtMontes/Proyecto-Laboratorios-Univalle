@@ -85,43 +85,26 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l3")]
-        public async Task<IActionResult> DownloadL3(int? departureId, int? unitId, int? managementId)
+        public async Task<IActionResult> DownloadL3(int? departureId)
         {
             try
             {
-                var resolvedDepartureId = departureId;
+                // Identificador exacto del flujo: no se adivina "la salida más reciente" del equipo.
+                if (!departureId.HasValue)
+                    return BadRequest("Debe indicar el departureId de la salida L-3 a descargar.");
 
-                if (!resolvedDepartureId.HasValue && unitId.HasValue)
-                {
-                    var departureQuery = _context.Departures
-                        .AsNoTracking()
-                        .Where(d => d.EquipmentUnitId == unitId.Value);
-
-                    if (managementId.HasValue)
-                    {
-                        departureQuery = departureQuery.Where(d => d.ManagementId == managementId.Value);
-                    }
-
-                    resolvedDepartureId = await departureQuery
-                        .OrderByDescending(d => d.CreatedDate)
-                        .Select(d => (int?)d.Id)
-                        .FirstOrDefaultAsync();
-                }
-
-                if (!resolvedDepartureId.HasValue)
-                    return NotFound("Este equipo no tiene salidas L-3 registradas en la gestión seleccionada.");
-                if (!await _context.Departures.AsNoTracking().AnyAsync(d => d.Id == resolvedDepartureId.Value))
+                if (!await _context.Departures.AsNoTracking().AnyAsync(d => d.Id == departureId.Value))
                     return NotFound("Salida L-3 no encontrada.");
 
-                var bytes = await _reportService.GenerateL3SalidaExcel(resolvedDepartureId.Value);
+                var bytes = await _reportService.GenerateL3SalidaExcel(departureId.Value);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Salida_L3_{resolvedDepartureId.Value}.xlsx");
+                    $"Salida_L3_{departureId.Value}.xlsx");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "No se pudo generar L-3. DepartureId={DepartureId}; UnitId={UnitId}; ManagementId={ManagementId}",
-                    departureId, unitId, managementId);
+                    "No se pudo generar L-3. DepartureId={DepartureId}",
+                    departureId);
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     "No se pudo generar el reporte L-3. Intente nuevamente o contacte al administrador.");
             }
@@ -177,12 +160,84 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
         }
 
-        [HttpGet("download/l7")]
-        public async Task<IActionResult> DownloadL7(int? requestId, int? unitId, int? managementId)
+        /// <summary>
+        /// Informe L-9 de reprogramaciones y reposiciones de la gestión académica. El rango opcional
+        /// (from/to) filtra por la fecha original de la práctica, no por la fecha de registro.
+        /// </summary>
+        [HttpGet("download/l9")]
+        public async Task<IActionResult> DownloadL9(int managementId, DateTime? from = null, DateTime? to = null)
         {
             try
             {
-                var requestQuery = _context.Requests
+                if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
+                    return BadRequest("El rango de fechas no es válido: la fecha inicial supera la final.");
+
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+
+                var bytes = await _reportService.GenerateL9ReprogramacionesExcel(managementId, from, to);
+                var rango = from.HasValue || to.HasValue
+                    ? $"_{from?.ToString("yyyyMMdd") ?? "inicio"}-{to?.ToString("yyyyMMdd") ?? "hoy"}"
+                    : string.Empty;
+                return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"Informe_L9_{management.Code}{rango}.xlsx");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo generar L-9. ManagementId={ManagementId}; From={From}; To={To}", managementId, from, to);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-9. Intente nuevamente o contacte al administrador.");
+            }
+        }
+
+        /// <summary>
+        /// Reporte de cambios de material del docente: compara cada solicitud enviada con el kit de la
+        /// práctica. El rango opcional (from/to) filtra por la fecha local de la primera solicitud enviada.
+        /// </summary>
+        [HttpGet("download/cambios-material")]
+        public async Task<IActionResult> DownloadMaterialChanges(int managementId, DateTime? from = null, DateTime? to = null, int? teacherPersonId = null)
+        {
+            try
+            {
+                if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
+                    return BadRequest("El rango de fechas no es válido: la fecha inicial supera la final.");
+
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+
+                var bytes = await _reportService.GenerateMaterialChangesExcel(managementId, from, to, teacherPersonId);
+                var rango = from.HasValue || to.HasValue
+                    ? $"_{from?.ToString("yyyyMMdd") ?? "inicio"}-{to?.ToString("yyyyMMdd") ?? "hoy"}"
+                    : string.Empty;
+                return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"Cambios_material_{management.Code}{rango}.xlsx");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo generar el reporte de cambios de material. ManagementId={ManagementId}; From={From}; To={To}; TeacherPersonId={TeacherPersonId}", managementId, from, to, teacherPersonId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte de cambios de material. Intente nuevamente o contacte al administrador.");
+            }
+        }
+
+        [HttpGet("download/l7")]
+        public async Task<IActionResult> DownloadL7(int? requestId)
+        {
+            try
+            {
+                // Identificador exacto del flujo: no se adivina "la solicitud más reciente" del equipo.
+                if (!requestId.HasValue)
+                    return BadRequest("Debe indicar el requestId de la solicitud L-7 a descargar.");
+
+                var request = await _context.Requests
                     .AsNoTracking()
                     .Include(r => r.Laboratory)
                     .Include(r => r.Equipment)
@@ -193,31 +248,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                     .Include(r => r.RequestedByPerson)
                     .Include(r => r.EquipmentUnit)
                         .ThenInclude(eu => eu!.Laboratory)
-                    .Where(r => r.Type == RequestType.Technical);
-
-                if (requestId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
-                }
-                else if (unitId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
-                    if (managementId.HasValue)
-                    {
-                        requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
-                    }
-                }
-                else
-                {
-                    return BadRequest("Debe indicar requestId o unitId para L-7.");
-                }
-
-                var request = await requestQuery
-                    .OrderByDescending(r => r.RequestDate ?? r.CreatedDate)
+                    .Where(r => r.Type == RequestType.Technical && r.Id == requestId.Value)
                     .FirstOrDefaultAsync();
 
                 if (request == null)
-                    return NotFound("Este equipo no tiene solicitudes L-7 registradas en la gestión seleccionada.");
+                    return NotFound("Solicitud L-7 no encontrada.");
 
                 var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -226,50 +261,34 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "No se pudo generar L-7. RequestId={RequestId}; UnitId={UnitId}; ManagementId={ManagementId}",
-                    requestId, unitId, managementId);
+                    "No se pudo generar L-7. RequestId={RequestId}",
+                    requestId);
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     "No se pudo generar el reporte L-7. Intente nuevamente o contacte al administrador.");
             }
         }
 
         [HttpGet("download/adquisicion")]
-        public async Task<IActionResult> DownloadAdquisicion(int? requestId, int? unitId, int? managementId)
+        public async Task<IActionResult> DownloadAdquisicion(int? requestId)
         {
             try
             {
-                var requestQuery = _context.Requests
+                // Identificador exacto del flujo: no se adivina "la solicitud más reciente" del equipo.
+                if (!requestId.HasValue)
+                    return BadRequest("Debe indicar el requestId de la solicitud de adquisición a descargar.");
+
+                var request = await _context.Requests
                     .AsNoTracking()
                     .Include(r => r.Laboratory)
                         .ThenInclude(l => l!.Faculty)
                     .Include(r => r.RequestedBy)
                     .Include(r => r.RequestedByPerson)
                     .Include(r => r.CostDetails)
-                    .Where(r => r.Type == RequestType.Purchasing);
-
-                if (requestId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
-                }
-                else if (unitId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
-                    if (managementId.HasValue)
-                    {
-                        requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
-                    }
-                }
-                else
-                {
-                    return BadRequest("Debe indicar requestId o unitId para L-12.");
-                }
-
-                var request = await requestQuery
-                    .OrderByDescending(r => r.RequestDate ?? r.CreatedDate)
+                    .Where(r => r.Type == RequestType.Purchasing && r.Id == requestId.Value)
                     .FirstOrDefaultAsync();
 
                 if (request == null)
-                    return NotFound("Este equipo no tiene solicitudes de adquisición en la gestión seleccionada.");
+                    return NotFound("Solicitud de adquisición no encontrada.");
 
                 var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -278,8 +297,8 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "No se pudo generar L-12. RequestId={RequestId}; UnitId={UnitId}; ManagementId={ManagementId}",
-                    requestId, unitId, managementId);
+                    "No se pudo generar L-12. RequestId={RequestId}",
+                    requestId);
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     "No se pudo generar el reporte L-12. Intente nuevamente o contacte al administrador.");
             }

@@ -179,40 +179,10 @@
                     </table>
                 </div>
 
-                @if (Model.Schedules!.TotalPages > 1)
-                {
-                    <nav aria-label="Paginación">
-                        <ul class="pagination justify-content-center">
-                            @if (Model.Schedules.HasPreviousPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@(Model.Schedules.PageIndex - 1)"
-                                       asp-route-searchTerm="@Model.SearchTerm"
-                                       asp-route-managementId="@Model.ManagementId"
-                                       asp-route-status="@Model.Status">Anterior</a>
-                                </li>
-                            }
-                            @for (var i = 1; i <= Model.Schedules.TotalPages; i++)
-                            {
-                                <li class="page-item @(i == Model.Schedules.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@i"
-                                       asp-route-searchTerm="@Model.SearchTerm"
-                                       asp-route-managementId="@Model.ManagementId"
-                                       asp-route-status="@Model.Status">@i</a>
-                                </li>
-                            }
-                            @if (Model.Schedules.HasNextPage)
-                            {
-                                <li class="page-item">
-                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@(Model.Schedules.PageIndex + 1)"
-                                       asp-route-searchTerm="@Model.SearchTerm"
-                                       asp-route-managementId="@Model.ManagementId"
-                                       asp-route-status="@Model.Status">Siguiente</a>
-                                </li>
-                            }
-                        </ul>
-                    </nav>
+                @{
+                    var pager = PagerModel.From(Model.Schedules!, new Dictionary<string, string?> { ["searchTerm"] = Model.SearchTerm, ["managementId"] = Model.ManagementId?.ToString(), ["status"] = Model.Status?.ToString() }, itemLabel: "prácticas planificadas");
                 }
+                <partial name="_Pager" model="pager" />
             </div>
         </div>
     </div>

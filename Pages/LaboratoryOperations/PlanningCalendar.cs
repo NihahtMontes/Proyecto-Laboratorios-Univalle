@@ -140,6 +140,9 @@ public static class PlanningStatusView
         PlanningStatus.Cancelled => "secondary",
         PlanningStatus.Rescheduled or PlanningStatus.Recovered => "light",
         PlanningStatus.PendingRecovery => "danger",
+        PlanningStatus.Requested => "primary",
+        PlanningStatus.Observed => "orange",
+        PlanningStatus.Rejected => "dark",
         _ => "warning"
     };
 
@@ -155,6 +158,7 @@ public static class PlanningStatusView
     {
         PlanningStatus.Planned when !hasRequirements => $"/LaboratoryOperations/Requerimientos?planId={id}",
         PlanningStatus.Planned => $"/LaboratoryOperations/Disponibilidad?planId={id}",
+        PlanningStatus.Requested or PlanningStatus.Observed or PlanningStatus.Rejected => $"/LaboratoryOperations/Solicitudes/Revisar?id={id}",
         _ => $"/LaboratoryOperations/L3?id={id}"
     };
 }

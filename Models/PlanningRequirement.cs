@@ -36,5 +36,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int ExpectedQuantity { get; set; } = 1;
         public int DeliveredQuantity { get; set; } = 0;
         public int ReturnedQuantity { get; set; } = 0;
+
+        /// <summary>Orígenes asignados por el revisor al aprobar (V13: SolicitudL3Asignaciones).</summary>
+        public ICollection<PlanningAssignment> Assignments { get; set; } = new List<PlanningAssignment>();
     }
 }

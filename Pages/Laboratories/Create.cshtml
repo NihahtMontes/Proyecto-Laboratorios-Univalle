@@ -40,6 +40,8 @@
                                         required data-validation-required-message="Debe seleccionar una facultad académica">
                                     <option value="">-- Seleccionar Facultad --</option>
                                 </select>
+                                @* D-03 (Práctica 3): jqBootstrapValidation escribe su mensaje en .help-block; sin este contenedor el campo quedaba en rojo sin explicación. *@
+                                <div class="help-block text-danger small font-weight-bold"></div>
                                 <span asp-validation-for="Input.FacultyId" class="text-danger small font-weight-bold"></span>
                             </div>
 
@@ -63,6 +65,7 @@
                                         </label>
                                         <input asp-for="Input.Name" class="form-control" placeholder="Ej: Laboratorio de Redes e Infraestructura" 
                                                required data-validation-required-message="El nombre es obligatorio" />
+                                        <div class="help-block text-danger small font-weight-bold"></div>
                                         <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>

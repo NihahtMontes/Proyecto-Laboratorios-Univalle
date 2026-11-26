@@ -21,8 +21,10 @@ from urllib.parse import quote
 import e2e_lib
 from http_forms import Client
 
-if e2e_lib.DB_NAME != "DB_Laboratorios_Univalle_QA_E2E":
-    sys.exit(f"SEGURIDAD: solo corre contra la copia de QA (E2E_DB={e2e_lib.DB_NAME!r}).")
+from http_forms import DISPOSABLE_COPIES
+
+if e2e_lib.DB_NAME not in DISPOSABLE_COPIES:
+    sys.exit(f"SEGURIDAD: solo corre contra una copia desechable (E2E_DB={e2e_lib.DB_NAME!r}).")
 
 PW = os.environ["E2E_PW"]
 c = Client(os.environ.get("E2E_USER", "qa_super"), PW)

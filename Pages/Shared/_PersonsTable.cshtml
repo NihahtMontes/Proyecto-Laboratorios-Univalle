@@ -14,12 +14,26 @@
         </thead>
         <tbody>
             @foreach (var item in Model) {
+                // Iniciales del nombre completo (primera letra del primer y último apellido/palabra).
+                var nameParts = (item.FullName ?? string.Empty).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var initials = nameParts.Length switch
+                {
+                    0 => "?",
+                    1 => nameParts[0].Substring(0, 1).ToUpper(),
+                    _ => (nameParts[0].Substring(0, 1) + nameParts[^1].Substring(0, 1)).ToUpper()
+                };
+                var personStatusBadge = item.Status switch
+                {
+                    GeneralStatus.Activo => "badge-success",
+                    GeneralStatus.Inactivo => "badge-secondary",
+                    _ => "badge-danger"
+                };
                 <tr>
                     <td>
                         <div class="d-flex align-items-center">
                             <div class="m-r-10">
                                 <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">
-                                    @(item.FullName?[0] ?? 'P')
+                                    @initials
                                 </span>
                             </div>
                             <div>
@@ -38,8 +52,8 @@
                         <div class="text-muted small">@(item.Email ?? "-")</div>
                     </td>
                     <td class="text-center">
-                        <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">
-                            @item.Status
+                        <span class="badge badge-pill @personStatusBadge px-3 py-1 font-weight-bold">
+                            @EnumHelper.GetDisplayName(item.Status)
                         </span>
                     </td>
                     <td class="text-center">

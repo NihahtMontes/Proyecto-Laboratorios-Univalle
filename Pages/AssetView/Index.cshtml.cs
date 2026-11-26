@@ -2,21 +2,134 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Services.Inicio;
+using Proyecto_Laboratorios_Univalle.Services.Notifications;
+using System.Globalization;
 using System.Text.Json;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 {
+    /// <summary>
+    /// Inicio de la aplicación para Supervisores, Administradores y SuperAdmin: un solo panel de
+    /// control con KPIs, bandeja de pendientes, prácticas de la semana, gráficos e inventario.
+    /// También responde en la ruta amiga «/Inicio» (AddPageRoute en Program.cs).
+    /// </summary>
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class IndexModel : PageModel
     {
-        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private const string IndicadoresCacheKey = "inicio:indicadores";
+        private static readonly TimeSpan IndicadoresCacheDuration = TimeSpan.FromMinutes(5);
 
-        public IndexModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        private static readonly JsonSerializerOptions PanelJsonOptions = new(JsonSerializerDefaults.Web);
+
+        private readonly ApplicationDbContext _context;
+        private readonly IManagementContextService _managementContext;
+        private readonly SidebarCountsService _sidebarCounts;
+        private readonly ICurrentUserService _currentUser;
+        private readonly IMemoryCache _cache;
+
+        // Opcionales para no romper el constructor que usan las pruebas existentes (InicioPageTests):
+        // DI siempre los inyecta porque están registrados en Program.cs.
+        private readonly IInicioPanelService? _inicioPanel;
+        private readonly INotificationAlertService? _notificationAlerts;
+        private readonly ILogger<IndexModel>? _logger;
+
+        public IndexModel(
+            ApplicationDbContext context,
+            IManagementContextService managementContext,
+            SidebarCountsService sidebarCounts,
+            ICurrentUserService currentUser,
+            IMemoryCache cache,
+            IInicioPanelService? inicioPanel = null,
+            INotificationAlertService? notificationAlerts = null,
+            ILogger<IndexModel>? logger = null)
         {
             _context = context;
+            _managementContext = managementContext;
+            _sidebarCounts = sidebarCounts;
+            _currentUser = currentUser;
+            _cache = cache;
+            _inicioPanel = inicioPanel;
+            _notificationAlerts = notificationAlerts;
+            _logger = logger;
         }
+
+        // ══════════════════════════ Cabecera y gestiones ══════════════════════════
+
+        /// <summary>Saludo según la hora de Bolivia («Buenos días/tardes/noches»).</summary>
+        public string Greeting { get; private set; } = "Buenos días";
+
+        /// <summary>Nombre visible del usuario (mismo origen que UserProfileViewComponent).</summary>
+        public string UserDisplayName { get; private set; } = string.Empty;
+
+        /// <summary>Fecha de hoy en Bolivia, en texto largo es-BO.</summary>
+        public string TodayText { get; private set; } = string.Empty;
+
+        /// <summary>Administrador o SuperAdmin: mismo criterio de roles que el menú lateral.</summary>
+        public bool IsAdminMenu { get; private set; }
+
+        /// <summary>Solicitudes de prácticas de docentes pendientes de revisión.</summary>
+        public int PendingTeacherRequests { get; private set; }
+
+        /// <summary>Gestión correctiva activa: existe, código y solicitudes L7 pendientes de atención.</summary>
+        public bool HasCorrective { get; private set; }
+        public string? CorrectiveCode { get; private set; }
+        public int CorrectivePendingRequests { get; private set; }
+
+        /// <summary>Gestión preventiva activa (solo Administrador/SuperAdmin): código y avance de planes.</summary>
+        public bool HasPreventive { get; private set; }
+        public string? PreventiveCode { get; private set; }
+        public int PreventivePlannedUnits { get; private set; }
+        public int PreventiveCompletedUnits { get; private set; }
+
+        // ══════════════════════════ Panel: semana y bandeja ══════════════════════════
+
+        /// <summary>Prácticas de la semana (lunes a sábado) agrupadas por día.</summary>
+        public InicioWeekPanel? WeekPanel { get; private set; }
+
+        /// <summary>Serie de 8 semanas (5 anteriores, la actual y 2 siguientes) para las barras del Resumen.</summary>
+        public IReadOnlyList<InicioWeekPoint> WeeklySeries { get; private set; } = [];
+
+        /// <summary>Datos del cliente serializados con System.Text.Json (script application/json #ip-data).</summary>
+        public string PanelDataJson { get; private set; } = "{}";
+
+        /// <summary>Avisos de la bandeja (scope Dashboard), truncados a 60.</summary>
+        public IReadOnlyList<NotificationItem> FeedItems { get; private set; } = [];
+
+        /// <summary>Total por grupo de la bandeja (sin truncar).</summary>
+        public IReadOnlyDictionary<string, int> FeedGroupCounts { get; private set; } = new Dictionary<string, int>();
+
+        /// <summary>Total accionable de la bandeja: todos los grupos salvo «revisar-datos».</summary>
+        public int FeedActionableCount { get; private set; }
+
+        /// <summary>True si la bandeja no pudo calcularse: se muestra vacía con aviso, sin romper la página.</summary>
+        public bool FeedUnavailable { get; private set; }
+
+        /// <summary>
+        /// Grupos de la bandeja en el orden visual, con etiqueta, icono y tono.
+        /// «revisar-datos» se agrega a los feeds desde otro frente: aquí se declara como texto
+        /// para que la bandeja lo muestre (plegado) apenas empiece a llegar.
+        /// </summary>
+        public static readonly (string Key, string Label, string Icon, string Tone)[] FeedGroupOrder =
+        [
+            ("vencidos", "Vencidos", "fas fa-exclamation-triangle", "danger"),
+            ("hoy", "Para hoy", "mdi mdi-calendar-today", "warning"),
+            ("proximos", "Próximos", "mdi mdi-wrench", "info"),
+            ("preventivo", "Preventivo", "fas fa-calendar-check", "primary"),
+            ("planificacion", "Planificación", "fas fa-flask", "info"),
+            ("prestamos", "Préstamos", "fas fa-exchange-alt", "warning"),
+            ("adquisiciones", "Adquisiciones", "fas fa-shopping-cart", "success"),
+            ("otros", "Otros", "fas fa-bell", "secondary"),
+            ("revisar-datos", "Revisar datos", "fas fa-database", "secondary")
+        ];
+
+        // ══════════════════════════ Inventario ══════════════════════════
 
         public int TotalUnitsCount { get; set; }
         public int EquipmentUnitsCount { get; set; }
@@ -32,32 +145,201 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int ClassificationQualityPercent { get; set; }
         public int StockRecordsCount { get; set; }
         public int StockLaboratoriesCount { get; set; }
+        /// <summary>Artículos del catálogo (utensilios, vajilla, cristalería, etc.); no son unidades patrimoniales.</summary>
+        public int ArticlesCount { get; set; }
+        public int ArticleCategoriesCount { get; set; }
 
-        public string CategoryDataJson { get; set; } = "[]";
-        public string EquipmentSubClassJson { get; set; } = "{}";
-        public string UtensilSubClassJson { get; set; } = "{}";
-        public string OtherSubClassJson { get; set; } = "{}";
-        public string StatusDataJson { get; set; } = "[]";
-        public string ConditionDataJson { get; set; } = "{}";
-        public string EnvironmentDataJson { get; set; } = "{}";
+        // ══════════════════════════ Pestañas (activeTab) ══════════════════════════
 
         [BindProperty(SupportsGet = true)]
         public string? ActiveTab { get; set; }
 
-        public bool ShowInventoryTab => string.Equals(ActiveTab, "Inventario", StringComparison.OrdinalIgnoreCase);
+        private const string PanelResumen = "resumen";
+
+        /// <summary>Panel activo ya normalizado: resumen|semana|bandeja|graficos|inventario.</summary>
+        public string ActivePanel { get; private set; } = PanelResumen;
+
+        /// <summary>
+        /// Normaliza <see cref="ActiveTab"/> sin distinguir mayúsculas: Inventario → inventario,
+        /// Indicadores → graficos (alias histórico) y cualquier valor desconocido → resumen.
+        /// </summary>
+        private void NormalizeActivePanel()
+        {
+            ActivePanel = (ActiveTab ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                "semana" => "semana",
+                "bandeja" => "bandeja",
+                "graficos" or "indicadores" => "graficos",
+                "inventario" => "inventario",
+                _ => PanelResumen
+            };
+        }
 
         public async Task OnGetAsync()
+        {
+            NormalizeActivePanel();
+            LoadGreeting();
+            await LoadUserDisplayNameAsync();
+
+            IsAdminMenu = User.IsInRole(AuthorizationHelper.RoleAdministrator)
+                || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+
+            // Contadores vivos pero livianos (CountAsync + AsNoTracking).
+            var (pendingRequests, _) = await _sidebarCounts.GetAsync(User);
+            PendingTeacherRequests = pendingRequests;
+
+            var corrective = await _managementContext.GetCurrentManagementAsync(ManagementType.Corrective);
+            HasCorrective = corrective != null;
+            CorrectiveCode = corrective?.Code;
+            if (corrective != null)
+            {
+                CorrectivePendingRequests = await _context.Requests
+                    .AsNoTracking()
+                    .CountAsync(r => r.ManagementId == corrective.Id
+                        && (r.Status == RequestStatus.Pending
+                            || r.Status == RequestStatus.Scheduled
+                            || r.Status == RequestStatus.InProgress));
+            }
+
+            if (IsAdminMenu)
+            {
+                var preventive = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
+                HasPreventive = preventive != null;
+                PreventiveCode = preventive?.Code;
+                if (preventive != null)
+                {
+                    var plans = _context.ManagementPlans
+                        .AsNoTracking()
+                        .Where(p => p.ManagementId == preventive.Id);
+                    PreventivePlannedUnits = await plans.CountAsync();
+                    PreventiveCompletedUnits = await plans.CountAsync(p =>
+                        p.PlanStatus == ManagementPlanStatus.Completed);
+                }
+            }
+
+            await LoadInventoryCountsAsync();
+
+            var today = BoliviaTime.ToLocal(DateTime.UtcNow).Date;
+            await LoadWeekPanelAsync(today);
+            await LoadFeedAsync(today);
+        }
+
+        private void LoadGreeting()
+        {
+            var boliviaNow = BoliviaTime.ToLocal(DateTime.UtcNow);
+            var hour = boliviaNow.Hour;
+            Greeting = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
+            TodayText = boliviaNow.Date.ToString("D", new CultureInfo("es-BO"));
+            UserDisplayName = User.Identity?.Name ?? string.Empty;
+        }
+
+        /// <summary>Nombre del usuario como lo muestra el perfil (Users.FullName, [NotMapped]).</summary>
+        private async Task LoadUserDisplayNameAsync()
+        {
+            if (_currentUser.UserId is int userId)
+            {
+                var user = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+                if (user != null)
+                {
+                    var fullName = user.FullName?.Trim();
+                    if (!string.IsNullOrEmpty(fullName))
+                    {
+                        UserDisplayName = fullName;
+                        return;
+                    }
+                    if (!string.IsNullOrEmpty(user.UserName))
+                    {
+                        UserDisplayName = user.UserName;
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Semana de prácticas + serie de 8 semanas para el gráfico (nada de esto rompe la página).</summary>
+        private async Task LoadWeekPanelAsync(DateTime today)
+        {
+            if (_inicioPanel is null)
+            {
+                return;
+            }
+
+            try
+            {
+                WeekPanel = await _inicioPanel.GetWeekAsync(today);
+                var series = await _inicioPanel.GetWeeklySeriesAsync(today);
+                WeeklySeries = series;
+                PanelDataJson = JsonSerializer.Serialize(new
+                {
+                    indicadoresUrl = Url?.Page("/AssetView/Index", "Indicadores") ?? "/AssetView/Index?handler=Indicadores",
+                    weekly = series.Select(p => new { p.Label, p.Count, p.IsCurrent })
+                }, PanelJsonOptions);
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException || ex.InnerException is System.Data.Common.DbException
+                || ex is InvalidOperationException || ex is TimeoutException)
+            {
+                _logger?.LogWarning(ex, "No se pudo cargar el panel de la semana del Inicio.");
+                WeekPanel = null;
+                WeeklySeries = [];
+                PanelDataJson = "{}";
+            }
+        }
+
+        /// <summary>Bandeja de pendientes: si falla, se registra y se muestra vacía con aviso.</summary>
+        private async Task LoadFeedAsync(DateTime today)
+        {
+            if (_notificationAlerts is null || _currentUser.UserId is not int userId)
+            {
+                return; // Sin usuario (o sin servicio en pruebas): bandeja vacía.
+            }
+
+            try
+            {
+                var feed = await _notificationAlerts.GetFeedAsync(new NotificationQuery(
+                    userId,
+                    today,
+                    NotificationScopes.Dashboard,
+                    null,
+                    null,
+                    NotificationAudience.FromPrincipal(User),
+                    Take: 60));
+                FeedItems = feed.Items;
+                FeedGroupCounts = feed.GroupCounts;
+                FeedActionableCount = feed.GroupCounts
+                    .Where(kv => !string.Equals(kv.Key, "revisar-datos", StringComparison.Ordinal))
+                    .Sum(kv => kv.Value);
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException || ex.InnerException is System.Data.Common.DbException
+                || ex is InvalidOperationException || ex is TimeoutException)
+            {
+                _logger?.LogWarning(ex, "No se pudo cargar la bandeja de pendientes del Inicio.");
+                FeedItems = [];
+                FeedGroupCounts = new Dictionary<string, int>();
+                FeedActionableCount = 0;
+                FeedUnavailable = true;
+            }
+        }
+
+        /// <summary>Enlace «Resolver» del aviso: solo rutas locales del sitio (mismo criterio que el layout).</summary>
+        public static string? SafeFeedUrl(string? url)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                return null;
+            }
+            return url.StartsWith("/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal)
+                ? url
+                : null;
+        }
+
+        private async Task LoadInventoryCountsAsync()
         {
             var validEquipmentClassifications = EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
             var validUtensilTypes = EquipmentClassificationRules.UtensilSubclassifications.ToArray();
 
-            var activeUnits = _context.EquipmentUnits
-                .AsNoTracking()
-                .Include(u => u.Equipment)
-                .Include(u => u.Laboratory)
-                .Where(u => u.Equipment != null
-                    && u.CurrentStatus != EquipmentStatus.Deleted
-                    && u.Equipment!.Status != GeneralStatus.Eliminado);
+            var activeUnits = ActiveUnitsQuery();
 
             TotalUnitsCount = await activeUnits.CountAsync();
             EquipmentUnitsCount = await activeUnits.CountAsync(u =>
@@ -93,45 +375,177 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .Select(s => s.LaboratoryId)
                 .Distinct()
                 .CountAsync();
+            ArticlesCount = await _context.Articles
+                .AsNoTracking()
+                .CountAsync(a => a.Status != GeneralStatus.Eliminado);
+            ArticleCategoriesCount = await _context.Articles
+                .AsNoTracking()
+                .Where(a => a.Status != GeneralStatus.Eliminado && a.ArticleCategoryId.HasValue)
+                .Select(a => a.ArticleCategoryId!.Value)
+                .Distinct()
+                .CountAsync();
             UnitsWithoutSpecificClassificationCount = PendingClassificationUnitsCount + LegacyInferredUnitsCount;
             ClassificationQualityPercent = TotalUnitsCount == 0
                 ? 0
                 : (int)Math.Round(((decimal)(TotalUnitsCount - UnitsWithoutSpecificClassificationCount) / TotalUnitsCount) * 100m);
-
-            CategoryDataJson = SerializeDonut(await LoadCategoryDataAsync(
-                activeUnits,
-                validEquipmentClassifications,
-                validUtensilTypes));
-            EquipmentSubClassJson = SerializeBar(await LoadEquipmentClassificationDataAsync(
-                activeUnits,
-                validEquipmentClassifications));
-            UtensilSubClassJson = SerializeBar(await LoadUtensilClassificationDataAsync(
-                activeUnits,
-                validUtensilTypes));
-            OtherSubClassJson = SerializeBar(await LoadOtherClassificationDataAsync(activeUnits));
-            StatusDataJson = SerializeDonut(await LoadStatusDataAsync(activeUnits));
-            ConditionDataJson = SerializeBar(await LoadConditionDataAsync(activeUnits));
-            EnvironmentDataJson = SerializeBar(await LoadEnvironmentDataAsync(activeUnits));
         }
 
-        private static string SerializeDonut(IEnumerable<ChartPoint> points)
-        {
-            return JsonSerializer.Serialize(points
-                .Where(p => p.Count > 0)
-                .Select(p => new object[] { p.Label, p.Count }));
-        }
+        // ══════════════════════════ Handler de indicadores ══════════════════════════
 
-        private static string SerializeBar(IEnumerable<ChartPoint> points)
+        /// <summary>
+        /// Datos agregados de los gráficos del panel. Se carga con fetch (dona del inventario y
+        /// «Más indicadores») y se cachea 5 minutos para no castigar el inicio.
+        /// </summary>
+        public async Task<JsonResult> OnGetIndicadoresAsync()
         {
-            var rows = points.Where(p => p.Count > 0).ToList();
-            var values = new List<object> { "Unidades" };
-            values.AddRange(rows.Select(p => (object)p.Count));
-
-            return JsonSerializer.Serialize(new
+            var payload = await _cache.GetOrCreateAsync(IndicadoresCacheKey, async entry =>
             {
-                columns = rows.Count == 0 ? Array.Empty<object[]>() : new[] { values.ToArray() },
-                categories = rows.Select(p => p.Label).ToArray()
+                entry.AbsoluteExpirationRelativeToNow = IndicadoresCacheDuration;
+                return await BuildIndicadoresAsync();
             });
+
+            return new JsonResult(payload);
+        }
+
+        private async Task<InicioIndicadoresPayload> BuildIndicadoresAsync()
+        {
+            var validEquipmentClassifications = EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
+            var validUtensilTypes = EquipmentClassificationRules.UtensilSubclassifications.ToArray();
+            var activeUnits = ActiveUnitsQuery();
+
+            var category = await LoadCategoryDataAsync(activeUnits, validEquipmentClassifications, validUtensilTypes);
+            var status = await LoadStatusDataAsync(activeUnits);
+            var equipment = await LoadEquipmentClassificationDataAsync(activeUnits, validEquipmentClassifications);
+            var utensil = await LoadUtensilClassificationDataAsync(activeUnits, validUtensilTypes);
+            var other = await LoadOtherClassificationDataAsync(activeUnits);
+            var condition = await LoadConditionDataAsync(activeUnits);
+            var environment = await LoadEnvironmentDataAsync(activeUnits);
+
+            return new InicioIndicadoresPayload
+            {
+                TotalUnits = await activeUnits.CountAsync(),
+                GeneratedAt = BoliviaTime.ToLocal(DateTime.UtcNow).ToString("HH:mm", CultureInfo.InvariantCulture),
+                Charts =
+                {
+                    BuildDonut("category", "¿Cómo se compone el inventario?", category, 5,
+                        (items, total) =>
+                        {
+                            var top = items.OrderByDescending(p => p.Count).FirstOrDefault();
+                            return top == null
+                                ? "Sin datos todavía."
+                                : $"El {PercentOf(top.Count, total)} % del inventario corresponde a {top.Label.ToLowerInvariant()}.";
+                        }),
+                    BuildDonut("status", "¿En qué estado están las unidades?", status, 5, BuildStatusConclusion),
+                    BuildBar("equipment", "Equipos por clasificación técnica", equipment,
+                        top => $"La clasificación con más equipos es {top.Label} ({top.Count})."),
+                    BuildBar("utensil", "Utensilios por tipo", utensil,
+                        top => $"El tipo más común es {top.Label} ({top.Count} unidades)."),
+                    BuildBar("other", "Otros activos por clasificación", other,
+                        top => $"La clasificación más frecuente es {top.Label} ({top.Count} unidades)."),
+                    BuildBar("condition", "Condición física del inventario", condition,
+                        top => $"La condición física más frecuente es {top.Label} ({top.Count} unidades)."),
+                    BuildBar("environment", "Ambientes con más inventario", environment,
+                        top => $"El ambiente con más unidades es {top.Label} ({top.Count}).")
+                }
+            };
+        }
+
+        private static string BuildStatusConclusion(List<ChartPoint> items, int total)
+        {
+            if (total <= 0)
+            {
+                return "Sin datos todavía.";
+            }
+
+            var operationalLabel = EnumHelper.GetDisplayName(EquipmentStatus.Operational);
+            var operational = items.FirstOrDefault(p => p.Label == operationalLabel);
+            return operational == null
+                ? "Ninguna unidad está en estado operativo."
+                : $"El {PercentOf(operational.Count, total)} % de las unidades está operativo.";
+        }
+
+        private static InicioChartPayload BuildDonut(
+            string key,
+            string title,
+            List<ChartPoint> points,
+            int maxSlices,
+            Func<List<ChartPoint>, int, string> conclusion)
+        {
+            var capped = Cap(points.Where(p => p.Count > 0).ToList(), maxSlices);
+            var total = capped.Sum(p => p.Count);
+            return new InicioChartPayload
+            {
+                Key = key,
+                Type = "donut",
+                Title = title,
+                Conclusion = conclusion(capped, total),
+                Total = total,
+                Items = capped.Select(ToPoint).ToList()
+            };
+        }
+
+        private static InicioChartPayload BuildBar(
+            string key,
+            string title,
+            List<ChartPoint> points,
+            Func<ChartPoint, string> conclusion)
+        {
+            var capped = Cap(points.Where(p => p.Count > 0).ToList(), 8);
+            // La conclusión nombra una categoría real, nunca el grupo «Demás» que junta lo que no entra.
+            var top = capped.Where(p => p.Label != RestLabel).OrderByDescending(p => p.Count).FirstOrDefault();
+            return new InicioChartPayload
+            {
+                Key = key,
+                Type = "bar",
+                Title = title,
+                Conclusion = top == null ? "Sin datos todavía." : conclusion(top),
+                Total = capped.Sum(p => p.Count),
+                Items = capped.Select(ToPoint).ToList()
+            };
+        }
+
+        private static InicioChartPoint ToPoint(ChartPoint point)
+        {
+            return new InicioChartPoint { Label = point.Label, Value = point.Count };
+        }
+
+        /// <summary>Etiqueta del grupo que junta las categorías que no entran (no se confunde con la categoría real «Otro»).</summary>
+        private const string RestLabel = "Demás categorías";
+
+        /// <summary>Deja las <paramref name="max"/> categorías más grandes y agrupa el resto en «Demás categorías».</summary>
+        private static List<ChartPoint> Cap(List<ChartPoint> points, int max)
+        {
+            var ordered = points.OrderByDescending(p => p.Count).ToList();
+            if (ordered.Count <= max)
+            {
+                return ordered;
+            }
+
+            var head = ordered.Take(max).ToList();
+            var rest = ordered.Skip(max).Sum(p => p.Count);
+            if (rest > 0)
+            {
+                head.Add(new ChartPoint(RestLabel, rest));
+            }
+            return head;
+        }
+
+        private static string PercentOf(int part, int total)
+        {
+            return total <= 0
+                ? "0"
+                : ((int)Math.Round(part * 100m / total)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        private IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> ActiveUnitsQuery()
+        {
+            return _context.EquipmentUnits
+                .AsNoTracking()
+                .Include(u => u.Equipment)
+                .Include(u => u.Laboratory)
+                .Where(u => u.Equipment != null
+                    && u.CurrentStatus != EquipmentStatus.Deleted
+                    && u.Equipment!.Status != GeneralStatus.Eliminado);
         }
 
         private static string Display(Enum value)
@@ -240,7 +654,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .ToListAsync();
 
             return data
-                .Select(g => new ChartPoint(g.Label.HasValue ? Display(g.Label.Value) : "Sin condicion", g.Count))
+                .Select(g => new ChartPoint(g.Label.HasValue ? Display(g.Label.Value) : "Sin condición", g.Count))
                 .ToList();
         }
 
@@ -252,12 +666,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .Select(g => new { g.Key.Code, g.Key.Name, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
                 .ThenBy(g => g.Code)
-                .Take(8)
                 .ToListAsync();
 
             return data.Select(g => new ChartPoint(FormatEnvironment(g.Code, g.Name), g.Count)).ToList();
         }
 
         private sealed record ChartPoint(string Label, int Count);
+    }
+
+    /// <summary>Respuesta de <c>OnGetIndicadoresAsync</c>: serializada en camelCase por MVC.</summary>
+    public sealed class InicioIndicadoresPayload
+    {
+        public int TotalUnits { get; set; }
+        public string GeneratedAt { get; set; } = string.Empty;
+        public List<InicioChartPayload> Charts { get; set; } = new();
+    }
+
+    public sealed class InicioChartPayload
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Type { get; set; } = "bar";
+        public string Title { get; set; } = string.Empty;
+        public string Conclusion { get; set; } = string.Empty;
+        public int Total { get; set; }
+        public List<InicioChartPoint> Items { get; set; } = new();
+    }
+
+    public sealed class InicioChartPoint
+    {
+        public string Label { get; set; } = string.Empty;
+        public int Value { get; set; }
     }
 }
